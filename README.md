@@ -213,4 +213,4 @@ Inside each feature folder (e.g., `features/auth/`), we follow **Clean Architect
     *   `widgets/`: UI components used *only* within this feature.
     *   `providers/`: State management (BLoCs/Providers).
 
-> **Note:** For more in-depth details regarding the frontend design structure, widget placement, and architecture rules, please visit the dedicated [Frontend Architecture Guide](./mobile_app/FRONT_ARCH.md) inside the `mobile_app` folder.
+> **Note:** For more in-depth details regarding the frontend design structure, widget placement, and architecture rules, please visit the dedicated [Frontend Architecture Guide](./mobile_app/README.md) inside the `mobile_app` folder.
