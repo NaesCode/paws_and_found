@@ -31,6 +31,14 @@ class User(models.Model):
     profilePhotoURL = models.URLField(blank=True, null=True)
     dateRegistered = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     def __str__(self):
         return f"{self.name} ({self.email})"
 

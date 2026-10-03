@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../widgets/auth_tray.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/features/auth/presentation/widgets/auth_tray.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
             height: double.infinity,
             child: const Center(
               child: Padding(
-                padding: EdgeInsets.only(bottom: 120.0), 
+                padding: EdgeInsets.only(bottom: 120.0),
                 child: Text(
                   'Paws\nand\nFound',
                   textAlign: TextAlign.center,
@@ -39,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          
+
           // 2. The Draggable Tray (Organism)
           Align(
             alignment: Alignment.bottomCenter,
