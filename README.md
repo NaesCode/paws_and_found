@@ -203,3 +203,40 @@ The `mobile_app/` codebase strictly follows **Feature-Driven Clean Architecture*
 * **`features/`**: Domain modules (`auth/`, `map/`, `report/`, `feed/`, etc.) structured with `domain/`, `data/`, and `presentation/` layers.
 
 For complete rules on widget placement and component design, refer to the [Frontend Architecture Guide (FRONT_ARCH.md)](./mobile_app/FRONT_ARCH.md).
+## 12. Common Commands
+
+| Command | Description |
+| --- | --- |
+| `flutter run` | Start the mobile app on an emulator/device |
+| `flutter pub get` | Fetch Dart dependencies |
+| `docker-compose up -d` | Boot the OpenCV AI image processing container |
+| `supabase start` | Start the local Supabase stack |
+| `supabase stop` | Stop local Supabase containers |
+| `supabase migration new <name>` | Create a new database migration file |
+
+## 13. Frontend Design Structure
+
+The `mobile_app/lib/` directory is strictly organized into three main pillars: **Feature-Driven Architecture**, **Clean Architecture**, and **Atomic Design**.
+
+*   **`core/`**: App-wide configurations and setup (e.g., global themes, API clients, app routing). Code here is global and not tied to any specific UI feature.
+*   **`shared/`**: Global UI components built using **Atomic Design** (`atoms/`, `molecules/`, `organisms/`, `templates/`). If a widget is used in multiple features, it belongs here. Never place business logic (like API calls) inside these components.
+*   **`features/`**: Independent, domain-specific modules containing the actual app logic and screens (e.g., `auth/`, `map/`, `report/`).
+
+### The Layers within a Feature
+
+Inside each feature folder (e.g., `features/auth/`), we follow **Clean Architecture**:
+
+1. **`domain/` (The Business Logic)**
+    *   `entities/`: Plain Dart classes representing the data.
+    *   `repositories/`: Interfaces that define what data operations are possible.
+    *   `usecases/`: Specific actions the app can take.
+2. **`data/` (The External Connections)**
+    *   `datasources/`: Classes performing API calls or DB queries.
+    *   `models/`: Data classes with `fromJson`/`toJson` extending domain entities.
+    *   `repositories/`: Implementations of the interfaces defined in the domain layer.
+3. **`presentation/` (The UI)**
+    *   `pages/`: Full screen views.
+    *   `widgets/`: UI components used *only* within this feature.
+    *   `providers/`: State management (BLoCs/Providers).
+
+> **Note:** For more in-depth details regarding the frontend design structure, widget placement, and architecture rules, please visit the dedicated [Frontend Architecture Guide](./mobile_app/README.md) inside the `mobile_app` folder.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/routes/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Paws and Found',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+      routerConfig: AppRouter.router,
     );
   }
 }
