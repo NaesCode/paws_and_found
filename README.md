@@ -1,182 +1,208 @@
-# Paws and Found 
+# Paws and Found
 
-This is the repository for Paws and Found. This guide covers everything a developer needs to build, test, and ship features for the platform. It outlines the technical specifications required to configure your local development environment and ensures a seamless workflow across the team's Flutter mobile client, Supabase backend, and OpenCV AI engine. Read this thoroughly before opening your first PR.
+**Paws and Found** is a mobile platform for community-based stray and missing animal reporting. Users report sightings with geolocation and photos, view community activity on an interactive Mapbox map, and leverage an integrated computer vision feature-matching model to compare submitted animal photos against missing pets.
+
+This guide outlines the system architecture and local setup across the **Flutter mobile client**, the **Django REST Framework backend**, the **PostgreSQL + PostGIS database**, and **Supabase (Auth & Storage)**.
 
 ---
 
 ## Table of Contents
-- [1. Project Setup and Prerequisites](#1-project-setup-and-prerequisites)
-- [2. Backend and OpenCV Initialization](#2-backend-and-opencv-initialization)
-- [3. Distributed System Architecture](#3-distributed-system-architecture)
-- [4. The Event-Driven Workflow](#4-the-event-driven-workflow)
-- [5. Geospatial Development & PostGIS](#5-geospatial-development--postgis)
-- [6. Security and RLS](#6-security-and-rls)
-- [7. Mobile State and Offline Handling](#7-mobile-state-and-offline-handling)
-- [8. Branching Naming Conventions](#8-branching-naming-conventions)
-- [9. Commit Message Standards](#9-commit-message-standards)
-- [10. The Supabase Workflow](#10-the-supabase-workflow)
-- [11. CI/CD Rules](#11-cicd-rules)
-- [12. Common Commands](#12-common-commands)
-- [13. Frontend Design Structure](#13-frontend-design-structure)
+- [1. System Architecture & Tech Stack](#1-system-architecture--tech-stack)
+- [2. How Authentication Works](#2-how-authentication-works)
+- [3. Project Setup & Prerequisites](#3-project-setup--prerequisites)
+- [4. Backend & Database Initialization](#4-backend--database-initialization)
+- [5. Mobile App Setup (Flutter)](#5-mobile-app-setup-flutter)
+- [6. Geospatial Development (PostGIS & GeoDjango)](#6-geospatial-development-postgis--geodjango)
+- [7. Security Guidelines](#7-security-guidelines)
+- [8. Branching & Commit Conventions](#8-branching--commit-conventions)
+- [9. Common Commands Reference](#9-common-commands-reference)
+- [10. Frontend Architecture Guide](#10-frontend-architecture-guide)
 
 ---
 
-## 1. Project Setup and Prerequisites
-
-Every team member must configure their local environment precisely to support the cross-platform mobile framework and backend services.
-
-1. Download and install the latest Flutter SDK and Android Studio. For deveopers using Windows Home editions, you must strictly check the "Android Emulator hypervisor driver" in the Android Studio SDK Manager to ensure virtual devices run correctly.
-2. Download and install Docker Desktop. This is mandatory for hosting our local Supabase instance and containerizing the external OpenCV engine.
-3. Open your terminal and clone this repository using the command `git clone https://github.com/NaesCode/Paws_and_Found`.
-4. Navigate into the cloned project folder and execute the command `flutter pub get` to download all necessary Dart packages.
-5. Run `flutter doctor` to confirm there are no missing components in your SDK path.
-
-## 2. Backend and OpenCV Initialization
-
-Our architecture relies on Supabase for the PostgreSQL database and a Python container for the artificial intelligence image matching.
-
-1. Launch Docker Desktop and ensure the Docker engine is actively running in the background.
-2. Open your terminal in the project root and execute `supabase start` to spin up the PostgreSQL database, Storage buckets, and Edge Functions locally.
-3. Change directories into the backend AI folder and run `docker-compose up -d` to boot the OpenCV image processing container in detached mode.
-4. Confirm that the PostGIS spatial extensions and database schemas are properly loaded before attempting to render the localized community map.
-
-## 3. Distributed System Architecture
-
-Paws and Found's codebase is structured using a distributed, event-driven architecture. Functionality is strictly separated by concern into distinct layers:
-
-*   **Mobile Client (Flutter):** Responsible exclusively for the user interface, hardware interaction (Camera, GPS), and rendering Mapbox components. It contains zero business logic regarding image matching or spatial calculations.
-*   **Backend Orchestrator (Supabase Edge Functions):** Serves as the API gateway. These functions validate incoming payloads, orchestrate the AI matching pipeline, and handle third-party integrations like the REST SMS Gateway.
-*   **AI Matching Engine (OpenCV/Python):** Runs in an isolated Docker container, receiving pre-processed images to perform bounding box detection, extract feature embeddings, and return a high-dimensional vector.
-*   **Data Layer (PostgreSQL):** Utilizes the `PostGIS` extension for spatial coordinates and `pgvector` for storing and querying visual embeddings.
-
-> [!WARNING]
-> Never bypass the Edge Functions to call the OpenCV container directly from the Flutter client. Exposing the AI engine directly to the mobile app will compromise our architecture and leak third-party API limits.
-
-## 4. The Event-Driven Workflow
-
-This relies on an **Event-Driven Storage Trigger** pattern as the primary mutation path to minimize the processing burden on the user's mobile device.
+## 1. System Architecture & Tech Stack
 
 ```text
-User Interaction (Spotted Stray)
-  → Flutter captures Image + GPS and uploads to Supabase Storage
-    → Storage Webhook triggers an Edge Function
-      → Edge Function routes payload to OpenCV Docker Container
-        → OpenCV extracts feature vector and returns it
-          → Edge Function performs PostGIS radius query + Cosine Similarity check
-            → If threshold met (>85%), trigger REST SMS Gateway
-
+┌────────────────────────┐         REST (JSON over HTTPS)         ┌────────────────────────┐
+│     Flutter Mobile     │ ─────────────────────────────────────▶ │  Django + DRF Backend  │
+│      App (Client)      │ ◀───────────────────────────────────── │    (Business Logic)    │
+└───────────┬────────────┘                                        └───────────┬────────────┘
+            │                                                                 │
+            │ Direct SDK Calls                                                │ ORM Queries
+            ▼                                                                 ▼
+    ┌───────────────┐     ┌───────────────┐                       ┌────────────────────────┐
+    │ Supabase Auth │     │  Mapbox Maps  │                       │  PostgreSQL + PostGIS  │
+    │ (Sign up/in)  │     │  (Vector Map) │                       │     (Docker Engine)    │
+    └───────────────┘     └───────────────┘                       └────────────────────────┘
 ```
 
-This workflow ensures there are no mobile bottlenecks, provides fail-safe processing if the OpenCV container is temporarily rate-limited, and secures external API credentials from the client.
+| Component | Technology | Description |
+| --- | --- | --- |
+| **Mobile Client** | Flutter (Dart 3) | Cross-platform mobile app structured with Feature-Driven Clean Architecture & Atomic Design. |
+| **Backend API** | Django 5 + Django REST Framework | Handles business logic, data serialization, user management, and AI matching coordination. |
+| **Database** | PostgreSQL 16 + PostGIS 3.4 | Containerized database (`postgis/postgis:16-3.4`) supporting spatial queries (`PointField`, `ST_DWithin`). |
+| **Authentication** | Supabase Auth | Manages identity, password verification, and issues signed JWTs. |
+| **Image Storage** | Supabase Storage | Hosts animal photos in a secure private bucket (`animal-photos`). |
+| **AI / Matching** | PyTorch (CPU) + OpenCV | Pretrained visual feature extractor generating vector embeddings for photo similarity checks. |
+| **Maps** | Mapbox Maps Flutter SDK | Client-side map rendering and geospatial pinpointing. |
 
-## 5. Geospatial Development & PostGIS
+---
 
-Paws and Found is heavily dependent on location. We do not store coordinates as basic floats; we use PostGIS to enable complex spatial mathematics at the database level. Every `Report` and `Pet` record stores location as a native `Geography(Point, 4326)` column.
+## 2. How Authentication Works
 
-When querying for reports within a specific user's vicinity, **never** fetch all records and filter them in Dart. You must utilize the `ST_DWithin` PostGIS function via our RPC endpoints.
+Django **never** verifies or stores user passwords. Authentication is handled cleanly through Supabase Auth:
 
-```sql
--- Example: Finding active missing pets within 5km of a new stray report
-SELECT * FROM pets
-WHERE status = 'Missing'
-AND ST_DWithin(
-  last_known_location, 
-  ST_SetSRID(ST_MakePoint(report_long, report_lat), 4326), 
-  5000 -- meters
-);
+1. **Sign Up / Log In:** The Flutter client calls Supabase Auth directly via `supabase_flutter`. Supabase validates the credentials and returns a session containing an `access_token` (JWT).
+   > [!IMPORTANT]
+   > During registration, the Flutter app **must** pass `data: {'name': name}` to Supabase `signUp()`. Django reads this metadata on first contact to populate the user's display name.
+2. **Authorized Requests:** Flutter attaches the Supabase JWT to the `Authorization` header on every request to the backend:
+   ```http
+   Authorization: Bearer <supabase_access_token>
+   ```
+3. **JWT Verification in Django:** Django's `SupabaseJWTAuthentication` validates the JWT signature using `SUPABASE_JWT_SECRET`. It automatically extracts the Supabase UUID and creates or retrieves the matching `User` row in PostgreSQL.
 
+---
+
+## 3. Project Setup & Prerequisites
+
+Ensure the following tools are installed on your workstation:
+1. **Flutter SDK (3.x or higher) & Android Studio:** With Android SDK tools and Android Emulator configured.
+2. **Docker Desktop:** Required to host PostgreSQL/PostGIS and the Django backend containers.
+3. **Supabase Account:** Free tier project for Auth and Storage.
+4. **Mapbox Account:** Free tier public access token for vector map rendering.
+
+Clone the repository:
+```bash
+git clone https://github.com/NaesCode/paws_and_found.git
+cd paws_and_found
 ```
 
-## 6. Security and RLS
+---
 
-Paws and Found follows a **default-deny** security architecture. No pet data or user profile is accessible unless an explicit Row Level Security (RLS) policy grants it.
+## 4. Backend & Database Initialization
 
-1. **Supabase Auth** assigns a unique `uid()` to every registered user via JWT.
-2. **Public Map Data:** The `reports` table allows public read access but explicitly masks exact street addresses, snapping them to an approximate radius to protect finder privacy.
-3. **Private Matches:** The `matches` table is strictly scoped. A user can only view a match if their `auth.uid()` matches the `owner_user_id` of the pet or the `reporter_user_id` of the sighting.
+The backend runs entirely in Docker. No local installation of PostgreSQL or GDAL is required.
 
-To prevent pet theft, contact information is completely locked by RLS until the `status` of a match changes to `Confirmed` by a system administrator after manual ownership verification.
+1. **Create Backend Environment Variables:**
+   ```bash
+   cd backend
+   cp .env.example .env
+   ```
+   Fill in your Supabase configuration (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`) and a secure `SECRET_KEY`.
 
-## 7. Mobile State and Offline Handling
+2. **Start the Stack:**
+   From the repository root (where `docker-compose.yml` resides):
+   ```bash
+   docker compose up -d
+   ```
+   This spins up:
+   * `paws_db` (Postgres + PostGIS on port `5432`)
+   * `paws_backend` (Django API server on port `8000`)
 
-Because stray reporting often happens in areas with poor cellular connectivity, the Flutter application must fail gracefully.
+3. **Apply Migrations:**
+   ```bash
+   docker compose exec backend python manage.py migrate
+   ```
 
-1. **Capture First:** The app writes the photo and GPS coordinates to local device storage using SQLite/Hive immediately.
-2. **Connectivity Check:** Before attempting a Supabase Storage upload, check the network state.
-3. **Queueing:** If offline, the report enters a "Pending Sync" state on the dashboard. A background worker will automatically push the payload to Supabase once a stable connection is re-established.
+4. **Create a Superuser (Admin Dashboard):**
+   ```bash
+   docker compose exec backend python manage.py createsuperuser
+   ```
+   Visit `http://localhost:8000/admin` to confirm the backend is running.
 
-## 8. Branching Naming Conventions
+---
 
-To prevent merge conflicts before our strict November code freeze, absolutely no one is allowed to push directly to the main branch. Always create a new branch for your specific task using the prefixes outlined below.
+## 5. Mobile App Setup (Flutter)
+
+1. Navigate to the mobile app directory:
+   ```bash
+   cd mobile_app
+   ```
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+3. Run the app on an Android Emulator or connected physical device:
+   ```bash
+   flutter run
+   ```
+
+> [!NOTE]
+> **Android Emulator Networking:**
+> The Android emulator connects to your computer's `localhost` via the special IP **`10.0.2.2`**. Therefore, the Django API endpoint from the emulator is `http://10.0.2.2:8000/api/`. On a physical device, use your machine's local Wi-Fi IP address (e.g. `192.168.1.x`).
+
+---
+
+## 6. Geospatial Development (PostGIS & GeoDjango)
+
+All coordinates are stored natively using PostGIS spatial points (`PointField(srid=4326)`).
+
+* **Never** fetch all coordinates and filter them on the client side in Dart.
+* Geospatial queries must use GeoDjango's spatial lookups (e.g. `distance_lte` / `dwithin`) so the database utilizes spatial R-Tree indexing:
+  ```python
+  from django.contrib.gis.geos import Point
+  from django.contrib.gis.measure import D
+  from core.models import Report
+
+  # Finding reports within 5km of a given coordinate
+  user_location = Point(longitude, latitude, srid=4326)
+  nearby_reports = Report.objects.filter(location__distance_lte=(user_location, D(m=5000)))
+  ```
+
+---
+
+## 7. Security Guidelines
+
+1. **Keep Secrets Out of Client Code:** Never embed the Supabase `service_role` key, database passwords, or JWT secrets in the Flutter app. Only the `publishableKey` (anon key) belongs in the client.
+2. **Authenticated Endpoints:** All non-public Django API endpoints must require `IsAuthenticated` permission and resolve the authenticated user through the Supabase JWT.
+3. **Private Storage Buckets:** The `animal-photos` storage bucket must remain private. Images are uploaded via the backend or signed URLs.
+
+---
+
+## 8. Branching & Commit Conventions
+
+To avoid merge conflicts, nobody pushes directly to `main`. Always create a branch:
 
 | Branch Prefix | Usage | Example |
 | --- | --- | --- |
-| `feature/` | Developing new core components | `feature/opencv-matching` |
-| `bugfix/` | Resolving issues from the GitHub tracker | `bugfix/map-crash` |
-| `ui/` | Frontend updates and Flutter layout tweaks | `ui/feed-screen` |
-| `docs/` | Updating the SDD, SPMP, or README | `docs/update-setup` |
+| `feature/` | Developing new core components | `feature/auth-tray-validation` |
+| `bugfix/` | Resolving bugs or crashes | `bugfix/jwt-decode-error` |
+| `ui/` | Frontend layout and styling tweaks | `ui/login-segmented-control` |
+| `docs/` | Updating documentation | `docs/update-architecture` |
 
-## 9. Commit Message Standards
+### Commit Message Standards
+Commits must follow Conventional Commits:
+* `feat: add email format validation to auth tray`
+* `fix: correct emulator api host url`
+* `chore: update dependencies in pubspec.yaml`
+* `docs: update system architecture and readme`
 
-Clear commit messages are vital for tracking our progress against the project schedule. Every commit must follow standard conventions.
+---
 
-| Type | Example |
+## 9. Common Commands Reference
+
+| Action | Command |
 | --- | --- |
-| **feat:** | feat: integrate OpenCV similarity scoring |
-| **fix:** | fix: resolve PostGIS spatial query timeout |
-| **chore:** | chore: update Flutter dependencies |
-| **refactor:** | refactor: optimize Supabase storage triggers |
+| Start backend & database | `docker compose up -d` |
+| Stop backend & database | `docker compose down` |
+| View backend logs | `docker compose logs -f backend` |
+| Run Django migrations | `docker compose exec backend python manage.py migrate` |
+| Make new migrations | `docker compose exec backend python manage.py makemigrations` |
+| Fetch Flutter packages | `flutter pub get` (inside `mobile_app/`) |
+| Run Flutter mobile client | `flutter run` (inside `mobile_app/`) |
+| Analyze Flutter code | `flutter analyze` (inside `mobile_app/`) |
 
-## 10. The Supabase Workflow
+---
 
-### Local Commands
+## 10. Frontend Architecture Guide
 
-```bash
-npm run db:start      # Start all Supabase containers locally
-npm run db:reset      # Drop and rebuild from migrations + seed.sql
-npm run db:test       # Run pgTAP tests in supabase/tests/
-npm run db:lint       # Lint SQL migrations
+The `mobile_app/` codebase strictly follows **Feature-Driven Clean Architecture** and **Atomic Design**.
 
-```
+* **`core/`**: App-wide global utilities, theme (`app_colors.dart`), routing, and network clients.
+* **`shared/`**: Reusable UI components categorized by Atomic Design (`atoms/`, `molecules/`, `organisms/`, `templates/`). No business logic belongs in shared components.
+* **`features/`**: Domain modules (`auth/`, `map/`, `report/`, `feed/`, etc.) structured with `domain/`, `data/`, and `presentation/` layers.
 
-After `npm run db:start`, Supabase Studio is available at http://127.0.0.1:54323.
-
-### Adding Database Changes
-
-> [!IMPORTANT]
-> Never make schema changes through the Supabase Studio dashboard. All changes must go through migration files to ensure consistency across the team.
-
-```bash
-# 1. Create a timestamped migration file
-supabase migration new rls_for_matches
-
-# 2. Write your SQL in supabase/migrations/<timestamp>_rls_for_matches.sql
-
-# 3. Apply locally
-npm run db:reset
-
-```
-
-## 11. CI/CD Rules
-
-Every PR targeting the `main` branch triggers parallel GitHub Actions. All checks must pass before a merge is permitted to ensure we hit our strict late-November code freeze.
-
-### Job 1: Flutter Client Validation
-
-| Step | Command | What It Checks |
-| --- | --- | --- |
-| Lint | `flutter analyze` | Dart strict mode and syntax rules |
-| Test | `flutter test` | Widget tests and UI logic |
-| Build | `flutter build apk` | Ensures the Android binary compiles successfully |
-
-### Job 2: Backend and AI Validation
-
-| Step | Command | What It Checks |
-| --- | --- | --- |
-| Start stack | `supabase start` | Boots Postgres + PostGIS locally |
-| Reset DB | `supabase db reset` | Migrations apply cleanly from scratch |
-| Build AI | `docker build .` | Ensures the OpenCV Python container compiles |
-
+For complete rules on widget placement and component design, refer to the [Frontend Architecture Guide (FRONT_ARCH.md)](./mobile_app/FRONT_ARCH.md).
 ## 12. Common Commands
 
 | Command | Description |

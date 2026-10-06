@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgis/postgis:16-3.4
@@ -8,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: paws_and_found
       POSTGRES_USER: paws_admin
-      POSTGRES_PASSWORD: change_me_in_env
+      POSTGRES_PASSWORD: swacdevs2026
     ports:
       - "5432:5432"
     volumes:

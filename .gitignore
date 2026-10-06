@@ -2,6 +2,8 @@
 *.class
 *.log
 *.pyc
+*.pyo
+__pycache__/
 *.swp
 .DS_Store
 .atom/
@@ -12,41 +14,47 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# Python Virtual Environments
+.venv/
+venv/
+ENV/
+
+# IntelliJ / Android Studio
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
+# Flutter / Dart / Pub
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+**/build/
+coverage/
+**/coverage/
 
-# Symbolication related
+# Android build artifacts
+.gradle/
+**/.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/local.properties
+
+# Symbolication & Obfuscation
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Widget Preview related
+# Widget Preview
 .widget_preview/
 
-# Environment variables (contain real secrets — never commit these)
+# Environment variables & secrets (NEVER commit these)
 .env
 .env.*
+backend/.env
+mobile_app/.env
