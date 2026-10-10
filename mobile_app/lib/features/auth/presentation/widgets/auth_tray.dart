@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,6 +36,8 @@ class _AuthTrayState extends State<AuthTray> {
   String? _passwordError;
   String? _confirmPasswordError;
   String? _generalError;
+  String? _infoMessage;
+  bool _canResendEmail = false;
   bool _isLoading = false;
 
   @override
@@ -48,6 +51,7 @@ class _AuthTrayState extends State<AuthTray> {
         _passwordError = null;
         _confirmPasswordError = null;
         _generalError = null;
+        _canResendEmail = false;
       });
     }
   }
@@ -71,6 +75,8 @@ class _AuthTrayState extends State<AuthTray> {
       _passwordError = null;
       _confirmPasswordError = null;
       _generalError = null;
+      _infoMessage = null;
+      _canResendEmail = false;
 
       // Register specific validations
       if (!widget.isLogin) {
@@ -122,6 +128,8 @@ class _AuthTrayState extends State<AuthTray> {
     setState(() {
       _isLoading = true;
       _generalError = null;
+      _infoMessage = null;
+      _canResendEmail = false;
     });
 
     try {
@@ -138,9 +146,11 @@ class _AuthTrayState extends State<AuthTray> {
         if (authResponse.session == null) {
           throw const AuthException('No active session returned. Please check your credentials.');
         }
+
+        // --- 2. Backend Handshake with Django on Login ---
+        await _performBackendHandshake();
       } else {
         // --- 1. Supabase Registration ---
-        // CRITICAL: Must pass name in user_metadata so Django can populate User.name
         final name = _nameController.text.trim();
         final authResponse = await Supabase.instance.client.auth.signUp(
           email: email,
@@ -151,20 +161,93 @@ class _AuthTrayState extends State<AuthTray> {
         if (authResponse.user == null) {
           throw const AuthException('Registration failed. Please try again.');
         }
-      }
 
-      // --- 2. Backend Handshake with Django ---
-      await _performBackendHandshake();
+        // If email confirmation is enabled on Supabase, session is null until confirmed
+        if (authResponse.session == null) {
+          if (mounted) {
+            setState(() {
+              _infoMessage = 'Verification link sent to $email! Please verify your email, then log in below.';
+              _passwordController.clear();
+              _confirmPasswordController.clear();
+            });
+            // Automatically switch to the Login tab
+            widget.onModeChanged(true);
+          }
+          return;
+        }
+
+        // If email confirmation is disabled, session exists immediately
+        await _performBackendHandshake();
+      }
     } on AuthException catch (e) {
       if (mounted) {
+        String friendlyMessage = e.message;
+        bool allowResend = false;
+
+        final lowerMessage = e.message.toLowerCase();
+        if (lowerMessage.contains('email not confirmed')) {
+          friendlyMessage = 'Your email has not been verified yet. Please check your inbox or spam folder.';
+          allowResend = true;
+        } else if (lowerMessage.contains('rate limit') || e.statusCode == '429') {
+          friendlyMessage = 'Too many requests. Please wait a few moments before trying again.';
+        } else if (lowerMessage.contains('is invalid')) {
+          friendlyMessage = 'The server rejected this email. Please use a real, deliverable email address.';
+        } else if (lowerMessage.contains('user already registered')) {
+          friendlyMessage = 'An account with this email already exists. Please log in.';
+          widget.onModeChanged(true);
+        }
+
         setState(() {
-          _generalError = e.message;
+          _generalError = friendlyMessage;
+          _canResendEmail = allowResend;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _generalError = 'An error occurred: $e';
+          _generalError = 'An unexpected error occurred: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _resendConfirmationEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _generalError = null;
+    });
+
+    try {
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+
+      if (mounted) {
+        setState(() {
+          _infoMessage = 'A new verification email was sent to $email. Please check your inbox.';
+          _canResendEmail = false;
+        });
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _generalError = 'Could not resend email: ${e.message}';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _generalError = 'Failed to resend: $e';
         });
       }
     } finally {
@@ -181,17 +264,11 @@ class _AuthTrayState extends State<AuthTray> {
     final token = session?.accessToken;
 
     if (token == null) {
-      // If email confirmation is required on Supabase, session is null until confirmed
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Account created! If email confirmation is required, please check your inbox before logging in.',
-            ),
-            backgroundColor: AppColors.primary,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        setState(() {
+          _infoMessage = 'Registration complete! Please verify your email before logging in.';
+        });
+        widget.onModeChanged(true);
       }
       return;
     }
@@ -209,15 +286,22 @@ class _AuthTrayState extends State<AuthTray> {
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body) as Map<String, dynamic>;
-        final userName = userData['name'] ?? 'User';
+        final userName = (userData['name'] as String?) ?? '';
+        final phoneNumber = userData['phoneNumber'];
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Welcome, $userName! Connected to backend successfully.'),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        // Determine routing based on profile completeness.
+        // A first-time user (auto-created by Django on first login) will have
+        // an empty name or no phone number — send them to profile setup.
+        // A returning user with a full profile goes straight to home.
+        final bool isFirstTimeUser = userName.trim().isEmpty || phoneNumber == null;
+
+        if (!mounted) return;
+
+        if (isFirstTimeUser) {
+          context.go('/profile/setup');
+        } else {
+          context.go('/home');
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -243,9 +327,6 @@ class _AuthTrayState extends State<AuthTray> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -283,6 +364,38 @@ class _AuthTrayState extends State<AuthTray> {
               ),
               const SizedBox(height: 20),
 
+              // Informative notification banner (green/teal)
+              if (_infoMessage != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.mark_email_read_outlined, color: AppColors.primary, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _infoMessage!,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // General error banner if present
               if (_generalError != null) ...[
                 Container(
@@ -293,19 +406,43 @@ class _AuthTrayState extends State<AuthTray> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _generalError!,
-                          style: TextStyle(
-                            color: Colors.red.shade800,
-                            fontSize: 13,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _generalError!,
+                              style: TextStyle(
+                                color: Colors.red.shade800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_canResendEmail) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 28.0),
+                          child: GestureDetector(
+                            onTap: _isLoading ? null : _resendConfirmationEmail,
+                            child: const Text(
+                              'Resend verification email',
+                              style: TextStyle(
+                                color: AppColors.accentOrange,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -373,4 +510,3 @@ class _AuthTrayState extends State<AuthTray> {
     );
   }
 }
-
