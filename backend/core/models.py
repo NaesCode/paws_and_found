@@ -28,7 +28,9 @@ class User(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     phoneNumber = models.CharField(max_length=32, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     profilePhotoURL = models.URLField(blank=True, null=True)
+    bio = models.TextField(blank=True, null=True)
     dateRegistered = models.DateTimeField(auto_now_add=True)
 
     @property

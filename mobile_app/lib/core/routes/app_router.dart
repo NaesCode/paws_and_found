@@ -55,6 +55,11 @@ class AppRouter {
         name: 'profileSetup',
         builder: (context, state) => const ProfileSetupPage(),
       ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileSetupPage(),
+      ),
     ],
   );
 }

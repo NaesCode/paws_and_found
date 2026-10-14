@@ -286,14 +286,19 @@ class _AuthTrayState extends State<AuthTray> {
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body) as Map<String, dynamic>;
-        final userName = (userData['name'] as String?) ?? '';
-        final phoneNumber = userData['phoneNumber'];
+        final userName = (userData['name'] as String?)?.trim() ?? '';
+        final phoneNumber = (userData['phoneNumber'] as String?)?.trim();
+        final address = (userData['address'] as String?)?.trim();
 
         // Determine routing based on profile completeness.
         // A first-time user (auto-created by Django on first login) will have
-        // an empty name or no phone number — send them to profile setup.
-        // A returning user with a full profile goes straight to home.
-        final bool isFirstTimeUser = userName.trim().isEmpty || phoneNumber == null;
+        // an empty name, no phone number, or no address — send them to profile setup.
+        // A returning user with a complete profile goes straight to home.
+        final bool isFirstTimeUser = userName.isEmpty ||
+            phoneNumber == null ||
+            phoneNumber.isEmpty ||
+            address == null ||
+            address.isEmpty;
 
         if (!mounted) return;
 

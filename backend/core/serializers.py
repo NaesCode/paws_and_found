@@ -10,7 +10,9 @@ class UserSerializer(serializers.ModelSerializer):
             "name",
             "email",
             "phoneNumber",
+            "address",
             "profilePhotoURL",
+            "bio",
             "dateRegistered",
         ]
         # email/userID/dateRegistered come from Supabase/system — not user-editable here
