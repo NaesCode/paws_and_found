@@ -1,30 +1,46 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:paws_and_found/main.dart';
+import 'package:paws_and_found/shared/atoms/paw_button.dart';
+import 'package:paws_and_found/shared/atoms/paw_pill_button.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('PawButton renders and responds to tap', (WidgetTester tester) async {
+    bool tapped = false;
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PawButton(
+            text: 'Click Me',
+            color: Colors.blue,
+            textColor: Colors.white,
+            onPressed: () => tapped = true,
+          ),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('Click Me'), findsOneWidget);
+    await tester.tap(find.text('Click Me'));
+    expect(tapped, isTrue);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('PawPillButton renders and responds to tap', (WidgetTester tester) async {
+    bool pillTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PawPillButton.primary(
+            text: 'Add pet',
+            onPressed: () => pillTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Add pet'), findsOneWidget);
+    await tester.tap(find.text('Add pet'));
+    expect(pillTapped, isTrue);
   });
 }

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
 
 class AppRouter {
@@ -16,7 +17,7 @@ class AppRouter {
     ///   1. If the user is NOT logged in → always redirect to /login.
     ///   2. If the user IS logged in and tries to reach /login → redirect to
     ///      /home (the auth_tray handles the finer profile/home split via
-    ///      the Django /api/me/ handshake after login).
+    ///      a direct Supabase profile query after login).
     ///   3. Otherwise → allow the navigation to proceed.
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
@@ -54,6 +55,19 @@ class AppRouter {
         path: '/profile/setup',
         name: 'profileSetup',
         builder: (context, state) => const ProfileSetupPage(),
+      ),
+
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileSetupPage(),
+      ),
+
+      // Standalone notifications route (for future push notification deep-links)
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
       ),
     ],
   );

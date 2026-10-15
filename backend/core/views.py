@@ -1,17 +1,16 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import UserSerializer
+from .models import Profile
 
 
-class MeView(APIView):
-    """GET: return the logged-in user's profile.
-    PATCH: update editable fields (name, phoneNumber, profilePhotoURL)."""
+class HealthView(APIView):
+    """Health check endpoint.
+    Proves JWT verification and the database connection."""
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
-
-    def patch(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        # Trigger a lightweight DB query to prove connection works
+        Profile.objects.exists()
+        return Response({
+            "user_id": request.user.id,
+            "db": "ok",
+        })
