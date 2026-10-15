@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_typography.dart';
 
-/// Pinned top header bar showing "Profile Account" with a soft elevation shadow
-/// and an unobtrusive logout action button.
-class ProfileHeader extends StatelessWidget {
+/// Pinned top header for the Profile screen.
+///
+/// Implemented as a real [PreferredSizeWidget] so [ProfileSetupPage] can
+/// assign it to [Scaffold.appBar]. This lets it automatically inherit the
+/// app-wide [AppBarTheme] (background color, title font, icon color,
+/// status bar style) defined in [AppTheme.light].
+class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onEditPressed;
 
   const ProfileHeader({
@@ -14,77 +17,57 @@ class ProfileHeader extends StatelessWidget {
     this.onEditPressed,
   });
 
+  /// Standard AppBar height — matches every other page's header height.
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background1,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return AppBar(
+      // Title inherits Nunito Sans 22px bold white from AppBarTheme automatically.
+      title: const Text('Profile Account'),
+
+      // Three-dot overflow menu — same pattern as before, now as an action.
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 14.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                'Profile Account',
-                style: AppTypography.profileTitle,
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: AppColors.text2,
-                  size: 22,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onSelected: (value) async {
-                  if (value == 'edit') {
-                    onEditPressed?.call();
-                  } else if (value == 'logout') {
-                    await Supabase.instance.client.auth.signOut();
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                        SizedBox(width: 10),
-                        Text('Edit Profile', style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, size: 18, color: AppColors.contrast2),
-                        SizedBox(width: 10),
-                        Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
-                      ],
-                    ),
-                  ),
+          onSelected: (value) async {
+            if (value == 'edit') {
+              onEditPressed?.call();
+            } else if (value == 'logout') {
+              await Supabase.instance.client.auth.signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                  SizedBox(width: 10),
+                  Text('Edit Profile', style: TextStyle(fontSize: 14)),
                 ],
               ),
-            ],
-          ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, size: 18, color: AppColors.contrast2),
+                  SizedBox(width: 10),
+                  Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

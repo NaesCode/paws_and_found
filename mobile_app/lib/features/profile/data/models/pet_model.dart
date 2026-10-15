@@ -20,27 +20,27 @@ class PetModel extends Pet {
       petStatus = PetStatus.recovered;
     }
 
+    final rawPhotos = json['photo_urls'] ?? json['photoURLs'];
+
     return PetModel(
-      petID: (json['petID'] as String?) ?? '',
-      name: (json['name'] as String?) ?? '',
-      species: (json['species'] as String?) ?? 'Pet',
+      petID: (json['id'] ?? json['petID'] ?? '') as String,
+      name: (json['name'] ?? '') as String,
+      species: (json['species'] ?? 'Pet') as String,
       breed: json['breed'] as String?,
       description: json['description'] as String?,
-      photoURLs: (json['photoURLs'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      photoURLs: rawPhotos is List ? rawPhotos.map((e) => e.toString()).toList() : const [],
       status: petStatus,
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toSupabaseInsert(String ownerId) {
     return {
-      'petID': petID,
+      'owner_id': ownerId,
       'name': name,
       'species': species,
-      'breed': breed,
-      'description': description,
-      'photoURLs': photoURLs,
-      'status': status.name,
+      if (breed != null) 'breed': breed,
+      if (description != null) 'description': description,
+      'photo_urls': photoURLs,
     };
   }
 }
-

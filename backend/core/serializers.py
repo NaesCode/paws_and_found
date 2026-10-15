@@ -1,19 +1,18 @@
 from rest_framework import serializers
-from .models import User
+from .models import Profile
 
 
-class UserSerializer(serializers.ModelSerializer):
+class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = Profile
         fields = [
-            "userID",
+            "id",
             "name",
             "email",
-            "phoneNumber",
+            "phone_number",
             "address",
-            "profilePhotoURL",
+            "profile_photo_url",
             "bio",
-            "dateRegistered",
+            "created_at",
         ]
-        # email/userID/dateRegistered come from Supabase/system — not user-editable here
-        read_only_fields = ["userID", "email", "dateRegistered"]
+        read_only_fields = ["id", "email", "created_at"]

@@ -1,17 +1,12 @@
 from django.contrib import admin
-from .models import User, Pet, Report, Match, Notification
+from .models import Profile, Pet, Report, Match, Notification
 
 
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    # Columns shown in the main table list
-    list_display = ("name", "email", "phoneNumber", "dateRegistered")
-    
-    # Allows clicking into details, and adds a search bar
-    search_fields = ("name", "email", "supabaseUserID")
-    
-    # Shows the non-editable fields inside the form
-    readonly_fields = ("userID", "dateRegistered")
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "email", "phone_number", "created_at")
+    search_fields = ("name", "email", "id")
+    readonly_fields = ("id", "created_at")
 
 
 admin.site.register(Pet)
