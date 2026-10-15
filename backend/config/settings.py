@@ -86,6 +86,8 @@ DATABASES = {
         "PASSWORD": os.environ["DB_PASSWORD"],
         "HOST": os.environ["DB_HOST"],
         "PORT": os.environ["DB_PORT"],
+        "OPTIONS": {"sslmode": os.environ.get("DB_SSLMODE", "require")},
+        "CONN_MAX_AGE": 0,  # session pooler: no persistent connections needed
     }
 }
 
@@ -99,10 +101,12 @@ REST_FRAMEWORK = {
 }
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-SUPABASE_JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
+SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "animal-photos")
+MATCH_SEARCH_RADIUS_M = int(os.environ.get("MATCH_SEARCH_RADIUS_M", "10000"))
+MATCH_MIN_SIMILARITY = float(os.environ.get("MATCH_MIN_SIMILARITY", "0.75"))
 
-CORS_ALLOW_ALL_ORIGINS = True   # fine for development; tighten before any public deployment
+CORS_ALLOW_ALL_ORIGINS = True  # fine for development; tighten before any public deployment
 
 
 # Password validation

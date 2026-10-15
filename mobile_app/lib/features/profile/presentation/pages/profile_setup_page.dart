@@ -193,16 +193,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background1,
-      body: Column(
-        children: [
-          // Pinned Title Bar
-          ProfileHeader(
-            onEditPressed: () => _showEditProfile(isFirstTimeSetup: false),
-          ),
-
-          // Scrollable Body
-          Expanded(
-            child: _isLoading && _user == null
+      appBar: ProfileHeader(
+        onEditPressed: () => _showEditProfile(isFirstTimeSetup: false),
+      ),
+      body: _isLoading && _user == null
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
@@ -347,9 +341,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       ],
                     ),
                   ),
-          ),
-        ],
-      ),
     );
   }
 }

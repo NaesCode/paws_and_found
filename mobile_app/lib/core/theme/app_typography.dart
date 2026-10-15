@@ -91,8 +91,8 @@ class AppTypography {
   static const TextStyle profileTitle = TextStyle(
     fontFamily: 'Nunito Sans',
     fontWeight: FontWeight.w700,
-    fontSize: 24.0,
-    color: AppColors.text2,
+    fontSize: 22.0,
+    color: AppColors.text1,
   );
 
   static const TextStyle sectionTitle = TextStyle(

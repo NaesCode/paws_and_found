@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:paws_and_found/core/constants/api_constants.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/shared/atoms/paw_button.dart';
@@ -260,10 +257,9 @@ class _AuthTrayState extends State<AuthTray> {
   }
 
   Future<void> _performBackendHandshake() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    final token = session?.accessToken;
+    final user = Supabase.instance.client.auth.currentUser;
 
-    if (token == null) {
+    if (user == null) {
       if (mounted) {
         setState(() {
           _infoMessage = 'Registration complete! Please verify your email before logging in.';
@@ -274,57 +270,37 @@ class _AuthTrayState extends State<AuthTray> {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse(ApiConstants.meEndpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 8));
+      // Query the user's profile row directly from Supabase PostgREST
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
       if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body) as Map<String, dynamic>;
-        final userName = (userData['name'] as String?)?.trim() ?? '';
-        final phoneNumber = (userData['phoneNumber'] as String?)?.trim();
-        final address = (userData['address'] as String?)?.trim();
+      final userName = (profile?['name'] as String?)?.trim() ?? '';
+      final phoneNumber = (profile?['phone_number'] as String?)?.trim();
+      final address = (profile?['address'] as String?)?.trim();
 
-        // Determine routing based on profile completeness.
-        // A first-time user (auto-created by Django on first login) will have
-        // an empty name, no phone number, or no address — send them to profile setup.
-        // A returning user with a complete profile goes straight to home.
-        final bool isFirstTimeUser = userName.isEmpty ||
-            phoneNumber == null ||
-            phoneNumber.isEmpty ||
-            address == null ||
-            address.isEmpty;
+      // Determine routing based on profile completeness.
+      // A first-time user has an empty name, no phone number, or no address — send them to profile setup.
+      // A returning user with a complete profile goes straight to home.
+      final bool isFirstTimeUser = userName.isEmpty ||
+          phoneNumber == null ||
+          phoneNumber.isEmpty ||
+          address == null ||
+          address.isEmpty;
 
-        if (!mounted) return;
-
-        if (isFirstTimeUser) {
-          context.go('/profile/setup');
-        } else {
-          context.go('/home');
-        }
+      if (isFirstTimeUser) {
+        context.go('/profile/setup');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Supabase authenticated, but Django returned ${response.statusCode}: ${response.body}'),
-            backgroundColor: AppColors.accentOrange,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        context.go('/home');
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Authenticated with Supabase, but could not reach Django: $e'),
-          backgroundColor: AppColors.accentOrange,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      // Fallback: If network lookup fails, allow navigation to setup
+      context.go('/profile/setup');
     }
   }
 

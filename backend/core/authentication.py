@@ -1,106 +1,65 @@
-"""
-Bridges Supabase Auth (used by the Flutter client) with Django REST Framework.
-
-Supports both:
-- Asymmetric keys (ES256 / RS256) via Supabase JWKS (.well-known/jwks.json)
-- Symmetric shared secrets (HS256 / HS384 / HS512) via SUPABASE_JWT_SECRET
-
-Hardened against algorithm confusion and unauthorized audience claims.
-"""
-
-import base64
 import jwt
 from django.conf import settings
+from jwt import PyJWKClient
+from jwt.exceptions import InvalidTokenError, PyJWKClientError
 from rest_framework import authentication, exceptions
 
-from .models import User
+_jwks_client = None
 
-# Clean up base URL for Supabase Auth JWKS endpoint
-_BASE_SUPABASE_URL = getattr(settings, "SUPABASE_URL", "").split("/rest/v1")[0].rstrip("/")
-_JWKS_URL = f"{_BASE_SUPABASE_URL}/auth/v1/.well-known/jwks.json" if _BASE_SUPABASE_URL else None
-_jwks_client = jwt.PyJWKClient(_JWKS_URL) if _JWKS_URL else None
+
+def _jwks():
+    global _jwks_client
+    if _jwks_client is None:
+        base_url = settings.SUPABASE_URL.replace("/rest/v1", "").rstrip("/")
+        _jwks_client = PyJWKClient(
+            f"{base_url}/auth/v1/.well-known/jwks.json", cache_keys=True
+        )
+    return _jwks_client
+
+
+class SupabaseUser:
+    """Lightweight principal. Identity lives in Supabase Auth / public.profiles; Django owns no users."""
+
+    is_authenticated = True
+    is_anonymous = False
+
+    def __init__(self, user_id, email="", claims=None):
+        self.id = user_id
+        self.pk = user_id
+        self.email = email
+        self.claims = claims or {}
+
+    def __str__(self):
+        return str(self.id)
 
 
 class SupabaseJWTAuthentication(authentication.BaseAuthentication):
+    def authenticate_header(self, request):
+        return "Bearer"  # makes failures return 401 instead of 403
+
     def authenticate(self, request):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return None  # no credentials supplied on this request
+        header = request.headers.get("Authorization", "")
+        if not header.startswith("Bearer "):
+            return None
+        token = header.split(" ", 1)[1].strip()
 
-        token = auth_header.split(" ", 1)[1]
-
-        # 1. Inspect token header safely for algorithm
         try:
-            unverified_header = jwt.get_unverified_header(token)
-            alg = unverified_header.get("alg")
-        except Exception:
-            raise exceptions.AuthenticationFailed("Invalid token header format.")
+            alg = jwt.get_unverified_header(token).get("alg")
+            if alg == "HS256":
+                if not settings.SUPABASE_JWT_SECRET:
+                    raise exceptions.AuthenticationFailed("HS256 token but no legacy secret configured.")
+                key, algorithms = settings.SUPABASE_JWT_SECRET, ["HS256"]
+            elif alg in ("ES256", "RS256"):
+                key, algorithms = _jwks().get_signing_key_from_jwt(token).key, [alg]
+            else:
+                raise exceptions.AuthenticationFailed("Unsupported token algorithm.")
+            payload = jwt.decode(token, key, algorithms=algorithms, audience="authenticated")
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed("Token has expired.")
+        except (InvalidTokenError, PyJWKClientError):
+            raise exceptions.AuthenticationFailed("Invalid token.")
 
-        if not alg:
-            raise exceptions.AuthenticationFailed("Token missing 'alg' in header.")
-
-        payload = None
-
-        # 2. Asymmetric verification (ES256 / RS256 via Supabase JWKS)
-        if alg in ("ES256", "RS256"):
-            if not _jwks_client:
-                raise exceptions.AuthenticationFailed("JWKS client not configured on server.")
-            try:
-                signing_key = _jwks_client.get_signing_key_from_jwt(token)
-                payload = jwt.decode(
-                    token,
-                    signing_key.key,
-                    algorithms=[alg],
-                    audience="authenticated",  # Strictly require authenticated audience
-                )
-            except jwt.ExpiredSignatureError:
-                raise exceptions.AuthenticationFailed("Token has expired.")
-            except Exception as e:
-                raise exceptions.AuthenticationFailed(f"Invalid token: {e}")
-
-        # 3. Symmetric verification fallback (HS256 with SUPABASE_JWT_SECRET)
-        elif alg in ("HS256", "HS384", "HS512"):
-            secrets = []
-            jwt_secret = getattr(settings, "SUPABASE_JWT_SECRET", "")
-            try:
-                secrets.append(base64.b64decode(jwt_secret))
-            except Exception:
-                pass
-            secrets.append(jwt_secret)
-
-            last_err = None
-            for secret in secrets:
-                try:
-                    payload = jwt.decode(
-                        token,
-                        secret,
-                        algorithms=[alg],
-                        audience="authenticated",  # Strictly require authenticated audience
-                    )
-                    break
-                except jwt.ExpiredSignatureError:
-                    raise exceptions.AuthenticationFailed("Token has expired.")
-                except Exception as e:
-                    last_err = e
-                    continue
-
-            if not payload:
-                raise exceptions.AuthenticationFailed(f"Invalid token signature: {last_err}")
-
-        # 4. Reject any other algorithms (prevents 'none' algorithm exploits)
-        else:
-            raise exceptions.AuthenticationFailed(f"Unsupported token algorithm: '{alg}'.")
-
-        supabase_user_id = payload.get("sub")
-        if not supabase_user_id:
-            raise exceptions.AuthenticationFailed("Token missing subject ('sub') claim.")
-
-        user, _ = User.objects.get_or_create(
-            supabaseUserID=supabase_user_id,
-            defaults={
-                "name": payload.get("user_metadata", {}).get("name", ""),
-                "email": payload.get("email", ""),
-            },
-        )
-
-        return (user, token)
+        sub = payload.get("sub")
+        if not sub:
+            raise exceptions.AuthenticationFailed("Token missing subject claim.")
+        return (SupabaseUser(sub, payload.get("email", ""), payload), token)

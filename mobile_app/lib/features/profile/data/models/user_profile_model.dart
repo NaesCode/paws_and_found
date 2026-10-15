@@ -14,27 +14,26 @@ class UserProfileModel extends UserProfile {
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
     return UserProfileModel(
-      userID: (json['userID'] as String?) ?? '',
-      name: (json['name'] as String?) ?? '',
-      email: (json['email'] as String?) ?? '',
-      phoneNumber: json['phoneNumber'] as String?,
+      userID: (json['id'] ?? json['userID'] ?? '') as String,
+      name: (json['name'] ?? '') as String,
+      email: (json['email'] ?? '') as String,
+      phoneNumber: (json['phone_number'] ?? json['phoneNumber']) as String?,
       address: json['address'] as String?,
       bio: json['bio'] as String?,
-      profilePhotoURL: json['profilePhotoURL'] as String?,
-      dateRegistered: json['dateRegistered'] != null
-          ? DateTime.tryParse(json['dateRegistered'] as String)
-          : null,
+      profilePhotoURL: (json['profile_photo_url'] ?? json['profilePhotoURL']) as String?,
+      dateRegistered: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : (json['dateRegistered'] != null ? DateTime.tryParse(json['dateRegistered'] as String) : null),
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toSupabaseUpdate() {
     final Map<String, dynamic> data = {};
     if (name.isNotEmpty) data['name'] = name;
-    if (phoneNumber != null) data['phoneNumber'] = phoneNumber;
+    if (phoneNumber != null) data['phone_number'] = phoneNumber;
     if (address != null) data['address'] = address;
     if (bio != null) data['bio'] = bio;
-    if (profilePhotoURL != null) data['profilePhotoURL'] = profilePhotoURL;
+    if (profilePhotoURL != null) data['profile_photo_url'] = profilePhotoURL;
     return data;
   }
 }
-

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -24,10 +25,10 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }) async {
     final Map<String, dynamic> fields = {};
     if (name != null) fields['name'] = name;
-    if (phoneNumber != null) fields['phoneNumber'] = phoneNumber;
+    if (phoneNumber != null) fields['phone_number'] = phoneNumber;
     if (address != null) fields['address'] = address;
     if (bio != null) fields['bio'] = bio;
-    if (profilePhotoURL != null) fields['profilePhotoURL'] = profilePhotoURL;
+    if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
 
     return await remoteDataSource.updateProfile(fields);
   }
@@ -38,8 +39,37 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<void> reportPetMissing(String petId) async {
-    return await remoteDataSource.reportPetMissing(petId);
+  Future<String> uploadPetPhoto(Uint8List bytes, {String extension = 'jpg'}) async {
+    return await remoteDataSource.uploadPetPhoto(bytes, extension: extension);
+  }
+
+  @override
+  Future<Pet> addPet({
+    required String name,
+    required String species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String> photoUrls = const [],
+  }) async {
+    return await remoteDataSource.addPet(
+      name: name,
+      species: species,
+      breed: breed,
+      color: color,
+      description: description,
+      photoUrls: photoUrls,
+    );
+  }
+
+  @override
+  Future<void> deletePet(String petId) async {
+    return await remoteDataSource.deletePet(petId);
+  }
+
+  @override
+  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note}) async {
+    return await remoteDataSource.reportPetMissing(petId, lat: lat, lng: lng, note: note);
   }
 
   @override
@@ -47,4 +77,3 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return await remoteDataSource.markPetSafe(petId);
   }
 }
-
