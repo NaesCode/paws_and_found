@@ -58,3 +58,7 @@ app.*.map.json
 .env.*
 backend/.env
 mobile_app/.env
+
+# Supabase local CLI cache
+supabase/.temp/
+supabase/.branches/
