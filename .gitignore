@@ -62,3 +62,6 @@ mobile_app/.env
 # Supabase local CLI cache
 supabase/.temp/
 supabase/.branches/
+
+# Agent Rules
+.agents/
