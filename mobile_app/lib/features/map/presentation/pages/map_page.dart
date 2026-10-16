@@ -216,12 +216,7 @@ class _MapPageState extends State<MapPage> {
                     );
                     break;
                   case 2:
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Camera & Sighting Report coming soon!'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
+                    context.go('/camera');
                     break;
                   case 3:
                     context.go('/profile');

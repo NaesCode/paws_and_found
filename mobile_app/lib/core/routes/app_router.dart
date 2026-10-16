@@ -6,10 +6,11 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
+import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: '/map',
+    initialLocation: '/camera',
 
     /// Global redirect guard.
     ///
@@ -22,8 +23,10 @@ class AppRouter {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
-      final isPublicRoute =
-          state.matchedLocation == '/login' || state.matchedLocation == '/map';
+      final isPublicRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/map' ||
+          state.matchedLocation == '/camera' ||
+          state.matchedLocation == '/report';
 
       // Not logged in and NOT heading to a public route → force login
       if (!isLoggedIn && !isPublicRoute) {
@@ -76,6 +79,19 @@ class AppRouter {
         path: '/map',
         name: 'map',
         builder: (context, state) => const MapPage(showBottomNavPlaceholder: true),
+      ),
+
+      // Camera and Animal Report Creation route
+      GoRoute(
+        path: '/camera',
+        name: 'camera',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
+      ),
+
+      GoRoute(
+        path: '/report',
+        name: 'report',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
       ),
     ],
   );

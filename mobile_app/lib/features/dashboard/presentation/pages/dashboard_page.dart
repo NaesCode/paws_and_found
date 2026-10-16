@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
@@ -175,14 +176,7 @@ class _ReportsStub extends StatelessWidget {
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_a_photo_rounded),
         label: const Text('Report Sighting'),
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Report Sighting — coming soon!'),
-              backgroundColor: AppColors.primary,
-            ),
-          );
-        },
+        onPressed: () => context.push('/camera'),
       ),
     );
   }

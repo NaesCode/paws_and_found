@@ -75,6 +75,33 @@ class WireframeBottomNavBar extends StatelessWidget {
     required bool isActive,
     bool hasIndicator = false,
   }) {
+    // If it's the center camera item (index 2)
+    if (index == 2) {
+      return InkWell(
+        onTap: onTap != null ? () => onTap!(index) : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 44,
+          height: 38,
+          decoration: BoxDecoration(
+            color: isActive
+                ? WireframeColors.primaryDark
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: isActive
+                ? null
+                : Border.all(color: WireframeColors.border, width: 1.0),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 22,
+            color: isActive ? Colors.white : WireframeColors.secondarySlate,
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: onTap != null ? () => onTap!(index) : null,
       borderRadius: BorderRadius.circular(12),
