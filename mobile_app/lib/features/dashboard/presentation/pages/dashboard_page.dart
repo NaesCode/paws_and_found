@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:paws_and_found/features/profile/presentation/pages/profile_setup_page.dart';
@@ -10,7 +9,7 @@ import 'package:paws_and_found/features/profile/presentation/pages/profile_setup
 /// The main shell of the authenticated app experience.
 ///
 /// Houses the bottom navigation bar with four tabs:
-///   0 — Map        (stub — Phase 5 deep implementation)
+///   0 — Map        (MapPage - wireframe implementation)
 ///   1 — Reports    (stub — Phase 5 deep implementation)
 ///   2 — Alerts     (functional — NotificationsPage)
 ///   3 — Profile    (functional — ProfileSetupPage)
@@ -58,7 +57,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _pageFor(int index) {
     switch (index) {
       case 0:
-        return const _MapStub();
+        return const MapPage(showBottomNavPlaceholder: false);
       case 1:
         return const _ReportsStub();
       case 2:
@@ -69,7 +68,7 @@ class _DashboardPageState extends State<DashboardPage> {
       case 3:
         return const ProfileSetupPage();
       default:
-        return const _MapStub();
+        return const MapPage(showBottomNavPlaceholder: false);
     }
   }
 
@@ -132,58 +131,6 @@ class _DashboardPageState extends State<DashboardPage> {
 // ---------------------------------------------------------------------------
 // Stub pages (placeholders until deep implementation in later sprints)
 // ---------------------------------------------------------------------------
-
-/// Placeholder for the Map tab.
-///
-/// TODO(Phase 5): Replace with a real map widget (flutter_map / Google Maps)
-/// that calls the `nearby_reports` RPC and renders pins.
-class _MapStub extends StatelessWidget {
-  const _MapStub();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Nearby Reports'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (context.mounted) context.go('/login');
-            },
-          ),
-        ],
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.map_rounded, size: 72, color: AppColors.primary),
-            SizedBox(height: 20),
-            Text(
-              'Map View',
-              style: TextStyle(
-                fontFamily: 'Caveat',
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkCharcoal,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Interactive pet report map\ncoming in the next sprint.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.text3, height: 1.5),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Placeholder for the Reports/Feed tab.
 ///
