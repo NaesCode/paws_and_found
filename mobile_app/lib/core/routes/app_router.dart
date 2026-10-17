@@ -5,6 +5,8 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
+import '../../features/feed/presentation/pages/feed_page.dart';
+import '../../features/feed/presentation/pages/general_reports_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -19,24 +21,24 @@ class AppRouter {
     ///      /home (the auth_tray handles the finer profile/home split via
     ///      a direct Supabase profile query after login).
     ///   3. Otherwise → allow the navigation to proceed.
-    redirect: (context, state) {
-      final session = Supabase.instance.client.auth.currentSession;
-      final isLoggedIn = session != null;
-      final isOnLoginPage = state.matchedLocation == '/login';
+    // redirect: (context, state) {
+    //   final session = Supabase.instance.client.auth.currentSession;
+    //   final isLoggedIn = session != null;
+    //   final isOnLoginPage = state.matchedLocation == '/login';
 
-      // Not logged in and NOT heading to login → force login
-      if (!isLoggedIn && !isOnLoginPage) {
-        return '/login';
-      }
+    //   // Not logged in and NOT heading to login → force login
+    //   if (!isLoggedIn && !isOnLoginPage) {
+    //     return '/login';
+    //   }
 
-      // Already logged in and heading to login → send to home
-      if (isLoggedIn && isOnLoginPage) {
-        return '/home';
-      }
+    //   // Already logged in and heading to login → send to home
+    //   if (isLoggedIn && isOnLoginPage) {
+    //     return '/home';
+    //   }
 
-      // All good — no redirect needed
-      return null;
-    },
+    //   // All good — no redirect needed
+    //   return null;
+    // },
 
     routes: [
       GoRoute(
@@ -69,6 +71,23 @@ class AppRouter {
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
       ),
+      GoRoute(
+        path: '/feed',
+        name: 'feed',
+        builder: (context, state) => const FeedPage(),
+      ),
+      
+      GoRoute(
+        path: '/general_reports',
+        name: 'general_reports',
+        builder: (context, state) => const GeneralReports(),
+      ),
+
+      // GoRoute(
+      //   path: '/personal_reports',
+      //   name: 'personal_reports',
+      //   builder: (context, state) => const GeneralReports(),
+      // )
     ],
   );
 }
