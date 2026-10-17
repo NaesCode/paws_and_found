@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
+import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -14,23 +16,25 @@ class AppRouter {
     ///
     /// Runs before every navigation attempt.
     /// Rules:
-    ///   1. If the user is NOT logged in → always redirect to /login.
-    ///   2. If the user IS logged in and tries to reach /login → redirect to
-    ///      /home (the auth_tray handles the finer profile/home split via
-    ///      a direct Supabase profile query after login).
-    ///   3. Otherwise → allow the navigation to proceed.
+    ///   1. Public routes ('/login', '/map') are always accessible.
+    ///   2. If the user is NOT logged in and not heading to a public route → redirect to /login.
+    ///   3. If the user IS logged in and tries to reach /login → redirect to /home.
+    ///   4. Otherwise → allow navigation.
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
-      final isOnLoginPage = state.matchedLocation == '/login';
+      final isPublicRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/map' ||
+          state.matchedLocation == '/camera' ||
+          state.matchedLocation == '/report';
 
-      // Not logged in and NOT heading to login → force login
-      if (!isLoggedIn && !isOnLoginPage) {
+      // Not logged in and NOT heading to a public route → force login
+      if (!isLoggedIn && !isPublicRoute) {
         return '/login';
       }
 
       // Already logged in and heading to login → send to home
-      if (isLoggedIn && isOnLoginPage) {
+      if (isLoggedIn && state.matchedLocation == '/login') {
         return '/home';
       }
 
@@ -68,6 +72,26 @@ class AppRouter {
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+
+      // Community Animal Map route
+      GoRoute(
+        path: '/map',
+        name: 'map',
+        builder: (context, state) => const MapPage(showBottomNavPlaceholder: true),
+      ),
+
+      // Camera and Animal Report Creation route
+      GoRoute(
+        path: '/camera',
+        name: 'camera',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
+      ),
+
+      GoRoute(
+        path: '/report',
+        name: 'report',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
       ),
     ],
   );
