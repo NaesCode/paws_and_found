@@ -10,6 +10,7 @@ abstract class ProfileRemoteDataSource {
   Future<UserProfileModel> updateProfile(Map<String, dynamic> fields);
   Future<List<PetModel>> getPets();
   Future<String> uploadPetPhoto(Uint8List bytes, {String extension = 'jpg'});
+  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'});
   Future<PetModel> addPet({
     required String name,
     required String species,
@@ -90,6 +91,25 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     );
 
     return supabase.storage.from('animal-photos').getPublicUrl(path);
+  }
+
+  @override
+  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'}) async {
+    final uid = _currentUserId;
+    if (uid == null) {
+      throw Exception('User is not authenticated');
+    }
+
+    final fileUuid = const Uuid().v4();
+    final path = '$uid/$fileUuid.$extension';
+
+    await supabase.storage.from('user-profile-photo').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: 'image/$extension', upsert: true),
+    );
+
+    return supabase.storage.from('user-profile-photo').getPublicUrl(path);
   }
 
   @override
@@ -174,13 +194,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
           .eq('owner_id', uid)
           .order('created_at', ascending: false);
 
-      if (data.isEmpty) {
-        return List.from(_mockPets);
-      }
-
       return data.map((json) => PetModel.fromJson(json as Map<String, dynamic>)).toList();
     } catch (_) {
-      return List.from(_mockPets);
+      return [];
     }
   }
 

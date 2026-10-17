@@ -21,6 +21,9 @@ abstract class ProfileRepository {
   /// Uploads a pet photo to the 'animal-photos' Supabase Storage bucket.
   Future<String> uploadPetPhoto(Uint8List bytes, {String extension = 'jpg'});
 
+  /// Uploads a user avatar to the 'user-profile-photo' Supabase Storage bucket.
+  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'});
+
   /// Adds a new registered pet for the current user.
   Future<Pet> addPet({
     required String name,

@@ -10,6 +10,7 @@ class PawTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final bool enabled;
+  final int maxLines;
 
   const PawTextField({
     super.key,
@@ -22,6 +23,7 @@ class PawTextField extends StatelessWidget {
     this.onChanged,
     this.onSubmitted,
     this.enabled = true,
+    this.maxLines = 1,
   });
 
   @override
@@ -29,6 +31,7 @@ class PawTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
+      maxLines: obscureText ? 1 : maxLines,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onChanged: onChanged,

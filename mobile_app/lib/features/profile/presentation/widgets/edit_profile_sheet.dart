@@ -1,27 +1,34 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
 import '../../../../shared/atoms/paw_text_field.dart';
 import '../../domain/entities/user_profile.dart';
+import '../../domain/repositories/profile_repository.dart';
+import '../../data/repositories/profile_repository_impl.dart';
 
-/// Modal bottom sheet allowing users to input/edit their name, contact number, address, and bio.
+/// Modal bottom sheet allowing users to input/edit their name, contact number, address, bio, and photo.
 /// Utilizes shared design-system atoms: DragHandle, PawTextField, and PawButton.
 class EditProfileSheet extends StatefulWidget {
   final UserProfile user;
+  final ProfileRepository? repository;
   final bool isFirstTimeSetup;
   final Future<void> Function({
     required String name,
     required String phoneNumber,
     required String address,
     required String bio,
+    String? profilePhotoURL,
   }) onSave;
   final VoidCallback? onSkip;
 
   const EditProfileSheet({
     super.key,
     required this.user,
+    this.repository,
     this.isFirstTimeSetup = false,
     required this.onSave,
     this.onSkip,
@@ -31,12 +38,14 @@ class EditProfileSheet extends StatefulWidget {
   static Future<void> show({
     required BuildContext context,
     required UserProfile user,
+    ProfileRepository? repository,
     bool isFirstTimeSetup = false,
     required Future<void> Function({
       required String name,
       required String phoneNumber,
       required String address,
       required String bio,
+      String? profilePhotoURL,
     }) onSave,
     VoidCallback? onSkip,
   }) {
@@ -46,6 +55,7 @@ class EditProfileSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => EditProfileSheet(
         user: user,
+        repository: repository,
         isFirstTimeSetup: isFirstTimeSetup,
         onSave: onSave,
         onSkip: onSkip,
@@ -63,6 +73,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late final TextEditingController _addressController;
   late final TextEditingController _bioController;
 
+  Uint8List? _newPhotoBytes;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -82,6 +93,78 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _addressController.dispose();
     _bioController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _newPhotoBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Choose Profile Photo',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkCharcoal,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                title: const Text('Take a photo'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleSave() async {
@@ -106,11 +189,18 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     });
 
     try {
+      String? photoUrl;
+      if (_newPhotoBytes != null) {
+        final repo = widget.repository ?? ProfileRepositoryImpl();
+        photoUrl = await repo.uploadProfilePhoto(_newPhotoBytes!);
+      }
+
       await widget.onSave(
         name: name,
         phoneNumber: phone,
         address: address,
         bio: bio,
+        profilePhotoURL: photoUrl,
       );
       if (mounted) {
         Navigator.of(context).pop();
@@ -156,7 +246,10 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                 // Title
                 Text(
                   widget.isFirstTimeSetup ? 'Complete Your Profile' : 'Edit Profile',
-                  style: AppTypography.profileTitle.copyWith(fontSize: 22),
+                  style: AppTypography.profileTitle.copyWith(
+                    fontSize: 22,
+                    color: AppColors.darkCharcoal,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 6),
@@ -167,7 +260,79 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                   style: AppTypography.detailText,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Profile Avatar with Camera Button
+                Center(
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.background2,
+                          shape: BoxShape.circle,
+                          image: _newPhotoBytes != null
+                              ? DecorationImage(
+                                  image: MemoryImage(_newPhotoBytes!),
+                                  fit: BoxFit.cover,
+                                )
+                              : (widget.user.profilePhotoURL != null &&
+                                      widget.user.profilePhotoURL!.isNotEmpty)
+                                  ? DecorationImage(
+                                      image: NetworkImage(widget.user.profilePhotoURL!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                        ),
+                        child: (_newPhotoBytes == null &&
+                                (widget.user.profilePhotoURL == null ||
+                                    widget.user.profilePhotoURL!.isEmpty))
+                            ? const Icon(
+                                Icons.person_rounded,
+                                size: 48,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _showImageSourceDialog,
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 15,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: TextButton(
+                    onPressed: _showImageSourceDialog,
+                    child: const Text(
+                      'Change Photo',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
 
                 if (_errorMessage != null)
                   Container(

@@ -51,14 +51,14 @@ class ProfileDetails extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 8),
                     Text(
                       'Contact: ${user.phoneNumber != null && user.phoneNumber!.trim().isNotEmpty ? user.phoneNumber! : "Not set"}',
                       style: AppTypography.detailText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 8),
                     Text(
                       'Registered Pets: $registeredPetsCount',
                       style: AppTypography.detailText,
@@ -67,28 +67,29 @@ class ProfileDetails extends StatelessWidget {
                 ),
               ),
 
-              // Right: "+ Add pet" pill button
-              Semantics(
-                button: true,
-                label: 'Add pet',
-                child: PawPillButton.primary(
-                  onPressed: onAddPetPressed,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  leadingIcon: const Text(
-                    '+',
-                    style: TextStyle(
+              // Right: "+ Add pet" pill button (shown once pets exist; empty state has its own CTA)
+              if (registeredPetsCount > 0)
+                Semantics(
+                  button: true,
+                  label: 'Add pet',
+                  child: PawPillButton.primary(
+                    onPressed: onAddPetPressed,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    leadingIcon: const Text(
+                      '+',
+                      style: TextStyle(
+                        color: AppColors.text1,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailingIcon: const Icon(
+                      Icons.pets,
+                      size: 11,
                       color: AppColors.text1,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
-                  trailingIcon: const Icon(
-                    Icons.pets,
-                    size: 11,
-                    color: AppColors.text1,
-                  ),
                 ),
-              ),
             ],
           ),
         ],
