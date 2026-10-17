@@ -5,12 +5,11 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
-import '../../features/profile/presentation/pages/profile_setup_page.dart';
 import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: '/camera',
+    initialLocation: '/login',
 
     /// Global redirect guard.
     ///
@@ -58,13 +57,13 @@ class AppRouter {
       GoRoute(
         path: '/profile/setup',
         name: 'profileSetup',
-        builder: (context, state) => const ProfileSetupPage(),
+        builder: (context, state) => const DashboardPage(initialIndex: 3),
       ),
 
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => const ProfileSetupPage(),
+        builder: (context, state) => const DashboardPage(initialIndex: 3),
       ),
 
       // Standalone notifications route (for future push notification deep-links)

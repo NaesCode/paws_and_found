@@ -6,16 +6,18 @@ import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:paws_and_found/features/profile/presentation/pages/profile_setup_page.dart';
+import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 
 /// The main shell of the authenticated app experience.
 ///
-/// Houses the bottom navigation bar with four tabs:
-///   0 — Map        (MapPage - wireframe implementation)
-///   1 — Reports    (stub — Phase 5 deep implementation)
-///   2 — Alerts     (functional — NotificationsPage)
+/// Houses the custom bottom navigation bar with five tabs:
+///   0 — Map        (stub — Phase 5 deep implementation)
+///   1 — Feed / FYP (stub — Phase 5 deep implementation)
+///   2 — Camera     (stub — quick pet sighting camera)
 ///   3 — Profile    (functional — ProfileSetupPage)
+///   4 — Alerts     (functional — NotificationsPage)
 ///
-/// This page itself holds NO business logic.  Each tab is a self-contained
+/// This page itself holds NO business logic. Each tab is a self-contained
 /// page that manages its own state.
 class DashboardPage extends StatefulWidget {
   /// Allows injection of the starting tab index (e.g. from a deep-link).
@@ -40,6 +42,14 @@ class _DashboardPageState extends State<DashboardPage> {
     _fetchUnreadCount();
   }
 
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      setState(() => _currentIndex = widget.initialIndex);
+    }
+  }
+
   Future<void> _fetchUnreadCount() async {
     try {
       final count = await NotificationRepositoryImpl().getUnreadCount();
@@ -62,12 +72,13 @@ class _DashboardPageState extends State<DashboardPage> {
       case 1:
         return const _ReportsStub();
       case 2:
-        // Pass the repo so the page can refresh the badge after "mark all read".
+        return const _CameraStub();
+      case 3:
+        return const ProfileSetupPage();
+      case 4:
         return NotificationsPage(
           repository: NotificationRepositoryImpl(),
         );
-      case 3:
-        return const ProfileSetupPage();
       default:
         return const MapPage(showBottomNavPlaceholder: false);
     }
@@ -83,47 +94,16 @@ class _DashboardPageState extends State<DashboardPage> {
       // IndexedStack keeps all tab pages alive (no re-mount on tab switch).
       body: IndexedStack(
         index: _currentIndex,
-        children: List.generate(4, _pageFor),
+        children: List.generate(5, _pageFor),
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.15),
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
+      bottomNavigationBar: CustomAppBar(
+        currentIndex: _currentIndex,
+        hasUnreadNotifications: _unreadCount > 0,
+        onTabSelected: (index) {
           setState(() => _currentIndex = index);
           // Refresh badge whenever the user switches away from notifications.
-          if (index != 2) _fetchUnreadCount();
+          if (index != 4) _fetchUnreadCount();
         },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded, color: AppColors.primary),
-            label: 'Map',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.pets_outlined),
-            selectedIcon: Icon(Icons.pets_rounded, color: AppColors.primary),
-            label: 'Reports',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _unreadCount > 0,
-              label: Text('$_unreadCount'),
-              child: const Icon(Icons.notifications_outlined),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: _unreadCount > 0,
-              label: Text('$_unreadCount'),
-              child: const Icon(Icons.notifications_rounded, color: AppColors.primary),
-            ),
-            label: 'Alerts',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded, color: AppColors.primary),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
@@ -177,6 +157,45 @@ class _ReportsStub extends StatelessWidget {
         icon: const Icon(Icons.add_a_photo_rounded),
         label: const Text('Report Sighting'),
         onPressed: () => context.push('/camera'),
+      ),
+    );
+  }
+}
+
+/// Placeholder for the Camera / Sighting tab.
+class _CameraStub extends StatelessWidget {
+  const _CameraStub();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Found Pet Camera'),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.camera_alt_rounded, size: 72, color: AppColors.primary),
+            SizedBox(height: 20),
+            Text(
+              'Camera Scanner',
+              style: TextStyle(
+                fontFamily: 'Caveat',
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkCharcoal,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Snap a picture of a found pet to run AI matching.\nComing soon!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.text3, height: 1.5),
+            ),
+          ],
+        ),
       ),
     );
   }

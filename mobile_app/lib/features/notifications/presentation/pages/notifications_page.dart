@@ -199,6 +199,8 @@ class _NotificationTile extends StatelessWidget {
 
   IconData _iconForType(String type) {
     switch (type) {
+      case 'welcome':
+        return Icons.pets_rounded;
       case 'match_found':
         return Icons.favorite_rounded;
       case 'report_nearby':
@@ -212,6 +214,8 @@ class _NotificationTile extends StatelessWidget {
 
   Color _colorForType(String type) {
     switch (type) {
+      case 'welcome':
+        return AppColors.primary;
       case 'match_found':
         return AppColors.accentOrange;
       case 'report_nearby':
