@@ -42,6 +42,14 @@ class _DashboardPageState extends State<DashboardPage> {
     _fetchUnreadCount();
   }
 
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      setState(() => _currentIndex = widget.initialIndex);
+    }
+  }
+
   Future<void> _fetchUnreadCount() async {
     try {
       final count = await NotificationRepositoryImpl().getUnreadCount();
