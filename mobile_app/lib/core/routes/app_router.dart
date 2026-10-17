@@ -3,42 +3,47 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
+import '../../features/report/presentation/pages/camera_report_page.dart';
 import '../../features/feed/presentation/pages/feed_page.dart';
 import '../../features/feed/presentation/pages/general_reports_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/camera',
 
     /// Global redirect guard.
     ///
     /// Runs before every navigation attempt.
     /// Rules:
-    ///   1. If the user is NOT logged in → always redirect to /login.
-    ///   2. If the user IS logged in and tries to reach /login → redirect to
-    ///      /home (the auth_tray handles the finer profile/home split via
-    ///      a direct Supabase profile query after login).
-    ///   3. Otherwise → allow the navigation to proceed.
-    // redirect: (context, state) {
-    //   final session = Supabase.instance.client.auth.currentSession;
-    //   final isLoggedIn = session != null;
-    //   final isOnLoginPage = state.matchedLocation == '/login';
+    ///   1. Public routes ('/login', '/map') are always accessible.
+    ///   2. If the user is NOT logged in and not heading to a public route → redirect to /login.
+    ///   3. If the user IS logged in and tries to reach /login → redirect to /home.
+    ///   4. Otherwise → allow navigation.
+    redirect: (context, state) {
+      final session = Supabase.instance.client.auth.currentSession;
+      final isLoggedIn = session != null;
+      final isPublicRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/map' ||
+          state.matchedLocation == '/camera' ||
+          state.matchedLocation == '/report';
 
-    //   // Not logged in and NOT heading to login → force login
-    //   if (!isLoggedIn && !isOnLoginPage) {
-    //     return '/login';
-    //   }
+      // Not logged in and NOT heading to a public route → force login
+      if (!isLoggedIn && !isPublicRoute) {
+        return '/login';
+      }
 
-    //   // Already logged in and heading to login → send to home
-    //   if (isLoggedIn && isOnLoginPage) {
-    //     return '/home';
-    //   }
+      // Already logged in and heading to login → send to home
+      if (isLoggedIn && state.matchedLocation == '/login') {
+        return '/home';
+      }
 
     //   // All good — no redirect needed
     //   return null;
     // },
+    },
 
     routes: [
       GoRoute(
@@ -70,6 +75,26 @@ class AppRouter {
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+
+      // Community Animal Map route
+      GoRoute(
+        path: '/map',
+        name: 'map',
+        builder: (context, state) => const MapPage(showBottomNavPlaceholder: true),
+      ),
+
+      // Camera and Animal Report Creation route
+      GoRoute(
+        path: '/camera',
+        name: 'camera',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
+      ),
+
+      GoRoute(
+        path: '/report',
+        name: 'report',
+        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
       ),
       GoRoute(
         path: '/feed',
