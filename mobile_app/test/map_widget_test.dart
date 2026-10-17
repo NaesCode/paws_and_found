@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
+import 'package:paws_and_found/features/map/domain/entities/map_report_entity.dart';
+import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/shared/atoms/map_pin_badge.dart';
+import 'package:paws_and_found/shared/atoms/user_location_marker.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
 import 'package:paws_and_found/shared/molecules/map_filter_bar.dart';
 import 'package:paws_and_found/shared/molecules/map_legend.dart';
+import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
+import 'package:paws_and_found/shared/organisms/interactive_map_canvas.dart';
 import 'package:paws_and_found/shared/organisms/map_report_card.dart';
-import 'package:paws_and_found/shared/organisms/wireframe_bottom_nav_bar.dart';
-import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 
 void main() {
   group('Map Atomic Design Components', () {
@@ -29,6 +34,18 @@ void main() {
       expect(find.text('M'), findsOneWidget);
       await tester.tap(find.text('M'));
       expect(tapped, isTrue);
+    });
+
+    testWidgets('UserLocationMarker renders accurately', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: UserLocationMarker(),
+          ),
+        ),
+      );
+
+      expect(find.byType(UserLocationMarker), findsOneWidget);
     });
 
     testWidgets('WireframeStatusBadge displays status label correctly', (tester) async {
@@ -118,23 +135,47 @@ void main() {
       expect(find.text('Golden'), findsOneWidget);
     });
 
-    testWidgets('WireframeBottomNavBar renders 5 placeholder icons', (tester) async {
+    testWidgets('InteractiveMapCanvas renders FlutterMap and interactive markers', (tester) async {
+      final mockReports = MapReportModel.getMockReports().take(2).toList();
+      MapReportEntity? tappedReport;
+
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            bottomNavigationBar: WireframeBottomNavBar(),
+            body: InteractiveMapCanvas(
+              reports: mockReports,
+              userLocation: const LatLng(14.5995, 120.9842),
+              onReportTap: (r) => tappedReport = r,
+            ),
           ),
         ),
       );
 
-      expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
+      expect(find.byType(InteractiveMapCanvas), findsOneWidget);
+      expect(find.byType(UserLocationMarker), findsOneWidget);
+      expect(find.byType(MapPinBadge), findsNWidgets(2));
+
+      await tester.tap(find.byType(MapPinBadge).first);
+      expect(tappedReport, isNotNull);
+      expect(tappedReport!.id, mockReports.first.id);
     });
 
-    testWidgets('MapPage full wireframe screen renders and is interactive', (tester) async {
+    testWidgets('CustomAppBar renders in bottomNavigationBar', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: CustomAppBar(
+              currentIndex: 0,
+              onTabSelected: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(CustomAppBar), findsOneWidget);
+    });
+
+    testWidgets('MapPage full screen renders with InteractiveMapCanvas and CustomAppBar', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: MapPage(showBottomNavPlaceholder: true),
@@ -154,11 +195,14 @@ void main() {
       expect(find.text('Stray'), findsOneWidget);
       expect(find.text('Found'), findsOneWidget);
 
+      // Verify interactive map canvas
+      expect(find.byType(InteractiveMapCanvas), findsOneWidget);
+
       // Verify floating report card displays first report
       expect(find.text('Golden Retriever'), findsOneWidget);
 
-      // Verify bottom nav placeholder
-      expect(find.byType(WireframeBottomNavBar), findsOneWidget);
+      // Verify bottom nav
+      expect(find.byType(CustomAppBar), findsOneWidget);
     });
   });
 }
