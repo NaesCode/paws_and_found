@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/molecules/camera_viewfinder_placeholder.dart';
 import '../../../../shared/organisms/create_report_form.dart';
-import '../../../../shared/organisms/wireframe_bottom_nav_bar.dart';
+import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../domain/repositories/report_repository.dart';
 import '../providers/camera_report_controller.dart';
 
@@ -168,9 +168,9 @@ class _CameraReportPageState extends State<CameraReportPage> {
         ),
       ),
       bottomNavigationBar: widget.showBottomNavPlaceholder
-          ? WireframeBottomNavBar(
+          ? CustomAppBar(
               currentIndex: 2, // Camera is active (highlighted pill)
-              onTap: (index) {
+              onTabSelected: (index) {
                 switch (index) {
                   case 0:
                     context.go('/map');
