@@ -1,75 +1,80 @@
 # Paws and Found
 
-**Paws and Found** is a mobile platform for community-based stray and missing animal reporting. Users report sightings with geolocation and photos, view community activity on an interactive Mapbox map, and leverage an integrated computer vision feature-matching model to compare submitted animal photos against missing pets.
+**Paws and Found** is a mobile platform for community-based stray and missing animal reporting. Users report sightings with geolocation and photos, view community activity on an interactive map, and leverage an integrated computer vision feature-matching model to compare submitted animal photos against missing pets.
 
-This guide outlines the system architecture and local setup across the **Flutter mobile client**, the **Django REST Framework backend**, the **PostgreSQL + PostGIS database**, and **Supabase (Auth & Storage)**.
+The system uses a **Hybrid Architecture**:
+- **Supabase Cloud** serves as the unified backend for PostgreSQL + PostGIS, Authentication, File Storage, and real-time updates. The Flutter client queries Supabase directly for fast, low-latency CRUD and spatial queries.
+- **Django REST Framework** acts as a lean **micro-orchestrator** containerized in Docker, dedicated strictly to AI feature extraction, spatial candidate matching, and automated notifications.
 
 ---
 
 ## Table of Contents
 - [1. System Architecture & Tech Stack](#1-system-architecture--tech-stack)
-- [2. How Authentication Works](#2-how-authentication-works)
+- [2. How Authentication & Identity Work](#2-how-authentication--identity-work)
 - [3. Project Setup & Prerequisites](#3-project-setup--prerequisites)
-- [4. Backend & Database Initialization](#4-backend--database-initialization)
-- [5. Mobile App Setup (Flutter)](#5-mobile-app-setup-flutter)
-- [6. Geospatial Development (PostGIS & GeoDjango)](#6-geospatial-development-postgis--geodjango)
-- [7. Security Guidelines](#7-security-guidelines)
-- [8. Branching & Commit Conventions](#8-branching--commit-conventions)
-- [9. Common Commands Reference](#9-common-commands-reference)
-- [10. Frontend Architecture Guide](#10-frontend-architecture-guide)
+- [4. Backend (Django Micro-Orchestrator) Setup](#4-backend-django-micro-orchestrator-setup)
+- [5. Database & Migration Workflow (Supabase CLI)](#5-database--migration-workflow-supabase-cli)
+- [6. Mobile App Setup (Flutter)](#6-mobile-app-setup-flutter)
+- [7. Geospatial Architecture (PostGIS & GeoDjango)](#7-geospatial-architecture-postgis--geodjango)
+- [8. Data Dictionary & Field Renaming Reference](#8-data-dictionary--field-renaming-reference)
+- [9. Security Guidelines](#9-security-guidelines)
+- [10. Branching & Commit Conventions](#10-branching--commit-conventions)
+- [11. Common Commands Reference](#11-common-commands-reference)
+- [12. Frontend Architecture Guide](#12-frontend-architecture-guide)
 
 ---
 
 ## 1. System Architecture & Tech Stack
 
 ```text
-┌────────────────────────┐         REST (JSON over HTTPS)         ┌────────────────────────┐
-│     Flutter Mobile     │ ─────────────────────────────────────▶ │  Django + DRF Backend  │
-│      App (Client)      │ ◀───────────────────────────────────── │    (Business Logic)    │
-└───────────┬────────────┘                                        └───────────┬────────────┘
-            │                                                                 │
-            │ Direct SDK Calls                                                │ ORM Queries
-            ▼                                                                 ▼
-    ┌───────────────┐     ┌───────────────┐                       ┌────────────────────────┐
-    │ Supabase Auth │     │  Mapbox Maps  │                       │  PostgreSQL + PostGIS  │
-    │ (Sign up/in)  │     │  (Vector Map) │                       │     (Docker Engine)    │
-    └───────────────┘     └───────────────┘                       └────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│               Flutter Mobile App (Client)              │
+└───────────┬────────────────────────────────┬───────────┘
+            │                                │
+            │ Direct Reads/Writes & Auth      │ POST /api/.../analyze/
+            │ (PostgREST, GoTrue, Storage)    │ (JWT Authenticated)
+            ▼                                ▼
+┌────────────────────────┐       ┌────────────────────────┐
+│     Supabase Cloud     │       │ Django Orchestrator    │
+│  - PostgreSQL + PostGIS│       │ (Docker Container)     │
+│  - GoTrue Auth         │       │ - PyTorch / OpenCV     │
+│  - 'animal-photos' S3  │ ◀──── │ - Candidate Matching   │
+│  - Row Level Security  │  Pool │ - GeoDjango            │
+└────────────────────────┘  Conn └────────────────────────┘
 ```
 
 | Component | Technology | Description |
 | --- | --- | --- |
-| **Mobile Client** | Flutter (Dart 3) | Cross-platform mobile app structured with Feature-Driven Clean Architecture & Atomic Design. |
-| **Backend API** | Django 5 + Django REST Framework | Handles business logic, data serialization, user management, and AI matching coordination. |
-| **Database** | PostgreSQL 16 + PostGIS 3.4 | Containerized database (`postgis/postgis:16-3.4`) supporting spatial queries (`PointField`, `ST_DWithin`). |
-| **Authentication** | Supabase Auth | Manages identity, password verification, and issues signed JWTs. |
-| **Image Storage** | Supabase Storage | Hosts animal photos in a secure private bucket (`animal-photos`). |
-| **AI / Matching** | PyTorch (CPU) + OpenCV | Pretrained visual feature extractor generating vector embeddings for photo similarity checks. |
-| **Maps** | Mapbox Maps Flutter SDK | Client-side map rendering and geospatial pinpointing. |
+| **Mobile Client** | Flutter 3 (Dart 3) | Cross-platform app structured with Clean Architecture and Atomic Design. Queries Supabase directly. |
+| **Database & Auth** | Supabase Cloud (PostgreSQL 16 + PostGIS) | Managed Postgres database with spatial indexing, Row Level Security (RLS), and JWT auth. |
+| **Micro-Orchestrator** | Django 5 + DRF (Dockerized) | Headless backend for heavy geospatial candidate queries and PyTorch AI photo analysis. |
+| **Image Storage** | Supabase Storage (`animal-photos`) | Public CDN storage bucket for pet profiles and sighting report images. |
+| **AI / Matching** | PyTorch (CPU) + OpenCV + NumPy | Visual feature extractor and cosine similarity engine generating image embeddings. |
 
 ---
 
-## 2. How Authentication Works
+## 2. How Authentication & Identity Work
 
-Django **never** verifies or stores user passwords. Authentication is handled cleanly through Supabase Auth:
+Django **never** stores or manages user passwords. Authentication is handled cleanly through Supabase Auth:
 
-1. **Sign Up / Log In:** The Flutter client calls Supabase Auth directly via `supabase_flutter`. Supabase validates the credentials and returns a session containing an `access_token` (JWT).
-   > [!IMPORTANT]
-   > During registration, the Flutter app **must** pass `data: {'name': name}` to Supabase `signUp()`. Django reads this metadata on first contact to populate the user's display name.
-2. **Authorized Requests:** Flutter attaches the Supabase JWT to the `Authorization` header on every request to the backend:
+1. **Sign Up / Sign In:** The Flutter client calls Supabase Auth directly via `supabase_flutter`. On sign-up, Flutter passes `data: {'name': name}` as user metadata.
+2. **Automatic Profile Provisioning:** A database trigger (`on_auth_user_created`) in Supabase automatically inserts a matching row into `public.profiles` using the user's UUID and metadata. No backend code is needed for registration.
+3. **Authorized Client Calls:** Flutter attaches the user's JWT to all direct Supabase queries, where PostgreSQL **Row Level Security (RLS)** restricts data access to authorized rows only.
+4. **Orchestrator Requests:** When requesting AI analysis, Flutter passes the same Supabase JWT:
    ```http
    Authorization: Bearer <supabase_access_token>
    ```
-3. **JWT Verification in Django:** Django's `SupabaseJWTAuthentication` validates the JWT signature using `SUPABASE_JWT_SECRET`. It automatically extracts the Supabase UUID and creates or retrieves the matching `User` row in PostgreSQL.
+   Django's `SupabaseJWTAuthentication` validates asymmetric ES256/RS256 tokens using the project's JWKS keys (or legacy HS256 secret) and populates `request.user` with a verified `SupabaseUser`.
 
 ---
 
 ## 3. Project Setup & Prerequisites
 
-Ensure the following tools are installed on your workstation:
-1. **Flutter SDK (3.x or higher) & Android Studio:** With Android SDK tools and Android Emulator configured.
-2. **Docker Desktop:** Required to host PostgreSQL/PostGIS and the Django backend containers.
-3. **Supabase Account:** Free tier project for Auth and Storage.
-4. **Mapbox Account:** Free tier public access token for vector map rendering.
+Workstation requirements:
+1. **Flutter SDK (3.13+) & Android Studio:** Configured with Android SDK and an Android Emulator.
+2. **Docker Desktop:** Runs the containerized Django orchestrator.
+3. **Node.js / npx:** Runs the Supabase CLI (`npx supabase`) for migrations.
+4. **Supabase Cloud Project:** Contains the database schema, Auth, and `animal-photos` storage bucket.
 
 Clone the repository:
 ```bash
@@ -79,164 +84,233 @@ cd paws_and_found
 
 ---
 
-## 4. Backend & Database Initialization
+## 4. Backend (Django Micro-Orchestrator) Setup
 
-The backend runs entirely in Docker. No local installation of PostgreSQL or GDAL is required.
+The Django orchestrator connects to Supabase Cloud using the dedicated `django_backend` role through the **Session Pooler**.
 
-1. **Create Backend Environment Variables:**
+1. **Configure Environment Variables:**
    ```bash
    cd backend
    cp .env.example .env
    ```
-   Fill in your Supabase configuration (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`) and a secure `SECRET_KEY`.
-
-2. **Start the Stack:**
-   From the repository root (where `docker-compose.yml` resides):
-   ```bash
-   docker compose up -d
-   ```
-   This spins up:
-   * `paws_db` (Postgres + PostGIS on port `5432`)
-   * `paws_backend` (Django API server on port `8000`)
-
-3. **Apply Migrations:**
-   ```bash
-   docker compose exec backend python manage.py migrate
+   Fill in your connection details from the Supabase Dashboard (**Project Settings > Database > Connection string > Session pooler**):
+   ```env
+   DB_HOST=aws-0-<region>.pooler.supabase.com
+   DB_PORT=5432
+   DB_USER=django_backend.<project-ref>
+   DB_PASSWORD=<your-django-backend-password>
+   DB_NAME=postgres
+   DB_SSLMODE=require
+   SUPABASE_URL=https://<project-ref>.supabase.co
    ```
 
-4. **Create a Superuser (Admin Dashboard):**
+2. **Start the Django Container:**
+   From the repository root:
    ```bash
-   docker compose exec backend python manage.py createsuperuser
+   docker compose up -d --build
    ```
-   Visit `http://localhost:8000/admin` to confirm the backend is running.
+   This spins up the single `paws_backend` container on port `8000`.
+
+3. **Verify Connectivity:**
+   ```bash
+   # Check the health endpoint
+   curl -I http://localhost:8000/api/health/
+   ```
+   *(Returns 401 when unauthenticated, confirming the JWT authentication filter is active).*
+
+> [!NOTE]
+> All application models in `backend/core/models.py` have `managed = False`. Django **never** creates or alters application tables; it only manages internal DRF/auth tables in the isolated `django` database schema.
 
 ---
 
-## 5. Mobile App Setup (Flutter)
+## 5. Database & Migration Workflow (Supabase CLI)
+
+The single source of truth for the database schema is [`supabase/migrations/`](./supabase/migrations/).
+
+### Schema Development Workflow
+
+1. **Create a new migration:**
+   ```bash
+   npx supabase migration new <descriptive_name>
+   ```
+   This creates a timestamped SQL file in `supabase/migrations/`.
+
+2. **Test locally (Optional):**
+   ```bash
+   npx supabase start
+   npx supabase db reset
+   ```
+
+3. **Deploy migrations to Supabase Cloud:**
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push
+   ```
+
+### Database Security Model
+- **`public` schema:** Contains user-accessible tables (`profiles`, `pets`, `reports`, `matches`, `notifications`). Protected by RLS: `anon` has zero access; `authenticated` users can read/modify only their owned records.
+- **`private` schema:** Contains vector embeddings (`private.pet_embeddings`, `private.report_embeddings`). **Invisible to Flutter clients**; accessible only by the `django_backend` role.
+- **`django` schema:** Holds Django's internal administrative tables, isolated from user data.
+
+---
+
+## 6. Mobile App Setup (Flutter)
 
 1. Navigate to the mobile app directory:
    ```bash
    cd mobile_app
    ```
-2. Install dependencies:
+2. Fetch dependencies:
    ```bash
    flutter pub get
    ```
-3. Run the app on an Android Emulator or connected physical device:
+3. Run code analysis:
+   ```bash
+   flutter analyze
+   ```
+4. Start the application:
    ```bash
    flutter run
    ```
 
 > [!NOTE]
 > **Android Emulator Networking:**
-> The Android emulator connects to your computer's `localhost` via the special IP **`10.0.2.2`**. Therefore, the Django API endpoint from the emulator is `http://10.0.2.2:8000/api/`. On a physical device, use your machine's local Wi-Fi IP address (e.g. `192.168.1.x`).
+> The Android emulator connects to your host machine's localhost via **`10.0.2.2`**. The orchestrator endpoint is configured at `http://10.0.2.2:8000/api/`. On a physical device, update `DJANGO_BASE_URL` with your workstation's LAN IP.
 
 ---
 
-## 6. Geospatial Development (PostGIS & GeoDjango)
+## 7. Geospatial Architecture (PostGIS & GeoDjango)
 
-All coordinates are stored natively using PostGIS spatial points (`PointField(srid=4326)`).
+All geospatial coordinates are stored as WGS84 geography points (`geography(Point, 4326)`).
 
-* **Never** fetch all coordinates and filter them on the client side in Dart.
-* Geospatial queries must use GeoDjango's spatial lookups (e.g. `distance_lte` / `dwithin`) so the database utilizes spatial R-Tree indexing:
-  ```python
-  from django.contrib.gis.geos import Point
-  from django.contrib.gis.measure import D
-  from core.models import Report
+### Client Spatial Operations (PostGIS RPCs)
+Flutter avoids raw WKB binary parsing by invoking database-level Stored Procedures via `supabase.rpc()`:
+* **`nearby_reports(lat, lng, radius_m, animal_type, lim)`**: Returns reports within the radius sorted by distance with computed `lat`, `lng`, and `distance_m` values.
+* **`create_report(animal_type, description, photo_url, lat, lng, ...)`**: Atomically constructs `ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography` and returns the new report ID.
+* **`report_pet_missing(p_pet_id, p_lat, p_lng)`**: Sets status to `missing`, updates last known location, and opens an alert.
+* **`mark_pet_safe(p_pet_id)`**: Sets status to `safe` and clears last known location.
 
-  # Finding reports within 5km of a given coordinate
-  user_location = Point(longitude, latitude, srid=4326)
-  nearby_reports = Report.objects.filter(location__distance_lte=(user_location, D(m=5000)))
-  ```
+### Backend Candidate Matching (GeoDjango)
+The Django orchestrator uses spatial indexes for fast proximity filtering during AI matching:
+```python
+from django.contrib.gis.measure import D
+from core.models import Pet
+
+# Find missing pets within radius excluding the reporter's own pets
+candidates = Pet.objects.filter(
+    status='missing',
+    last_known_location__dwithin=(report_location, D(m=settings.MATCH_SEARCH_RADIUS_M))
+).exclude(owner_id=reporter_id)
+```
 
 ---
 
-## 7. Security Guidelines
+## 8. Data Dictionary & Field Renaming Reference
 
-1. **Keep Secrets Out of Client Code:** Never embed the Supabase `service_role` key, database passwords, or JWT secrets in the Flutter app. Only the `publishableKey` (anon key) belongs in the client.
-2. **Authenticated Endpoints:** All non-public Django API endpoints must require `IsAuthenticated` permission and resolve the authenticated user through the Supabase JWT.
-3. **Private Storage Buckets:** The `animal-photos` storage bucket must remain private. Images are uploaded via the backend or signed URLs.
+During the hybrid migration, all database columns and Django models were migrated from legacy `camelCase` to standard PostgreSQL `snake_case`. Use this table for updating the Software Design Document (SDD):
+
+| Entity / Domain | Legacy Field (Django v1) | Current Schema Column | Type | RLS / Visibility |
+|---|---|---|---|---|
+| **User Profile** | `userID` | `profiles.id` | `UUID (PK, FK auth.users)` | Owner Read/Update |
+| | `fullName` | `profiles.name` | `TEXT` | Authenticated Read |
+| | `email` | `profiles.email` | `TEXT` | Owner Read |
+| | `phoneNumber` | `profiles.phone_number` | `TEXT` | Owner Read/Update |
+| | `profilePhotoURL` | `profiles.profile_photo_url` | `TEXT` | Authenticated Read |
+| | `bio` *(added)* | `profiles.bio` | `TEXT` | Authenticated Read |
+| | `address` *(added)* | `profiles.address` | `TEXT` | Owner Read/Update |
+| | `dateRegistered` | `profiles.created_at` | `TIMESTAMPTZ` | Authenticated Read |
+| **Pet** | `petID` | `pets.id` | `UUID (PK)` | Authenticated Read |
+| | `ownerUserID` | `pets.owner_id` | `UUID (FK profiles)` | Owner Update/Delete |
+| | `name` | `pets.name` | `TEXT` | Authenticated Read |
+| | `species` | `pets.species` | `TEXT` | Authenticated Read |
+| | `breed` | `pets.breed` | `TEXT` | Authenticated Read |
+| | `color` | `pets.color` | `TEXT` | Authenticated Read |
+| | `description` | `pets.description` | `TEXT` | Authenticated Read |
+| | `photoURLs` | `pets.photo_urls` | `TEXT[]` | Authenticated Read |
+| | `lastKnownLocation` | `pets.last_known_location` | `GEOGRAPHY(Point, 4326)` | Authenticated Read |
+| | `status` | `pets.status` | `TEXT ('safe' / 'missing')` | Owner Update via RPC |
+| | `createdAt` | `pets.created_at` | `TIMESTAMPTZ` | Authenticated Read |
+| **Report** | `reportID` | `reports.id` | `UUID (PK)` | Authenticated Read |
+| | `reporterUserID` | `reports.reporter_id` | `UUID (FK profiles)` | Reporter Update/Delete |
+| | `petID` | `reports.pet_id` | `UUID (FK pets, nullable)`| Authenticated Read |
+| | `animalType` | `reports.animal_type` | `TEXT` | Authenticated Read |
+| | `description` | `reports.description` | `TEXT` | Authenticated Read |
+| | `photoURL` | `reports.photo_url` | `TEXT` | Authenticated Read |
+| | `location` | `reports.location` | `GEOGRAPHY(Point, 4326)` | Read via `nearby_reports` |
+| | `status` | `reports.status` | `TEXT ('stray' / 'found')` | Authenticated Read |
+| | `analysisStatus` | `reports.analysis_status` | `TEXT ('pending' / ...)` | Authenticated Read |
+| | `createdAt` | `reports.created_at` | `TIMESTAMPTZ` | Authenticated Read |
+| **Match** | `matchID` | `matches.id` | `UUID (PK)` | Reporter or Owner |
+| | `reportID` | `matches.report_id` | `UUID (FK reports)` | Reporter or Owner |
+| | `petID` | `matches.pet_id` | `UUID (FK pets)` | Reporter or Owner |
+| | `confidenceScore` | `matches.similarity_score` | `FLOAT8` | Reporter or Owner |
+| | `matchStatus` | `matches.status` | `TEXT ('potential' / ...)`| Reporter or Owner |
+| | `createdAt` | `matches.created_at` | `TIMESTAMPTZ` | Reporter or Owner |
+| **Notification** | `notificationID` | `notifications.id` | `UUID (PK)` | User Read/Update |
+| | `userID` | `notifications.user_id` | `UUID (FK profiles)` | User Read/Update |
+| | `notificationType`| `notifications.type` | `TEXT` | User Read |
+| | `message` | `notifications.message` | `TEXT` | User Read |
+| | `relatedMatchID` | `notifications.related_match_id` | `UUID (FK matches)` | User Read |
+| | `isRead` | `notifications.is_read` | `BOOLEAN` | User Update |
+| | `createdAt` | `notifications.created_at` | `TIMESTAMPTZ` | User Read |
+| **AI Vectors** | `featureVector` | `private.pet_embeddings` | `FLOAT8[]` | **Backend Only** |
+| | `featureVector` | `private.report_embeddings` | `FLOAT8[]` | **Backend Only** |
 
 ---
 
-## 8. Branching & Commit Conventions
+## 9. Security Guidelines
 
-To avoid merge conflicts, nobody pushes directly to `main`. Always create a branch:
+1. **Zero Secrets in Client Code:** Never embed database credentials, service-role keys, or JWT secrets in Flutter. Only the public Supabase `publishableKey` (anon key) is permitted in client builds.
+2. **Database Row Level Security (RLS):** All tables have RLS enabled. Direct CRUD operations from the client are restricted to rows owned by `auth.uid()`.
+3. **Dedicated Orchestrator Role:** Django connects strictly as `django_backend`, never as `postgres` or superuser.
+4. **Private Embedding Isolation:** Vector embeddings reside in the `private` schema and are completely blocked from PostgREST client exposure.
+
+---
+
+## 10. Branching & Commit Conventions
+
+Work on feature branches; avoid pushing directly to `main`:
 
 | Branch Prefix | Usage | Example |
 | --- | --- | --- |
-| `feature/` | Developing new core components | `feature/auth-tray-validation` |
-| `bugfix/` | Resolving bugs or crashes | `bugfix/jwt-decode-error` |
-| `ui/` | Frontend layout and styling tweaks | `ui/login-segmented-control` |
-| `docs/` | Updating documentation | `docs/update-architecture` |
+| `feature/` | Developing new features | `feature/notifications-inbox` |
+| `bugfix/` | Fixing defects or issues | `bugfix/appbar-theme-contrast` |
+| `ui/` | Layout and design improvements | `ui/profile-appbar-unification` |
+| `docs/` | Documentation & specifications | `docs/hybrid-architecture-sdd` |
 
-### Commit Message Standards
 Commits must follow Conventional Commits:
-* `feat: add email format validation to auth tray`
-* `fix: correct emulator api host url`
-* `chore: update dependencies in pubspec.yaml`
-* `docs: update system architecture and readme`
+* `feat: implement notifications repository and screen`
+* `fix: correct null-aware collection element syntax`
+* `docs: update readme with hybrid architecture and data dictionary`
 
 ---
 
-## 9. Common Commands Reference
+## 11. Common Commands Reference
 
-| Action | Command |
-| --- | --- |
-| Start backend & database | `docker compose up -d` |
-| Stop backend & database | `docker compose down` |
-| View backend logs | `docker compose logs -f backend` |
-| Run Django migrations | `docker compose exec backend python manage.py migrate` |
-| Make new migrations | `docker compose exec backend python manage.py makemigrations` |
-| Fetch Flutter packages | `flutter pub get` (inside `mobile_app/`) |
-| Run Flutter mobile client | `flutter run` (inside `mobile_app/`) |
-| Analyze Flutter code | `flutter analyze` (inside `mobile_app/`) |
+| Task | Command | Location |
+| --- | --- | --- |
+| Start Django orchestrator | `docker compose up -d` | Repository root |
+| Rebuild Django container | `docker compose up -d --build` | Repository root |
+| View orchestrator logs | `docker compose logs -f backend` | Repository root |
+| Stop orchestrator | `docker compose down` | Repository root |
+| Push schema to Supabase Cloud | `npx supabase db push` | Repository root |
+| Create new migration file | `npx supabase migration new <name>` | Repository root |
+| Run Flutter mobile app | `flutter run` | `mobile_app/` |
+| Analyze Flutter code | `flutter analyze` | `mobile_app/` |
+| Fetch Flutter dependencies | `flutter pub get` | `mobile_app/` |
 
 ---
 
-## 10. Frontend Architecture Guide
+## 12. Frontend Architecture Guide
 
-The `mobile_app/` codebase strictly follows **Feature-Driven Clean Architecture** and **Atomic Design**.
+The `mobile_app/lib/` codebase strictly follows **Feature-Driven Clean Architecture** and **Atomic Design**:
 
-* **`core/`**: App-wide global utilities, theme (`app_colors.dart`), routing, and network clients.
-* **`shared/`**: Reusable UI components categorized by Atomic Design (`atoms/`, `molecules/`, `organisms/`, `templates/`). No business logic belongs in shared components.
-* **`features/`**: Domain modules (`auth/`, `map/`, `report/`, `feed/`, etc.) structured with `domain/`, `data/`, and `presentation/` layers.
+* **`core/`**: App-wide global utilities, theme ([`app_theme.dart`](./mobile_app/lib/core/theme/app_theme.dart)), routing ([`app_router.dart`](./mobile_app/lib/core/routes/app_router.dart)), and orchestrator network client.
+* **`shared/`**: Reusable design system widgets categorized into `atoms/`, `molecules/`, `organisms/`, and `templates/`. These components are strictly "dumb" and contain no business logic or API calls.
+* **`features/`**: Self-contained domain modules (`auth/`, `profile/`, `report/`, `notifications/`, `dashboard/`) separated into:
+  1. **`domain/`**: Pure entities and repository interfaces.
+  2. **`data/`**: Supabase remote datasources, model serialization, and repository implementations.
+  3. **`presentation/`**: Pages, feature widgets, and state controllers.
 
-For complete rules on widget placement and component design, refer to the [Frontend Architecture Guide (FRONT_ARCH.md)](./mobile_app/FRONT_ARCH.md).
-## 12. Common Commands
-
-| Command | Description |
-| --- | --- |
-| `flutter run` | Start the mobile app on an emulator/device |
-| `flutter pub get` | Fetch Dart dependencies |
-| `docker-compose up -d` | Boot the OpenCV AI image processing container |
-| `supabase start` | Start the local Supabase stack |
-| `supabase stop` | Stop local Supabase containers |
-| `supabase migration new <name>` | Create a new database migration file |
-
-## 13. Frontend Design Structure
-
-The `mobile_app/lib/` directory is strictly organized into three main pillars: **Feature-Driven Architecture**, **Clean Architecture**, and **Atomic Design**.
-
-*   **`core/`**: App-wide configurations and setup (e.g., global themes, API clients, app routing). Code here is global and not tied to any specific UI feature.
-*   **`shared/`**: Global UI components built using **Atomic Design** (`atoms/`, `molecules/`, `organisms/`, `templates/`). If a widget is used in multiple features, it belongs here. Never place business logic (like API calls) inside these components.
-*   **`features/`**: Independent, domain-specific modules containing the actual app logic and screens (e.g., `auth/`, `map/`, `report/`).
-
-### The Layers within a Feature
-
-Inside each feature folder (e.g., `features/auth/`), we follow **Clean Architecture**:
-
-1. **`domain/` (The Business Logic)**
-    *   `entities/`: Plain Dart classes representing the data.
-    *   `repositories/`: Interfaces that define what data operations are possible.
-    *   `usecases/`: Specific actions the app can take.
-2. **`data/` (The External Connections)**
-    *   `datasources/`: Classes performing API calls or DB queries.
-    *   `models/`: Data classes with `fromJson`/`toJson` extending domain entities.
-    *   `repositories/`: Implementations of the interfaces defined in the domain layer.
-3. **`presentation/` (The UI)**
-    *   `pages/`: Full screen views.
-    *   `widgets/`: UI components used *only* within this feature.
-    *   `providers/`: State management (BLoCs/Providers).
-
-> **Note:** For more in-depth details regarding the frontend design structure, widget placement, and architecture rules, please visit the dedicated [Frontend Architecture Guide](./mobile_app/README.md) inside the `mobile_app` folder.
+For full frontend architecture guidelines, refer to [`mobile_app/README.md`](./mobile_app/README.md).

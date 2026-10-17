@@ -1,124 +1,122 @@
-"""
-Django models for Paws and Found, mirroring the Data Dictionary in the SDD.
-
-Field names follow the camelCase used in the Data Dictionary for easy
-cross-reference with that document. Standard Django/PEP8 style normally
-prefers snake_case (e.g. user_id) — feel free to rename if your team
-prefers that convention, just keep it consistent across the codebase.
-
-Notes:
-- `User` here is NOT Django's built-in auth user. Supabase Auth owns
-  credentials; this table stores only app-facing profile data plus a
-  reference to the Supabase Auth user id.
-- `PointField(geography=True)` stores coordinates as a PostGIS geography
-  column, which is what enables efficient radius queries like
-  `Pet.objects.filter(lastKnownLocation__distance_lte=(point, D(km=5)))`.
-"""
-
 import uuid
 
 from django.contrib.gis.db import models as gis_models
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models.functions import Now
+
+# Every model is managed = False: the Supabase CLI migration owns the schema.
+# Tables resolve through the django_backend role's search_path (django, public, private, extensions).
 
 
-class User(models.Model):
-    userID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    supabaseUserID = models.UUIDField(unique=True, db_index=True)
-    name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
-    phoneNumber = models.CharField(max_length=32, blank=True, null=True)
-    profilePhotoURL = models.URLField(blank=True, null=True)
-    dateRegistered = models.DateTimeField(auto_now_add=True)
+class Profile(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.TextField(default="")
+    email = models.TextField(null=True)
+    phone_number = models.TextField(null=True)
+    profile_photo_url = models.TextField(null=True)
+    bio = models.TextField(null=True)
+    address = models.TextField(null=True)
+    created_at = models.DateTimeField(db_default=Now(), editable=False)
 
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
+    class Meta:
+        managed = False
+        db_table = "profiles"
 
     def __str__(self):
         return f"{self.name} ({self.email})"
 
 
 class Pet(models.Model):
-    class Status(models.TextChoices):
-        MISSING = "Missing", "Missing"
-        RECOVERED = "Recovered", "Recovered"
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    owner = models.ForeignKey(Profile, on_delete=models.DO_NOTHING, db_constraint=False, related_name="pets")
+    name = models.TextField()
+    species = models.TextField()
+    breed = models.TextField(null=True)
+    color = models.TextField(null=True)
+    description = models.TextField(null=True)
+    photo_urls = ArrayField(models.TextField(), default=list)
+    last_known_location = gis_models.PointField(geography=True, srid=4326, null=True)
+    status = models.TextField(default="safe")
+    created_at = models.DateTimeField(db_default=Now(), editable=False)
 
-    petID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    ownerUserID = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pets")
-    name = models.CharField(max_length=255)
-    species = models.CharField(max_length=100)
-    breed = models.CharField(max_length=100, blank=True, null=True)
-    color = models.CharField(max_length=255)
-    distinguishingMarks = models.TextField(blank=True, null=True)
-    photoURLs = ArrayField(models.URLField(), default=list, blank=True)
-    featureVector = ArrayField(models.FloatField(), default=list, blank=True)
-    lastKnownLocation = gis_models.PointField(geography=True, srid=4326)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.MISSING)
-    dateReported = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        managed = False
+        db_table = "pets"
 
     def __str__(self):
         return f"{self.name} ({self.status})"
 
 
 class Report(models.Model):
-    class Status(models.TextChoices):
-        STRAY = "Stray", "Stray"
-        MISSING = "Missing", "Missing"
-        FOUND = "Found", "Found"
-
-    reportID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    reporterUserID = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reports")
-    animalType = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    photoURL = models.URLField()
-    featureVector = ArrayField(models.FloatField(), default=list, blank=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    reporter = models.ForeignKey(Profile, on_delete=models.DO_NOTHING, db_constraint=False, related_name="reports")
+    pet = models.ForeignKey(Pet, null=True, on_delete=models.DO_NOTHING, db_constraint=False, related_name="reports")
+    animal_type = models.TextField()
+    description = models.TextField(default="")
+    photo_url = models.TextField()
     location = gis_models.PointField(geography=True, srid=4326)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.STRAY)
-    dateTime = models.DateTimeField(auto_now_add=True)
+    status = models.TextField(default="stray")
+    analysis_status = models.TextField(default="pending")
+    created_at = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        managed = False
+        db_table = "reports"
 
     def __str__(self):
-        return f"{self.animalType} report ({self.status})"
+        return f"{self.animal_type} report ({self.status})"
 
 
 class Match(models.Model):
-    class Status(models.TextChoices):
-        PENDING = "Pending", "Pending"
-        CONFIRMED = "Confirmed", "Confirmed"
-        REJECTED = "Rejected", "Rejected"
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    report = models.ForeignKey(Report, on_delete=models.DO_NOTHING, db_constraint=False, related_name="matches")
+    pet = models.ForeignKey(Pet, on_delete=models.DO_NOTHING, db_constraint=False, related_name="matches")
+    similarity_score = models.FloatField()
+    distance_km = models.FloatField()
+    status = models.TextField(default="pending")
+    created_at = models.DateTimeField(db_default=Now(), editable=False)
 
-    matchID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    reportID = models.ForeignKey(Report, on_delete=models.CASCADE, related_name="matches")
-    petID = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name="matches")
-    similarityScore = models.FloatField()
-    distanceKM = models.FloatField()
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    dateGenerated = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        managed = False
+        db_table = "matches"
 
     def __str__(self):
-        return f"Match {self.matchID} ({self.status})"
+        return f"Match {self.id} ({self.status})"
 
 
 class Notification(models.Model):
-    class NotifType(models.TextChoices):
-        MATCH_FOUND = "MatchFound", "MatchFound"
-        REPORT_UPDATE = "ReportUpdate", "ReportUpdate"
-        VERIFICATION_REQUEST = "VerificationRequest", "VerificationRequest"
-        MATCH_CONFIRMED = "MatchConfirmed", "MatchConfirmed"
-
-    notificationID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    userID = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
-    type = models.CharField(max_length=30, choices=NotifType.choices)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    user = models.ForeignKey(Profile, on_delete=models.DO_NOTHING, db_constraint=False, related_name="notifications")
+    type = models.TextField()
     message = models.TextField()
-    relatedMatchID = models.ForeignKey(
-        Match, on_delete=models.SET_NULL, null=True, blank=True, related_name="notifications"
-    )
-    isRead = models.BooleanField(default=False)
-    dateTime = models.DateTimeField(auto_now_add=True)
+    related_match = models.ForeignKey(Match, null=True, on_delete=models.DO_NOTHING, db_constraint=False)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(db_default=Now(), editable=False)
+
+    class Meta:
+        managed = False
+        db_table = "notifications"
 
     def __str__(self):
-        return f"Notification to {self.userID_id} ({self.type})"
+        return f"Notification to {self.user_id} ({self.type})"
+
+
+class PetEmbedding(models.Model):
+    pet = models.OneToOneField(Pet, primary_key=True, on_delete=models.DO_NOTHING, db_constraint=False)
+    vector = ArrayField(models.FloatField())
+    updated_at = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        managed = False
+        db_table = "pet_embeddings"  # lives in schema "private"
+
+
+class ReportEmbedding(models.Model):
+    report = models.OneToOneField(Report, primary_key=True, on_delete=models.DO_NOTHING, db_constraint=False)
+    vector = ArrayField(models.FloatField())
+    updated_at = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        managed = False
+        db_table = "report_embeddings"  # lives in schema "private"

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/routes/app_router.dart';
 
@@ -20,11 +20,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Paws and Found',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-        scaffoldBackgroundColor: AppColors.background,
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,   // ← single source of truth for all theming
       routerConfig: AppRouter.router,
     );
   }

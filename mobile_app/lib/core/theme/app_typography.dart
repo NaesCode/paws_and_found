@@ -84,4 +84,79 @@ class AppTypography {
     height: 1.2,
     color: AppColors.textPrimary,
   );
+
+  // ----------------------------------------------------
+  // Profile Screen Typography
+  // ----------------------------------------------------
+  static const TextStyle profileTitle = TextStyle(
+    fontFamily: 'Nunito Sans',
+    fontWeight: FontWeight.w700,
+    fontSize: 22.0,
+    color: AppColors.text1,
+  );
+
+  static const TextStyle sectionTitle = TextStyle(
+    fontFamily: 'Nunito Sans',
+    fontWeight: FontWeight.w700,
+    fontSize: 20.0,
+    color: AppColors.text2,
+  );
+
+  static const TextStyle userName = TextStyle(
+    fontFamily: 'Nunito Sans',
+    fontWeight: FontWeight.w700,
+    fontSize: 16.0,
+    color: AppColors.text2,
+  );
+
+  static const TextStyle userEmail = TextStyle(
+    fontFamily: 'Nunito Sans',
+    fontWeight: FontWeight.w400,
+    fontSize: 13.0,
+    color: AppColors.text2,
+  );
+
+  static const TextStyle userBio = TextStyle(
+    fontFamily: 'Nunito Sans',
+    fontWeight: FontWeight.w400,
+    fontSize: 12.0,
+    color: AppColors.text3,
+  );
+
+  static const TextStyle petName = TextStyle(
+    fontFamily: 'Merriweather Sans',
+    fontWeight: FontWeight.w700,
+    fontSize: 14.0,
+    color: AppColors.text2,
+  );
+
+  static const TextStyle statusBanner = TextStyle(
+    fontFamily: 'Merriweather Sans',
+    fontWeight: FontWeight.w700,
+    fontSize: 10.0,
+    letterSpacing: 4.0,
+    color: AppColors.text1,
+  );
+
+  static const TextStyle petDescription = TextStyle(
+    fontFamily: 'Ek Mukta',
+    fontWeight: FontWeight.w400,
+    fontSize: 11.0,
+    height: 1.45,
+    color: AppColors.text2,
+  );
+
+  static const TextStyle detailText = TextStyle(
+    fontFamily: 'Ek Mukta',
+    fontWeight: FontWeight.w400,
+    fontSize: 12.0,
+    color: AppColors.text3,
+  );
+
+  static const TextStyle pillText = TextStyle(
+    fontFamily: 'Ek Mukta',
+    fontWeight: FontWeight.w600,
+    fontSize: 9.0,
+    color: AppColors.text1,
+  );
 }
