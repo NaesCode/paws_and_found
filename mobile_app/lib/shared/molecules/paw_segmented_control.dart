@@ -6,8 +6,6 @@ class PawSegmentedControl extends StatelessWidget {
   final String firstOptionText;
   final String secondOptionText;
   final ValueChanged<bool> onOptionChanged;
-  final Color activeColor;
-  final Color inactiveColor;
 
   const PawSegmentedControl({
     super.key,
@@ -15,8 +13,6 @@ class PawSegmentedControl extends StatelessWidget {
     required this.firstOptionText,
     required this.secondOptionText,
     required this.onOptionChanged,
-    this.activeColor = AppColors.darkCharcoal,
-    this.inactiveColor = const Color(0xFFE0E0E0),
   });
 
   @override
@@ -29,7 +25,7 @@ class PawSegmentedControl extends StatelessWidget {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                color: isFirstOptionSelected ? activeColor : inactiveColor,
+                color: isFirstOptionSelected ? AppColors.darkCharcoal : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
@@ -51,7 +47,7 @@ class PawSegmentedControl extends StatelessWidget {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                color: !isFirstOptionSelected ? activeColor : inactiveColor,
+                color: !isFirstOptionSelected ? AppColors.darkCharcoal : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,

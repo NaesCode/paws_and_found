@@ -31,10 +31,18 @@ abstract class ReportRemoteDataSource {
 
 /// Concrete implementation that talks directly to Supabase.
 class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
-  final SupabaseClient _supabase;
+  final SupabaseClient? _supabase;
 
   ReportRemoteDataSourceImpl({SupabaseClient? client})
-      : _supabase = client ?? Supabase.instance.client;
+      : _supabase = client ?? _safeGetSupabaseClient();
+
+  static SupabaseClient? _safeGetSupabaseClient() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Get Nearby Reports
@@ -53,7 +61,10 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     String? animalType,
     int limit = 200,
   }) async {
-    final response = await _supabase.rpc('nearby_reports', params: {
+    final client = _supabase;
+    if (client == null) return [];
+
+    final response = await client.rpc('nearby_reports', params: {
       'lat': lat,
       'lng': lng,
       'radius_m': radiusM,
@@ -80,13 +91,16 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     Uint8List bytes, {
     String extension = 'jpg',
   }) async {
-    final uid = _supabase.auth.currentUser?.id;
+    final client = _supabase;
+    if (client == null) throw Exception('Supabase client is not available');
+
+    final uid = client.auth.currentUser?.id;
     if (uid == null) throw Exception('User is not authenticated');
 
     const uuid = Uuid();
     final path = '$uid/${uuid.v4()}.$extension';
 
-    await _supabase.storage.from('animal-photos').uploadBinary(
+    await client.storage.from('animal-photos').uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(
@@ -96,7 +110,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
         );
 
     final publicUrl =
-        _supabase.storage.from('animal-photos').getPublicUrl(path);
+        client.storage.from('animal-photos').getPublicUrl(path);
     return publicUrl;
   }
 
@@ -120,7 +134,10 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     String status = 'stray',
     String? petId,
   }) async {
-    final response = await _supabase.rpc('create_report', params: <String, dynamic>{
+    final client = _supabase;
+    if (client == null) throw Exception('Supabase client is not available');
+
+    final response = await client.rpc('create_report', params: <String, dynamic>{
       'animal_type': animalType,
       'description': description,
       'photo_url': photoUrl,

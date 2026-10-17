@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/routes/app_router.dart';
-// import 'features/auth/presentation/pages/login_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

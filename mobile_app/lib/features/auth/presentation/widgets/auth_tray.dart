@@ -478,13 +478,7 @@ class _AuthTrayState extends State<AuthTray> {
                 child: PawButton(
                   text: widget.isLogin ? 'Login' : 'Register',
                   isLoading: _isLoading,
-                  onPressed: (){
-                    _handleSubmit();
-
-                    // // if(context.mounted && _generalError == null){
-                    //   context.goNamed('feed');
-                    // // }
-                  },
+                  onPressed: _handleSubmit,
                   color: AppColors.darkCharcoal,
                   textColor: Colors.white,
                 ),

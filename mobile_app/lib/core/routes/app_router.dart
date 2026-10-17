@@ -7,8 +7,6 @@ import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
 import '../../features/report/presentation/pages/camera_report_page.dart';
-import '../../features/feed/presentation/pages/feed_page.dart';
-import '../../features/feed/presentation/pages/general_reports_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -40,9 +38,8 @@ class AppRouter {
         return '/home';
       }
 
-    //   // All good — no redirect needed
-    //   return null;
-    // },
+      // All good — no redirect needed
+      return null;
     },
 
     routes: [
@@ -96,23 +93,6 @@ class AppRouter {
         name: 'report',
         builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
       ),
-      GoRoute(
-        path: '/feed',
-        name: 'feed',
-        builder: (context, state) => const FeedPage(),
-      ),
-      
-      GoRoute(
-        path: '/general_reports',
-        name: 'general_reports',
-        builder: (context, state) => const GeneralReports(),
-      ),
-
-      // GoRoute(
-      //   path: '/personal_reports',
-      //   name: 'personal_reports',
-      //   builder: (context, state) => const GeneralReports(),
-      // )
     ],
   );
 }
