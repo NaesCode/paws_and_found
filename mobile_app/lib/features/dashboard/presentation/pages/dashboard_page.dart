@@ -6,6 +6,7 @@ import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:paws_and_found/features/profile/presentation/pages/profile_setup_page.dart';
+import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 
 /// The main shell of the authenticated app experience.
@@ -72,7 +73,7 @@ class _DashboardPageState extends State<DashboardPage> {
       case 1:
         return const _ReportsStub();
       case 2:
-        return const _CameraStub();
+        return const CameraReportPage(showBottomNavPlaceholder: false);
       case 3:
         return const ProfileSetupPage();
       case 4:
@@ -160,43 +161,4 @@ class _ReportsStub extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Placeholder for the Camera / Sighting tab.
-class _CameraStub extends StatelessWidget {
-  const _CameraStub();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Found Pet Camera'),
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.camera_alt_rounded, size: 72, color: AppColors.primary),
-            SizedBox(height: 20),
-            Text(
-              'Camera Scanner',
-              style: TextStyle(
-                fontFamily: 'Caveat',
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkCharcoal,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Snap a picture of a found pet to run AI matching.\nComing soon!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.text3, height: 1.5),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+}
