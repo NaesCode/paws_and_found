@@ -114,7 +114,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         description: report.description,
                         formattedTime: report.formattedTime,
                         imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg',
-                        button1Text: "Spotted",
+                        button1Text: "Edit",
                         button2Text: "Found",
                         onButton1Pressed: () {},
                         onButton2Pressed: () {},
