@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/molecules/map_filter_bar.dart';
 import '../../../../shared/molecules/map_legend.dart';
-import '../../../../shared/organisms/map_placeholder_canvas.dart';
+import '../../../../shared/organisms/custom_app_bar.dart';
+import '../../../../shared/organisms/interactive_map_canvas.dart';
 import '../../../../shared/organisms/map_report_card.dart';
-import '../../../../shared/organisms/wireframe_bottom_nav_bar.dart';
 import '../../../../shared/templates/map_screen_template.dart';
 import '../../domain/entities/map_filter_type.dart';
 import '../../domain/repositories/map_repository.dart';
 import '../providers/map_controller.dart';
 
-/// Community Animal Map screen (Wireframe Implementation).
+/// Community Animal Map screen (Interactive GIS Implementation).
 ///
 /// Implements SDD Section 6.1 (3) & Section 6.2 (03 - Community Map):
-/// - Geographic Map Interface Canvas (interactive placeholder)
+/// - Real-world GIS Map Interface Canvas via `flutter_map`
 /// - Status-differentiated Map Markers ('M' Missing, 'S' Stray, 'F' Found)
 /// - Discovery Filter Sub-menu ("All", "For You", "Animal Type")
 /// - Floating Report Details Card for targeted animal sightings
 /// - Pin status legend
-/// - Wireframe bottom navigation bar placeholder
+/// - Finalized [CustomAppBar] navigation shell integration
 ///
 /// Adheres strictly to Atomic Design (using lib/shared/ components)
 /// and Clean Architecture (using MapController and MapRepository).
@@ -39,13 +41,17 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   late final MapController _controller;
+  late final fmap.MapController _fmapController;
 
   @override
   void initState() {
     super.initState();
+    _fmapController = fmap.MapController();
     _controller = MapController(repository: widget.repository);
     _controller.addListener(_onControllerUpdate);
     _controller.loadReports();
+    // Non-blocking fetch of device GPS location
+    _controller.fetchUserLocation();
   }
 
   void _onControllerUpdate() {
@@ -56,7 +62,18 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
     _controller.dispose();
+    _fmapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleRecenter() async {
+    await _controller.fetchUserLocation();
+    if (_controller.userLocation != null) {
+      _fmapController.move(_controller.userLocation!, 15.5);
+    } else {
+      _controller.recenterMap();
+      _fmapController.move(_controller.mapCenter, 15.0);
+    }
   }
 
   void _showSpeciesFilterDialog() {
@@ -134,17 +151,6 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     final selected = _controller.selectedReport;
 
-    // Convert domain entities to canvas pins
-    final canvasPins = _controller.reports.map((r) {
-      return CanvasPinData(
-        id: r.id,
-        label: r.pinLabel,
-        status: r.status,
-        normalizedX: r.normalizedX,
-        normalizedY: r.normalizedY,
-      );
-    }).toList();
-
     return MapScreenTemplate(
       // 1. Header: "Animal Map" + Re-center target button
       header: _buildHeader(),
@@ -163,14 +169,22 @@ class _MapPageState extends State<MapPage> {
         onAnimalTypePressed: _showSpeciesFilterDialog,
       ),
 
-      // 3. Map Canvas: Grid linework + interactive pins
-      mapCanvas: MapPlaceholderCanvas(
-        pins: canvasPins,
-        selectedPinId: selected?.id,
-        onPinTap: _controller.selectReportById,
-        onCanvasTap: () {
-          // Keep current selection or allow interaction
+      // 3. Map Canvas: Real-world interactive GIS map with custom pin markers
+      mapCanvas: InteractiveMapCanvas(
+        center: _controller.mapCenter,
+        reports: _controller.reports,
+        selectedReportId: selected?.id,
+        userLocation: _controller.userLocation,
+        mapController: _fmapController,
+        onReportTap: (report) {
+          _controller.selectReport(report);
+          _fmapController.move(
+            LatLng(report.latitude, report.longitude),
+            _fmapController.camera.zoom,
+          );
         },
+        onCanvasTap: _controller.clearSelection,
+        onRecenterTap: _handleRecenter,
       ),
 
       // 4. Floating Report Detail Card
@@ -198,14 +212,14 @@ class _MapPageState extends State<MapPage> {
       // 5. Pin status legend at the bottom
       legend: const MapLegend(),
 
-      // 6. Bottom navigation bar placeholder
+      // 6. Bottom navigation bar (CustomAppBar)
       bottomNavigationBar: widget.showBottomNavPlaceholder
-          ? WireframeBottomNavBar(
+          ? CustomAppBar(
               currentIndex: 0,
-              onTap: (index) {
+              onTabSelected: (index) {
                 switch (index) {
                   case 0:
-                    // Currently on Map
+                    // Already on Map
                     break;
                   case 1:
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -250,7 +264,7 @@ class _MapPageState extends State<MapPage> {
 
           // Re-center target button (circle inside rounded square)
           InkWell(
-            onTap: _controller.recenterMap,
+            onTap: _handleRecenter,
             borderRadius: BorderRadius.circular(10),
             child: Container(
               width: 38,
