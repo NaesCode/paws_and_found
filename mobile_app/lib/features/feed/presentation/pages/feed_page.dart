@@ -18,11 +18,12 @@ import 'package:paws_and_found/features/feed/presentation/pages/personal_reports
     Widget build(BuildContext context) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Paws and Found'),
+          title: const Text('Reports'),
           backgroundColor: AppColors.primary,
+          elevation: 0,
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
             PawSegmentedControl(
@@ -37,10 +38,10 @@ import 'package:paws_and_found/features/feed/presentation/pages/personal_reports
                 });
               }
             ),
-
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Expanded(
-            child: _isGeneralSelected ? GeneralReports() : PersonalReportsPage(), //i change ni into different pages pagyud
+            child: _isGeneralSelected ? 
+            GeneralReportsPage() : PersonalReportsPage(),
             ),
           ],
         )

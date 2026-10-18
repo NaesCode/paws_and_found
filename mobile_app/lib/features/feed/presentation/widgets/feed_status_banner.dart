@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 
 enum BannerType{
   missing,
-  spotted
+  spotted,
+  found
 }
 
-class StatusBanner extends StatelessWidget {
+class FeedStatusBanner extends StatelessWidget {
 
   final BannerType type;
 
-  const StatusBanner({
+  const FeedStatusBanner({
     super.key, 
-    required this.type
+    required this.type,
   });
 
   @override
@@ -28,6 +29,11 @@ class StatusBanner extends StatelessWidget {
       case BannerType.spotted:
         statusText = "SPOTTED";
         bgColor = AppColors.accentOrange;
+        break;
+      case BannerType.found:
+        statusText = "FOUND";
+        bgColor = AppColors.primary;
+        break;
     }
     return Container(
       color: bgColor, 

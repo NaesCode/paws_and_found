@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-import 'package:paws_and_found/shared/atoms/feed_action_btns.dart';
-import 'package:paws_and_found/shared/molecules/feed_post_details.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_action_btns.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_post_details.dart';
 
 class FeedPetInfoCard extends StatelessWidget {
-  const FeedPetInfoCard({super.key});
+
+  final String button1Text;
+  final String button2Text;
+  final VoidCallback onButton1Pressed;
+  final VoidCallback onButton2Pressed;
+  final String imageUrl;
+  final String name;
+  final String specie;
+  final String description;
+
+  const FeedPetInfoCard({
+    super.key,
+    required this.button1Text,
+    required this.button2Text,
+    required this.onButton1Pressed,
+    required this.onButton2Pressed,
+    this.imageUrl = 'assets/images/images.jpg', //default TODO: change to decent picture
+    required this.name,
+    required this.specie,
+    required this.description,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +78,7 @@ class FeedPetInfoCard extends StatelessWidget {
               // Content Box 
               Container(
                 width: double.infinity,
+                height: 140, // aron constant lang
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: AppColors.background, 
@@ -66,14 +87,18 @@ class FeedPetInfoCard extends StatelessWidget {
                   //   width: 1),
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: FeedPostDetails(),
+                child: FeedPostDetails(
+                  // TODO: need to change data from db
+                  name: name,
+                  specie: specie,
+                  description: description,
+                ),
               ),
               const SizedBox(height: 10),
-              // TODO: need to like have a condition to change the button names, so that it will be usable inboth general and personal reports page
               Row(
                 children: [
                   FeedActionBtns(
-                    text: "Spotted", 
+                    text: button1Text, 
                     backgroundColor: AppColors.darkCharcoal, 
                     onPressed: (){
                       // TODO:function here
@@ -81,7 +106,7 @@ class FeedPetInfoCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   FeedActionBtns(
-                    text: "Adopt", 
+                    text: button2Text, 
                     backgroundColor: AppColors.primary, 
                     onPressed: (){
                       // TODO:function here

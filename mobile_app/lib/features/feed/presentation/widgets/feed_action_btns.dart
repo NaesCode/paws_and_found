@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 class FeedActionBtns extends StatelessWidget {
 
@@ -21,7 +22,7 @@ class FeedActionBtns extends StatelessWidget {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: backgroundColor,
-            foregroundColor: Colors.white,
+            foregroundColor: AppColors.background,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
