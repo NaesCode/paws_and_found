@@ -6,6 +6,15 @@ class PawSegmentedControl extends StatelessWidget {
   final String firstOptionText;
   final String secondOptionText;
   final ValueChanged<bool> onOptionChanged;
+  final Color activeColor;
+  final Color inactiveColor;
+  
+  //added properties aron usable kaau
+  final double height;
+  final double borderRadius;
+  final double fontSize;
+  final EdgeInsetsGeometry padding;
+  final bool isFullWidth;
 
   const PawSegmentedControl({
     super.key,
@@ -13,55 +22,50 @@ class PawSegmentedControl extends StatelessWidget {
     required this.firstOptionText,
     required this.secondOptionText,
     required this.onOptionChanged,
+    this.activeColor = AppColors.primary,
+    this.inactiveColor = AppColors.darkCharcoal,
+    this.height = 50.0,            
+    this.borderRadius = 8.0,      
+    this.fontSize = 16.0,         
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    this.isFullWidth = true,       
   });
 
   @override
   Widget build(BuildContext context) {
+    // Inner widget segment template to reduce copy-paste footprint
+    Widget buildSegment({required bool isSelected, required String text, required bool targetValue}) {
+      final widgetContent = AnimatedContainer(
+        duration: const Duration(milliseconds: 200), // Smooth active color fade shifts
+        height: height,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : inactiveColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            // Auto-toggles contrast coloring dynamically
+            color: isSelected ? Colors.white : Colors.white, 
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: fontSize,
+          ),
+        ),
+      );
+
+      return isFullWidth 
+          ? Expanded(child: GestureDetector(onTap: () => onOptionChanged(targetValue), child: widgetContent))
+          : GestureDetector(onTap: () => onOptionChanged(targetValue), child: widgetContent);
+    }
+
     return Row(
+      mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => onOptionChanged(true),
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: isFirstOptionSelected ? AppColors.darkCharcoal : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                firstOptionText,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: isFirstOptionSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => onOptionChanged(false),
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: !isFirstOptionSelected ? AppColors.darkCharcoal : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                secondOptionText,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: !isFirstOptionSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ),
+        buildSegment(isSelected: isFirstOptionSelected, text: firstOptionText, targetValue: true),
+        const SizedBox(width: 8), // Clean structural visual separation
+        buildSegment(isSelected: !isFirstOptionSelected, text: secondOptionText, targetValue: false),
       ],
     );
   }
