@@ -22,7 +22,8 @@ class AppRouter {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
-      final isPublicRoute = state.matchedLocation == '/login' ||
+      final isPublicRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/map' ||
           state.matchedLocation == '/camera' ||
           state.matchedLocation == '/report';
@@ -77,20 +78,23 @@ class AppRouter {
       GoRoute(
         path: '/map',
         name: 'map',
-        builder: (context, state) => const MapPage(showBottomNavPlaceholder: true),
+        builder: (context, state) =>
+            const MapPage(showBottomNavPlaceholder: true),
       ),
 
       // Camera and Animal Report Creation route
       GoRoute(
         path: '/camera',
         name: 'camera',
-        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
+        builder: (context, state) =>
+            const CameraReportPage(showBottomNavPlaceholder: true),
       ),
 
       GoRoute(
         path: '/report',
         name: 'report',
-        builder: (context, state) => const CameraReportPage(showBottomNavPlaceholder: true),
+        builder: (context, state) =>
+            const CameraReportPage(showBottomNavPlaceholder: true),
       ),
     ],
   );

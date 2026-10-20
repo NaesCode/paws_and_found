@@ -97,3 +97,9 @@ features/auth/
 *   **`recovery/`**: AI matching engine reviews and the secure handover process.
 *   **`profile/`**: User settings and historical post management.
 *   **`notifications/`**: Background alerts and message tracking.
+
+---
+
+## Feature Guides & Testing
+
+*   **[Community Animal Map Testing Guide](MAP_TESTING_GUIDE.md)**: Comprehensive architectural overview, OpenStreetMap tile details, interactive QA checklist, and test commands for the interactive map subsystem.

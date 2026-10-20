@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:paws_and_found/shared/atoms/camera_viewfinder_brackets.dart';
 import 'package:paws_and_found/shared/molecules/camera_viewfinder_placeholder.dart';
 import 'package:paws_and_found/shared/organisms/create_report_form.dart';
-import 'package:paws_and_found/shared/organisms/wireframe_bottom_nav_bar.dart';
+import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
 
 void main() {
@@ -85,16 +85,19 @@ void main() {
       expect(submitted, isTrue);
     });
 
-    testWidgets('WireframeBottomNavBar renders Camera active on index 2', (tester) async {
+    testWidgets('CustomAppBar renders Camera active on index 2', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            bottomNavigationBar: WireframeBottomNavBar(currentIndex: 2),
+            bottomNavigationBar: CustomAppBar(
+              currentIndex: 2,
+              onTabSelected: (_) {},
+            ),
           ),
         ),
       );
 
-      expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
+      expect(find.byType(CustomAppBar), findsOneWidget);
     });
 
     testWidgets('CameraReportPage full wireframe screen renders and is interactive', (tester) async {
@@ -114,7 +117,7 @@ void main() {
       expect(find.text('Submit Report'), findsOneWidget);
 
       // Bottom bar
-      expect(find.byType(WireframeBottomNavBar), findsOneWidget);
+      expect(find.byType(CustomAppBar), findsOneWidget);
 
       // Submit report and check confirmation dialog
       await tester.ensureVisible(find.text('Submit Report'));

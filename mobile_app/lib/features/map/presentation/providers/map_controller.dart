@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../../core/services/location_service.dart';
 import '../../data/repositories/map_repository_impl.dart';
 import '../../domain/entities/map_filter_type.dart';
 import '../../domain/entities/map_report_entity.dart';
@@ -10,9 +12,13 @@ import '../../domain/repositories/map_repository.dart';
 /// and exposes reactive state to the UI via [ChangeNotifier].
 class MapController extends ChangeNotifier {
   final MapRepository _repository;
+  final LocationService _locationService;
 
-  MapController({MapRepository? repository})
-      : _repository = repository ?? MapRepositoryImpl();
+  MapController({
+    MapRepository? repository,
+    LocationService? locationService,
+  })  : _repository = repository ?? MapRepositoryImpl(),
+        _locationService = locationService ?? const GeolocatorLocationService();
 
   List<MapReportEntity> _reports = [];
   MapReportEntity? _selectedReport;
@@ -20,6 +26,11 @@ class MapController extends ChangeNotifier {
   String? _selectedAnimalType;
   bool _isLoading = false;
   String? _errorMessage;
+  LatLng? _userLocation;
+  bool _isFetchingLocation = false;
+
+  // Default coordinate: Metro Manila (14.5995, 120.9842) matching mock data
+  static const LatLng defaultCenter = LatLng(14.5995, 120.9842);
 
   // Getters
   List<MapReportEntity> get reports => _reports;
@@ -28,8 +39,16 @@ class MapController extends ChangeNotifier {
   String? get selectedAnimalType => _selectedAnimalType;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  LatLng? get userLocation => _userLocation;
+  bool get isFetchingLocation => _isFetchingLocation;
 
-  /// Loads reports based on active filters.
+  LatLng get mapCenter =>
+      _userLocation ??
+      (_reports.isNotEmpty
+          ? LatLng(_reports.first.latitude, _reports.first.longitude)
+          : defaultCenter);
+
+  /// Loads reports based on active filters and optional GPS coordinates.
   Future<void> loadReports() async {
     _isLoading = true;
     _errorMessage = null;
@@ -37,6 +56,8 @@ class MapController extends ChangeNotifier {
 
     try {
       final results = await _repository.getReports(
+        latitude: _userLocation?.latitude,
+        longitude: _userLocation?.longitude,
         animalType: _selectedAnimalType,
         filterType: _currentFilter,
       );
@@ -46,7 +67,8 @@ class MapController extends ChangeNotifier {
       // Retain or select the first report if previously selected report is missing
       if (_selectedReport != null) {
         final match = results.where((r) => r.id == _selectedReport!.id);
-        _selectedReport = match.isNotEmpty ? match.first : (results.isNotEmpty ? results.first : null);
+        _selectedReport =
+            match.isNotEmpty ? match.first : (results.isNotEmpty ? results.first : null);
       } else if (results.isNotEmpty) {
         _selectedReport = results.first;
       }
@@ -58,6 +80,24 @@ class MapController extends ChangeNotifier {
     }
   }
 
+  /// Obtains current GPS coordinates using [LocationService].
+  Future<void> fetchUserLocation() async {
+    _isFetchingLocation = true;
+    notifyListeners();
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      if (position != null) {
+        _userLocation = LatLng(position.latitude, position.longitude);
+      }
+    } catch (e) {
+      debugPrint('[MapController] Location fetch failed: $e');
+    } finally {
+      _isFetchingLocation = false;
+      notifyListeners();
+    }
+  }
+
   /// Selects a report pin by ID.
   void selectReportById(String id) {
     final match = _reports.where((r) => r.id == id);
@@ -65,6 +105,12 @@ class MapController extends ChangeNotifier {
       _selectedReport = match.first;
       notifyListeners();
     }
+  }
+
+  /// Selects a report entity directly.
+  void selectReport(MapReportEntity report) {
+    _selectedReport = report;
+    notifyListeners();
   }
 
   /// Sets the active filter type ('all' or 'for_you').
@@ -91,7 +137,6 @@ class MapController extends ChangeNotifier {
 
   /// Re-centers the map view.
   void recenterMap() {
-    // If a report is selected, keep it or reset to initial view
     if (_reports.isNotEmpty) {
       _selectedReport = _reports.first;
       notifyListeners();
