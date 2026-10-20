@@ -138,13 +138,14 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     if (client == null) throw Exception('Supabase client is not available');
 
     final response = await client.rpc('create_report', params: <String, dynamic>{
-      'animal_type': animalType,
-      'description': description,
-      'photo_url': photoUrl,
-      'lat': lat,
-      'lng': lng,
-      'status': status,
-      'pet_id': ?petId,
+      'p_animal_type': animalType.toLowerCase(),
+      'p_description': description,
+      'p_photo_url': photoUrl,
+      'p_lat': lat,
+      'p_lng': lng,
+      'p_status': status.toLowerCase(),
+      // ignore: use_null_aware_elements
+      if (petId != null) 'p_pet_id': petId,
     });
 
     if (response == null) throw Exception('create_report RPC returned null');
