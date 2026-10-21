@@ -71,7 +71,10 @@ class _DashboardPageState extends State<DashboardPage> {
       case 1:
         return const FeedPage();
       case 2:
-        return const CameraReportPage(showBottomNavPlaceholder: false);
+        return CameraReportPage(
+          showBottomNavPlaceholder: false,
+          isActiveTab: _currentIndex == 2,
+        );
       case 3:
         return const ProfileSetupPage();
       case 4:

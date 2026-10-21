@@ -56,6 +56,12 @@ class AppRouter {
       ),
 
       GoRoute(
+        path: '/feed',
+        name: 'feed',
+        builder: (context, state) => const DashboardPage(initialIndex: 1),
+      ),
+
+      GoRoute(
         path: '/profile/setup',
         name: 'profileSetup',
         builder: (context, state) => const DashboardPage(initialIndex: 3),
