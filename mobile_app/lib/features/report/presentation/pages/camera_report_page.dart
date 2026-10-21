@@ -1,5 +1,7 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/molecules/camera_viewfinder_placeholder.dart';
 import '../../../../shared/organisms/create_report_form.dart';
@@ -10,45 +12,155 @@ import '../providers/camera_report_controller.dart';
 /// Camera and Animal Report Creation screen (SDD Screen 05).
 ///
 /// Features:
-/// - Native viewfinder canvas placeholder with framing brackets & gallery selector
+/// - Real-time in-app camera viewfinder preview with framing brackets & gallery selector
+/// - Instant shutter snap with fallback to system camera/mock
 /// - Animal Type ("Canine", "Feline", "Other") & Status ("Stray", "Missing", "Found")
 /// - Description input block
-/// - Auto GPS & Date/Time fields
+/// - Auto GPS via [LocationService] & Date/Time fields
 /// - "Submit Report" button with immediate relations to the Community Map & AI Recovery Pipeline
 /// - Wireframe bottom navigation bar with active Camera indicator
 class CameraReportPage extends StatefulWidget {
   final ReportRepository? repository;
+  final LocationService? locationService;
   final bool showBottomNavPlaceholder;
+  final bool isActiveTab;
 
   const CameraReportPage({
     super.key,
     this.repository,
+    this.locationService,
     this.showBottomNavPlaceholder = true,
+    this.isActiveTab = true,
   });
 
   @override
   State<CameraReportPage> createState() => _CameraReportPageState();
 }
 
-class _CameraReportPageState extends State<CameraReportPage> {
+class _CameraReportPageState extends State<CameraReportPage> with WidgetsBindingObserver {
   late final CameraReportController _controller;
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+  bool _isTakingPicture = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = CameraReportController(repository: widget.repository);
+    WidgetsBinding.instance.addObserver(this);
+    _controller = CameraReportController(
+      repository: widget.repository,
+      locationService: widget.locationService,
+    );
     _controller.addListener(_onControllerUpdate);
+
+    if (widget.isActiveTab) {
+      _initLiveCamera();
+    }
   }
 
   void _onControllerUpdate() {
     if (mounted) setState(() {});
   }
 
+  Future<void> _initLiveCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) return;
+
+      // Prefer rear camera for photographing animals
+      final camera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      final controller = CameraController(
+        camera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      setState(() {
+        _cameraController = controller;
+        _isCameraInitialized = true;
+      });
+    } catch (e) {
+      debugPrint('[CameraReportPage] Live camera unavailable: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraReportPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActiveTab != widget.isActiveTab) {
+      if (widget.isActiveTab) {
+        if (_cameraController == null) {
+          _initLiveCamera();
+        } else if (_cameraController!.value.isInitialized) {
+          try {
+            _cameraController?.resumePreview();
+          } catch (_) {}
+        }
+      } else {
+        if (_cameraController != null && _cameraController!.value.isInitialized) {
+          try {
+            _cameraController?.pausePreview();
+          } catch (_) {}
+        }
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final camera = _cameraController;
+    if (camera == null || !camera.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _cameraController?.dispose();
+      _cameraController = null;
+      if (mounted) setState(() => _isCameraInitialized = false);
+    } else if (state == AppLifecycleState.resumed && widget.isActiveTab) {
+      _initLiveCamera();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
     _controller.removeListener(_onControllerUpdate);
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleCaptureTap() async {
+    if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized) {
+      try {
+        setState(() => _isTakingPicture = true);
+        final XFile photo = await _cameraController!.takePicture();
+        final bytes = await photo.readAsBytes();
+        _controller.setImageData(bytes, photo.path);
+      } catch (e) {
+        debugPrint('[CameraReportPage] In-app snapshot failed, falling back to system capture: $e');
+        await _controller.capturePhoto();
+      } finally {
+        if (mounted) setState(() => _isTakingPicture = false);
+      }
+    } else {
+      await _controller.capturePhoto();
+    }
   }
 
   Future<void> _handleSubmit() async {
@@ -94,7 +206,7 @@ class _CameraReportPageState extends State<CameraReportPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '• Added marker to Community Animal Map\n• Queued for AI Image Matching engine\n• Logged in User Contribution History',
+                      '• Pinned to Community Animal Map\n• Queued for AI Image Matching engine\n• Logged in User Contribution History',
                       style: TextStyle(color: WireframeColors.textPrimary, fontSize: 12, height: 1.4),
                     ),
                   ],
@@ -132,6 +244,15 @@ class _CameraReportPageState extends State<CameraReportPage> {
 
   @override
   Widget build(BuildContext context) {
+    Widget? livePreview;
+    if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized) {
+      livePreview = SizedBox(
+        width: _cameraController!.value.previewSize?.height ?? 100,
+        height: _cameraController!.value.previewSize?.width ?? 100,
+        child: CameraPreview(_cameraController!),
+      );
+    }
+
     return Scaffold(
       backgroundColor: WireframeColors.background,
       body: SafeArea(
@@ -141,11 +262,14 @@ class _CameraReportPageState extends State<CameraReportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Camera Viewfinder Canvas Placeholder
+              // 1. Live Camera Viewfinder Canvas
               CameraViewfinderPlaceholder(
                 height: 270,
                 imageBytes: _controller.selectedImageBytes,
-                onCaptureTap: _controller.capturePhoto,
+                cameraPreview: livePreview,
+                isCameraInitialized: _isCameraInitialized,
+                isTakingPicture: _isTakingPicture,
+                onCaptureTap: _handleCaptureTap,
                 onGalleryTap: _controller.pickFromGallery,
                 onRetakeTap: _controller.clearPhoto,
               ),
@@ -176,12 +300,7 @@ class _CameraReportPageState extends State<CameraReportPage> {
                     context.go('/map');
                     break;
                   case 1:
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Feed (Reports) coming in the next sprint!'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
+                    context.go('/home');
                     break;
                   case 2:
                     // Already on Camera & Report
