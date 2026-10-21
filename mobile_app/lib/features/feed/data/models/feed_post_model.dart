@@ -1,26 +1,17 @@
-class PetPostModel {
-  final String id;
-  final String petName;    // Pet name
-  final String postedBy;   // Person's name from the other table
-  final String species;
-  final String location;
-  final String description;
-  final String imageUrl;
-  final String status;
-  final int hoursAgo;
-  final String formattedTime;
+import '../../domain/entities/feed_post.dart';
 
-  PetPostModel({
-    required this.id,
-    required this.petName,
-    required this.postedBy,
-    required this.species,
-    required this.location,
-    required this.description,
-    required this.imageUrl,
-    required this.status,
-    required this.hoursAgo,
-    required this.formattedTime,
+class PetPostModel extends FeedPost {
+  const PetPostModel({
+    required super.id,
+    required super.petName,
+    required super.postedBy,
+    required super.species,
+    required super.location,
+    required super.description,
+    required super.imageUrl,
+    required super.status,
+    required super.hoursAgo,
+    required super.formattedTime,
   });
 
   factory PetPostModel.fromJoinedData(

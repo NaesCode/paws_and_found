@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:paws_and_found/features/auth/domain/repositories/auth_repository.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/shared/atoms/paw_button.dart';
 import 'package:paws_and_found/shared/atoms/paw_text_field.dart';
@@ -11,11 +13,13 @@ import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 class AuthTray extends StatefulWidget {
   final bool isLogin;
   final ValueChanged<bool> onModeChanged;
+  final AuthRepository? repository;
 
   const AuthTray({
     super.key,
     required this.isLogin,
     required this.onModeChanged,
+    this.repository,
   });
 
   @override
@@ -23,6 +27,7 @@ class AuthTray extends StatefulWidget {
 }
 
 class _AuthTrayState extends State<AuthTray> {
+  late final AuthRepository _authRepository = widget.repository ?? AuthRepositoryImpl();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -134,8 +139,8 @@ class _AuthTrayState extends State<AuthTray> {
       final password = _passwordController.text;
 
       if (widget.isLogin) {
-        // --- 1. Supabase Login ---
-        final authResponse = await Supabase.instance.client.auth.signInWithPassword(
+        // --- 1. Supabase Login via Repository ---
+        final authResponse = await _authRepository.signInWithPassword(
           email: email,
           password: password,
         );
@@ -147,12 +152,12 @@ class _AuthTrayState extends State<AuthTray> {
         // --- 2. Backend Handshake with Django on Login ---
         await _performBackendHandshake();
       } else {
-        // --- 1. Supabase Registration ---
+        // --- 1. Supabase Registration via Repository ---
         final name = _nameController.text.trim();
-        final authResponse = await Supabase.instance.client.auth.signUp(
+        final authResponse = await _authRepository.signUp(
           email: email,
           password: password,
-          data: {'name': name},
+          name: name,
         );
 
         if (authResponse.user == null) {
@@ -224,10 +229,7 @@ class _AuthTrayState extends State<AuthTray> {
     });
 
     try {
-      await Supabase.instance.client.auth.resend(
-        type: OtpType.signup,
-        email: email,
-      );
+      await _authRepository.resendVerificationEmail(email: email);
 
       if (mounted) {
         setState(() {
@@ -257,7 +259,7 @@ class _AuthTrayState extends State<AuthTray> {
   }
 
   Future<void> _performBackendHandshake() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = _authRepository.currentUser;
 
     if (user == null) {
       if (mounted) {
@@ -270,27 +272,9 @@ class _AuthTrayState extends State<AuthTray> {
     }
 
     try {
-      // Query the user's profile row directly from Supabase PostgREST
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
+      final isFirstTimeUser = await _authRepository.checkIsFirstTimeUser(user.id);
 
       if (!mounted) return;
-
-      final userName = (profile?['name'] as String?)?.trim() ?? '';
-      final phoneNumber = (profile?['phone_number'] as String?)?.trim();
-      final address = (profile?['address'] as String?)?.trim();
-
-      // Determine routing based on profile completeness.
-      // A first-time user has an empty name, no phone number, or no address — send them to profile setup.
-      // A returning user with a complete profile goes straight to home.
-      final bool isFirstTimeUser = userName.isEmpty ||
-          phoneNumber == null ||
-          phoneNumber.isEmpty ||
-          address == null ||
-          address.isEmpty;
 
       if (isFirstTimeUser) {
         context.go('/profile/setup');

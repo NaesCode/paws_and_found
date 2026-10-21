@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
 
-//hardcoded temp data
-import "package:paws_and_found/features/feed/data/models/feed_post_model.dart";
-import "package:paws_and_found/features/feed/data/repositories/feed_repo_imp.dart";
+import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
+import 'package:paws_and_found/features/feed/domain/entities/feed_post.dart';
+import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 
 // SHOWS THE PERSONAL REPORTS MEAN THE USER'S POST ONLY CAN BE SHOWN, AND THERE IS A BUTTON FOR MAKING A NEW REPORT (I-EDIT PA)
 
@@ -22,8 +22,8 @@ class PersonalReportsPage extends StatefulWidget{
 }
 
 class _PersonalReportsState extends State<PersonalReportsPage> {
-  final FeedRepoImp _repository = FeedRepoImp();
-  late Future<List<PetPostModel>> _reportsFuture;
+  final FeedRepository _repository = FeedRepositoryImpl();
+  late Future<List<FeedPost>> _reportsFuture;
 
   // for the filter dropdown
     String _selectedFilter = 'latest';
@@ -76,7 +76,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
             
             // TODO: change into dynamic data
             Expanded(
-            child: FutureBuilder<List<PetPostModel>>(
+            child: FutureBuilder<List<FeedPost>>(
               future: _reportsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
