@@ -24,10 +24,16 @@ class Pet {
     this.status = PetStatus.safe,
   });
 
-  /// Formatted species/breed string, e.g. "Tabby Cat" or "Golden Retriever"
+  /// Formatted species/breed string, avoiding duplicate species words (e.g. "Ginger Cat", not "Ginger Cat Cat").
   String get displaySpecies {
     if (breed != null && breed!.trim().isNotEmpty) {
-      return '$breed $species';
+      final cleanBreed = breed!.trim();
+      final cleanSpecies = species.trim();
+      final regex = RegExp(r'\b' + RegExp.escape(cleanSpecies) + r'\b', caseSensitive: false);
+      if (regex.hasMatch(cleanBreed)) {
+        return cleanBreed;
+      }
+      return '$cleanBreed $cleanSpecies';
     }
     return species;
   }
@@ -52,4 +58,3 @@ class Pet {
     );
   }
 }
-

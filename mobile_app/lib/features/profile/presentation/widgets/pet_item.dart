@@ -7,7 +7,8 @@ import 'pet_info_card.dart';
 
 /// Renders a single pet card item containing:
 /// - A right-aligned action pill ("Report Missing!" or "Mark as Safe")
-/// - A row of [photo tile] [8 gap] [info card] with height ~158.
+/// - A row of [photo tile] [8 gap] [info card] with minHeight ~158, dynamically
+///   expanding to fit full multiline descriptions without truncation.
 class PetItem extends StatelessWidget {
   final Pet pet;
   final VoidCallback? onStatusActionPressed;
@@ -58,27 +59,29 @@ class PetItem extends StatelessWidget {
             ),
           ),
 
-          // Main Pet Row: Photo Tile (~48%) + Gap (8) + Info Card (~50%)
+          // Main Pet Row: Photo Tile (~48%) + Gap (8) + Info Card (~52%)
           GestureDetector(
             onTap: onTap,
-            child: SizedBox(
-              height: 158,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 48,
-                    child: PetPhotoTile(
-                      photoUrl: pet.photoURLs.isNotEmpty ? pet.photoURLs.first : null,
-                      petName: pet.name,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 158),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 48,
+                      child: PetPhotoTile(
+                        photoUrl: pet.photoURLs.isNotEmpty ? pet.photoURLs.first : null,
+                        petName: pet.name,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 52,
-                    child: PetInfoCard(pet: pet),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 52,
+                      child: PetInfoCard(pet: pet),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -87,4 +90,3 @@ class PetItem extends StatelessWidget {
     );
   }
 }
-
