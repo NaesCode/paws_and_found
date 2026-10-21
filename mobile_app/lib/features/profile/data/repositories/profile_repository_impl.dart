@@ -44,6 +44,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'}) async {
+    return await remoteDataSource.uploadProfilePhoto(bytes, extension: extension);
+  }
+
+  @override
   Future<Pet> addPet({
     required String name,
     required String species,

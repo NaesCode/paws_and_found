@@ -33,18 +33,19 @@ class IdentityBlock extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar: rounded square ~62x62 with radius 8
+                // Avatar: rounded square ~62x62 with radius 100
                 Semantics(
                   button: true,
                   label: 'Change profile photo',
                   child: GestureDetector(
                     onTap: onAvatarPressed ?? onEditPressed,
                     child: Container(
-                      width: 62,
-                      height: 62,
+                      margin: const EdgeInsets.only(top: 12.0, bottom: 10.0), // 👈 Nudges the avatar down
+                      width: 65,
+                      height: 65,
                       decoration: BoxDecoration(
                         color: AppColors.background2,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(100),
                         image: (user.profilePhotoURL != null && user.profilePhotoURL!.isNotEmpty)
                             ? DecorationImage(
                                 image: NetworkImage(user.profilePhotoURL!),
@@ -76,7 +77,7 @@ class IdentityBlock extends StatelessWidget {
                           Expanded(
                             child: Text(
                               user.name.isNotEmpty ? user.name : 'Your Name',
-                              style: AppTypography.userName,
+                              style: AppTypography.userName.copyWith(height: 0.5),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -92,10 +93,9 @@ class IdentityBlock extends StatelessWidget {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 2),
                       Text(
                         user.email,
-                        style: AppTypography.userEmail,
+                        style: AppTypography.userEmail.copyWith(height: 0.5),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
