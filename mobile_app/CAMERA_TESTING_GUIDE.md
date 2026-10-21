@@ -21,13 +21,9 @@ mobile_app/
 │   │   └── routes/
 │   │       └── app_router.dart                # Registered routes: /camera, /report, /home, /map
 │   ├── shared/
-│   │   ├── atoms/
-│   │   │   └── camera_viewfinder_brackets.dart # Corner framing brackets overlay (┌ ┐ └ ┘)
 │   │   ├── molecules/
-│   │   │   ├── camera_viewfinder_placeholder.dart # Live camera stream, shutter button & gallery picker
 │   │   │   └── camerafound_icon.dart          # Center camera icon in bottom navigation bar
 │   │   └── organisms/
-│   │       ├── create_report_form.dart        # Animal type, status, description, date, GPS & submit
 │   │       └── custom_app_bar.dart            # Bottom navigation bar (Tab 2 active)
 │   └── features/
 │       ├── dashboard/
@@ -42,7 +38,11 @@ mobile_app/
 │           │   └── repositories/report_repository_impl.dart  # Data repository & AI dispatch hook
 │           └── presentation/
 │               ├── pages/camera_report_page.dart             # Live camera screen coordinator & lifecycle
-│               └── providers/camera_report_controller.dart   # Presentation state controller
+│               ├── providers/camera_report_controller.dart   # Presentation state controller
+│               └── widgets/
+│                   ├── camera_viewfinder_brackets.dart       # Corner framing brackets overlay (┌ ┐ └ ┘)
+│                   ├── camera_viewfinder_placeholder.dart    # Live camera stream, shutter button & gallery picker
+│                   └── create_report_form.dart               # Animal type, status, description, date, GPS & submit
 └── test/
     └── camera_widget_test.dart                 # Widget & integration test suite (5 passing tests)
 ```

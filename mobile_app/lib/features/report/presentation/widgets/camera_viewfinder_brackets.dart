@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 
 /// An atom widget that paints the four L-shaped corner brackets
 /// around the camera viewfinder canvas.
