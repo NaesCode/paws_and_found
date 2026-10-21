@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import './feed_user_header.dart';
 import './feed_pet_info_card.dart';
 import './feed_card_footer.dart';
@@ -27,7 +28,7 @@ class ReportCardItem extends StatelessWidget {
     required this.onButton1Pressed,
     required this.onButton2Pressed,
     required this.bannerType,
-    this.imageURL = 'assets/images/images.jpg', //default TODO: change to decent picture
+    this.imageURL = AppAssets.petPlaceholder,
     required this.petName,
     required this.postedBy,
     required this.species,

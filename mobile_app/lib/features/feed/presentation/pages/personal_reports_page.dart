@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
@@ -113,7 +114,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         location: report.location,
                         description: report.description,
                         formattedTime: report.formattedTime,
-                        imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg',
+                        imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
                         button1Text: "Edit",
                         button2Text: "Found",
                         onButton1Pressed: () {},

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
@@ -114,7 +115,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           location: report.location,
                           description: report.description,
                           formattedTime: report.formattedTime,
-                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg', //static usa kay wala pakoy link
+                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
                           button1Text: "Spotted",
                           button2Text: "Found",
                           onButton1Pressed: () {}, //TODO: need to put what should be shown
