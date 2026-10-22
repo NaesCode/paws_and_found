@@ -46,8 +46,8 @@ class FeedPostDetails extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          '$description',
-          style: TextStyle(
+          description,
+          style: const TextStyle(
             fontSize: 11,
             color: Colors.black87,
             height: 1.3,

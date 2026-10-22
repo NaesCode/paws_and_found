@@ -20,25 +20,26 @@ mobile_app/
 │   │       └── app_router.dart             # Route registry (public /map access)
 │   ├── shared/
 │   │   ├── atoms/
-│   │   │   ├── map_pin_badge.dart          # 'M', 'S', 'F' status-colored pins
-│   │   │   └── user_location_marker.dart   # GPS blue dot with accuracy aura
-│   │   ├── molecules/
-│   │   │   ├── map_filter_bar.dart         # "All", "For You", "Animal Type" pills
-│   │   │   └── map_legend.dart             # Status code indicator legend
-│   │   ├── organisms/
-│   │   │   ├── interactive_map_canvas.dart # FlutterMap tile layer + marker layer
-│   │   │   ├── map_report_card.dart        # Floating animal sighting preview
-│   │   │   └── custom_app_bar.dart         # Finalized bottom navigation bar
-│   │   └── templates/
-│   │       └── map_screen_template.dart    # Structural layout slots for the map
+│   │   │   ├── wireframe_status_badge.dart # Status pill badge
+│   │   │   └── wireframe_tag.dart          # Attribute tags
+│   │   └── organisms/
+│   │       └── custom_app_bar.dart         # Finalized bottom navigation bar
 │   └── features/
 │       └── map/
 │           ├── data/                       # Models & Supabase PostGIS data sources
 │           ├── domain/                     # Entities & Repository contracts
 │           └── presentation/
 │               ├── pages/map_page.dart     # Main Map Screen coordinator
-│               └── providers/
-│                   └── map_controller.dart # Reactive state controller (ChangeNotifier)
+│               ├── providers/
+│               │   └── map_controller.dart # Reactive state controller (ChangeNotifier)
+│               └── widgets/
+│                   ├── interactive_map_canvas.dart # FlutterMap tile layer + marker layer
+│                   ├── map_filter_bar.dart         # "All", "For You", "Animal Type" pills
+│                   ├── map_legend.dart             # Status code indicator legend
+│                   ├── map_pin_badge.dart          # 'M', 'S', 'F' status-colored pins
+│                   ├── map_report_card.dart        # Floating animal sighting preview
+│                   ├── map_screen_template.dart    # Structural layout slots for the map
+│                   └── user_location_marker.dart   # GPS blue dot with accuracy aura
 └── test/
     ├── map_widget_test.dart                # Widget tests for map atoms, organisms & page
     └── location_service_test.dart          # Unit tests for GPS service & permission states

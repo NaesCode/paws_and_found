@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
-import '../atoms/map_pin_badge.dart';
+import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import './map_pin_badge.dart';
 
 /// A map legend molecule showing pin status definitions.
 ///

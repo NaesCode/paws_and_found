@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 
 /// Form organism for Animal Report Creation (SDD Screen 05).
 ///

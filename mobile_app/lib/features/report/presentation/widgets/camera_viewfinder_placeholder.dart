@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
-import '../atoms/camera_viewfinder_brackets.dart';
+import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import './camera_viewfinder_brackets.dart';
 
 /// A camera viewfinder placeholder molecule for the Animal Report Creation flow.
 ///

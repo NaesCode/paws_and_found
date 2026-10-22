@@ -46,8 +46,7 @@ class FeedCardFooter extends StatelessWidget {
                 ),
                 const SizedBox(width: 12.0),
                 GestureDetector(
-                  onTap: (){
-                    print('"See more" clicked!');
+                  onTap: () {
                     // TODO: function to do if ma click
                   },
                   child: const Text(

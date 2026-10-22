@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../../features/map/domain/entities/map_report_entity.dart';
-import '../atoms/map_pin_badge.dart';
-import '../atoms/user_location_marker.dart';
+import '../../domain/entities/map_report_entity.dart';
+import './map_pin_badge.dart';
+import './user_location_marker.dart';
 
 /// An interactive geographic map canvas organism built with `flutter_map`.
 ///
