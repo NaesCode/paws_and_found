@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
-import 'package:paws_and_found/core/theme/app_colors.dart';
+// import 'package:paws_and_found/core/theme/app_colors.dart';
 // import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
 
@@ -14,7 +14,12 @@ import "package:paws_and_found/features/feed/data/repositories/feed_repo_imp.dar
 // SHOWS THE PERSONAL REPORTS MEAN THE USER'S POST ONLY CAN BE SHOWN, AND THERE IS A BUTTON FOR MAKING A NEW REPORT (I-EDIT PA)
 
 class PersonalReportsPage extends StatefulWidget{
-  const PersonalReportsPage({super.key});
+  final bool showBottomNavPlaceholder;
+
+  const PersonalReportsPage({
+    super.key,
+    this.showBottomNavPlaceholder = true,
+  });
 
   @override 
   State<PersonalReportsPage> createState() => _PersonalReportsState();
@@ -46,9 +51,9 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 14.0),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 0.0, right: 0.0, top: 14.0, bottom: 0.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -73,71 +78,61 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
             
             const SizedBox(height: 10), 
             
-            // TODO: change into dynamic data
             Expanded(
-            child: FutureBuilder<List<PetPostModel>>(
-              future: _reportsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const PawLoadingIndicator(); // Clean call to your shared atom file
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                final reports = snapshot.data ?? [];
-                if (reports.isEmpty) {
-                  return const Center(child: Text('No Reports Found'));
-                }
+              child: FutureBuilder<List<PetPostModel>>(
+                future: _reportsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const PawLoadingIndicator();
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final reports = snapshot.data ?? [];
+                  if (reports.isEmpty) {
+                    return const Center(child: Text('No Reports Found'));
+                  }
 
-                return TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, opacityValue, child) {
-                    return Opacity(
-                      opacity: opacityValue,
-                      child: child,
-                    );
-                  },
-                  child: ListView.separated(
-                    itemCount: reports.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 15),
-                    itemBuilder: (context, index) {
-                      final report = reports[index];
-
-                      return ReportCardItem(
-                        bannerType: _getBannerType(report.status),
-                        petName: report.petName,
-                        postedBy: report.postedBy,
-                        species: report.species,
-                        location: report.location,
-                        description: report.description,
-                        formattedTime: report.formattedTime,
-                        imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg',
-                        button1Text: "Edit",
-                        button2Text: "Found",
-                        onButton1Pressed: () {},
-                        onButton2Pressed: () {},
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, opacityValue, child) {
+                      return Opacity(
+                        opacity: opacityValue,
+                        child: child,
                       );
                     },
-                  ),
-                );
-              },
+                    child: ListView.separated(
+                      itemCount: reports.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 15),
+                      itemBuilder: (context, index) {
+                        final report = reports[index];
+
+                        return ReportCardItem(
+                          bannerType: _getBannerType(report.status),
+                          petName: report.petName,
+                          postedBy: report.postedBy,
+                          species: report.species,
+                          location: report.location,
+                          description: report.description,
+                          formattedTime: report.formattedTime,
+                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg',
+                          button1Text: "Edit",
+                          button2Text: "Found",
+                          onButton1Pressed: () {},
+                          onButton2Pressed: () {},
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
           ],
         ),
-      ),
-      //TODO: implement the functionality of the button to navigate to the report sighting page, separate page, put in widgets
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.accentOrange,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_a_photo_rounded),
-        label: const Text('Report Sighting'),
-        onPressed: () {
-          context.push('/camera');
-        },
       ),
     );
   }
 }
+
