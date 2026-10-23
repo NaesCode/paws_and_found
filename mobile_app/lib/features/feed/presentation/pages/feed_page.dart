@@ -25,7 +25,6 @@ class _FeedPageState extends State<FeedPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      // 💡 FIX: Wrap the body in a SafeArea and set bottom to false!
       body: SafeArea(
         bottom: false, // Prevents nested double system padding at the bottom edge
         child: Padding(
