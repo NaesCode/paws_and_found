@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_action_btns.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_post_details.dart';
@@ -20,7 +21,7 @@ class FeedPetInfoCard extends StatelessWidget {
     required this.button2Text,
     required this.onButton1Pressed,
     required this.onButton2Pressed,
-    this.imageUrl = 'assets/images/images.jpg', //default TODO: change to decent picture
+    this.imageUrl = AppAssets.petPlaceholder,
     required this.name,
     required this.specie,
     required this.description,
@@ -55,13 +56,20 @@ class FeedPetInfoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // The Transparent pet Image overlay from db
                 Positioned.fill(
-                  child: Image.asset(
-                    // TODO: Need to fetch data from the uploaded image from the backend instead of using a static placeholder
-                    'assets/images/images.jpg',
-                    fit: BoxFit.fill,
-                  ),
+                  child: imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, _, _) => Image.asset(
+                            AppAssets.petPlaceholder,
+                            fit: BoxFit.fill,
+                          ),
+                        )
+                      : Image.asset(
+                          imageUrl.isNotEmpty ? imageUrl : AppAssets.petPlaceholder,
+                          fit: BoxFit.fill,
+                        ),
                 ),
               ],
             ),

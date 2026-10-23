@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
 
-//hardcoded temp data and how to get them (can also be used for fetching real time from supa db)
-import "package:paws_and_found/features/feed/data/models/feed_post_model.dart";
-import "package:paws_and_found/features/feed/data/repositories/feed_repo_imp.dart";
+import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
+import 'package:paws_and_found/features/feed/domain/entities/feed_post.dart';
+import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) SO FAR THIS ALSO INCLUDES THE USER'S POST (GOTTA CHANGE MAYBE)
 
@@ -20,8 +21,8 @@ class GeneralReportsPage extends StatefulWidget{
 
 class _GeneralReportsState extends State<GeneralReportsPage> {
 
-  final FeedRepoImp _repository = FeedRepoImp();
-  late Future<List<PetPostModel>> _reportsFuture;
+  final FeedRepository _repository = FeedRepositoryImpl();
+  late Future<List<FeedPost>> _reportsFuture;
 
   // for the filter (aron dli na magpasa2 ug indicators)
   String _selectedFilter = 'latest';
@@ -72,7 +73,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             
             // TODO: change into dynamic data according to filters
             Expanded(
-              child: FutureBuilder<List<PetPostModel>>(
+              child: FutureBuilder<List<FeedPost>>(
                 future: _reportsFuture,
                 builder: (context, snapshot){
                   if (snapshot.connectionState == ConnectionState.waiting){
@@ -113,7 +114,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           location: report.location,
                           description: report.description,
                           formattedTime: report.formattedTime,
-                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : 'assets/images/images.jpg', //static usa kay wala pakoy link
+                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
                           button1Text: "Spotted",
                           button2Text: "Found",
                           onButton1Pressed: () {}, //TODO: need to put what should be shown

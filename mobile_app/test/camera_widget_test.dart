@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:paws_and_found/shared/atoms/camera_viewfinder_brackets.dart';
-import 'package:paws_and_found/shared/molecules/camera_viewfinder_placeholder.dart';
-import 'package:paws_and_found/shared/organisms/create_report_form.dart';
-import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
+import 'package:paws_and_found/features/report/presentation/widgets/camera_viewfinder_brackets.dart';
+import 'package:paws_and_found/features/report/presentation/widgets/camera_viewfinder_placeholder.dart';
+import 'package:paws_and_found/features/report/presentation/widgets/create_report_form.dart';
+import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 
 void main() {
   group('Camera & Report Atomic Design Components', () {

@@ -1,6 +1,8 @@
+import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/services/location_service.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
 
@@ -8,14 +10,19 @@ import '../../domain/repositories/report_repository.dart';
 ///
 /// Implements SDD Section 5.8 (CreateReport) & Section 6.1 (5):
 /// - Manages photo capture & gallery picking
+/// - Integrates live GPS coordinates via [LocationService]
 /// - Holds animal type, status enum, description, and GPS coordinates
-/// - Handles report submission and relations to the Community Map & Feed
+/// - Handles report submission and pre-configures data for AI matching
 class CameraReportController extends ChangeNotifier {
   final ReportRepository _repository;
+  final LocationService _locationService;
   final ImagePicker _picker = ImagePicker();
 
-  CameraReportController({ReportRepository? repository})
-      : _repository = repository ?? ReportRepositoryImpl();
+  CameraReportController({
+    ReportRepository? repository,
+    LocationService? locationService,
+  })  : _repository = repository ?? ReportRepositoryImpl(),
+        _locationService = locationService ?? const GeolocatorLocationService();
 
   String _animalType = 'Canine';
   String _status = 'Stray';
@@ -111,13 +118,22 @@ class CameraReportController extends ChangeNotifier {
     }
   }
 
+  /// Ingests a photo captured via live in-app camera or file stream
+  void setImageData(Uint8List bytes, String? path) {
+    _selectedImageBytes = bytes;
+    _selectedImagePath = path;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   void clearPhoto() {
     _selectedImageBytes = null;
     _selectedImagePath = null;
     notifyListeners();
   }
 
-  /// Submits the report to Supabase or simulates submission in offline wireframe mode
+  /// Submits the report to Supabase or simulates submission in offline wireframe mode.
+  /// Dynamically queries [LocationService] for device GPS if [isGpsAuto] is enabled.
   Future<bool> submitReport() async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -135,13 +151,29 @@ class CameraReportController extends ChangeNotifier {
         }
       }
 
-      // Default coordinates for community demonstration
-      const double lat = 14.5995;
-      const double lng = 120.9842;
+      // Default fallback coordinates (Manila / default demo location)
+      double lat = 14.5995;
+      double lng = 120.9842;
+
+      // When Auto GPS is enabled, fetch high-accuracy device coordinates with fallback timeout
+      if (_isGpsAuto) {
+        try {
+          final position = await _locationService.getCurrentPosition().timeout(
+            const Duration(milliseconds: 200),
+            onTimeout: () => null,
+          );
+          if (position != null) {
+            lat = position.latitude;
+            lng = position.longitude;
+          }
+        } catch (e) {
+          debugPrint('[CameraReportController] LocationService unavailable, falling back to default: $e');
+        }
+      }
 
       try {
         final reportId = await _repository.createReport(
-          animalType: _animalType,
+          animalType: _animalType.toLowerCase(),
           description: descriptionController.text.trim(),
           photoUrl: photoUrl.isNotEmpty
               ? photoUrl
@@ -151,6 +183,10 @@ class CameraReportController extends ChangeNotifier {
           status: _status.toLowerCase(),
         );
         _successReportId = reportId;
+
+        // Dispatches AI feature extraction & matching request to orchestrator
+        // (Handled gracefully with fallback if orchestrator is not yet deployed)
+        unawaited(_repository.requestReportAnalysis(reportId));
       } catch (_) {
         // Fallback for development/wireframe mode
         _successReportId = 'rep-${DateTime.now().millisecondsSinceEpoch}';

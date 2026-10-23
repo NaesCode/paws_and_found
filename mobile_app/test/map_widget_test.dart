@@ -4,15 +4,15 @@ import 'package:latlong2/latlong.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/features/map/domain/entities/map_report_entity.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
-import 'package:paws_and_found/shared/atoms/map_pin_badge.dart';
-import 'package:paws_and_found/shared/atoms/user_location_marker.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/interactive_map_canvas.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/map_filter_bar.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/map_legend.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/map_pin_badge.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/map_report_card.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/user_location_marker.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
-import 'package:paws_and_found/shared/molecules/map_filter_bar.dart';
-import 'package:paws_and_found/shared/molecules/map_legend.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
-import 'package:paws_and_found/shared/organisms/interactive_map_canvas.dart';
-import 'package:paws_and_found/shared/organisms/map_report_card.dart';
 
 void main() {
   group('Map Atomic Design Components', () {

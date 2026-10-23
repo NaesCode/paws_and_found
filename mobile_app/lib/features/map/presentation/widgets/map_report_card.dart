@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
-import '../atoms/wireframe_status_badge.dart';
-import '../atoms/wireframe_tag.dart';
+import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
+import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
 
 /// A floating report detail card organism shown at the bottom of the map view.
 ///
