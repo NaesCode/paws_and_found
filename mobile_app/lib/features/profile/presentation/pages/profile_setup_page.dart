@@ -11,15 +11,22 @@ import '../widgets/identity_block.dart';
 import '../widgets/profile_details.dart';
 import '../widgets/edit_profile_sheet.dart';
 import '../widgets/add_pet_sheet.dart';
+import '../../../../core/services/location_service.dart';
 import '../widgets/paws_profile_section.dart';
+import '../widgets/report_missing_sheet.dart';
 
 /// The Profile Account screen.
 /// Serves as both the user's permanent profile screen and the onboarding
 /// setup destination when a user logs in for the first time.
 class ProfileSetupPage extends StatefulWidget {
   final ProfileRepository? repository;
+  final LocationService? locationService;
 
-  const ProfileSetupPage({super.key, this.repository});
+  const ProfileSetupPage({
+    super.key,
+    this.repository,
+    this.locationService,
+  });
 
   @override
   State<ProfileSetupPage> createState() => _ProfileSetupPageState();
@@ -137,47 +144,116 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   Future<void> _handlePetStatusToggle(Pet pet) async {
     final isSafe = pet.status == PetStatus.safe;
-    final actionName = isSafe ? 'Report Missing' : 'Mark as Safe';
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('$actionName "${pet.name}"?'),
-        content: Text(
-          isSafe
-              ? 'Are you sure you want to report ${pet.name} as missing? This will create an active missing report for the community.'
-              : 'Marking ${pet.name} as safe will close any active missing alerts.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.text3)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isSafe ? AppColors.contrast2 : AppColors.primary,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              isSafe ? 'Report Missing' : 'Confirm Safe',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
+    if (isSafe) {
+      // 1. Report Missing Flow via ReportMissingSheet (with LocationService GPS)
+      final result = await ReportMissingSheet.show(
+        context: context,
+        pet: pet,
+        locationService: widget.locationService,
+      );
 
-    if (confirmed == true) {
-      if (isSafe) {
-        await _repository.reportPetMissing(pet.petID);
-      } else {
-        await _repository.markPetSafe(pet.petID);
+      if (result == null) return; // User cancelled
+
+      setState(() => _isLoading = true);
+      try {
+        await _repository.reportPetMissing(
+          pet.petID,
+          lat: result.latitude,
+          lng: result.longitude,
+          note: result.note,
+        );
+
+        final updatedPets = await _repository.getPets();
+        if (mounted) {
+          setState(() {
+            _pets = updatedPets;
+            _isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${pet.name} reported missing. Community alert active!'),
+              backgroundColor: AppColors.contrast2,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'View Map',
+                textColor: Colors.white,
+                onPressed: () {
+                  context.push('/map');
+                },
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to report pet missing: $e'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
       }
-      final updatedPets = await _repository.getPets();
-      if (mounted) {
-        setState(() {
-          _pets = updatedPets;
-        });
+    } else {
+      // 2. Mark as Safe Flow with Confirmation Dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Mark "${pet.name}" as Safe?'),
+          content: Text(
+            'Did you find ${pet.name}? Marking them safe will update their status and close any active missing alerts on the community map.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.text3)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text(
+                'Confirm Safe',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        setState(() => _isLoading = true);
+        try {
+          await _repository.markPetSafe(pet.petID);
+          final updatedPets = await _repository.getPets();
+          if (mounted) {
+            setState(() {
+              _pets = updatedPets;
+              _isLoading = false;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Wonderful news! ${pet.name} is marked safe.'),
+                backgroundColor: AppColors.primary,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update pet status: $e'),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          }
+        }
       }
     }
   }
