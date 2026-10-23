@@ -1,7 +1,18 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
 
+void _showCommentsModal(BuildContext context){
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (modalContext){
+      return const FeedCommentsModal();
+    }
+  );
+}
 
 class FeedCardFooter extends StatelessWidget {
   const FeedCardFooter({super.key});
@@ -34,6 +45,7 @@ class FeedCardFooter extends StatelessWidget {
                       style: TextStyle(color: AppColors.darkCharcoal, fontSize: 14.0), 
                       children: [
                         TextSpan(
+                          // TODO: need to change the values from the databse (variable)
                           text: '@citrue: ',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
@@ -46,8 +58,10 @@ class FeedCardFooter extends StatelessWidget {
                 ),
                 const SizedBox(width: 12.0),
                 GestureDetector(
-                  onTap: () {
-                    // TODO: function to do if ma click
+                  onTap: (){
+                    _showCommentsModal(context);
+                    
+                    print('"See more" clicked!');
                   },
                   child: const Text(
                     'See More',
