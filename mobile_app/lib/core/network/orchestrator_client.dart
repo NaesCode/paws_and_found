@@ -22,13 +22,16 @@ class OrchestratorException implements Exception {
 
 /// HTTP client dedicated to communicating with the Django orchestrator micro-service.
 /// Automatically attaches the current user's Supabase JWT access token.
+///
+/// Features automatic fallback between Android Emulator (10.0.2.2) and Physical Phone / adb reverse (127.0.0.1)
+/// so neither teammates nor physical device workflows break.
 class OrchestratorClient {
   final http.Client _httpClient;
   final Duration timeout;
 
   OrchestratorClient({
     http.Client? httpClient,
-    this.timeout = const Duration(seconds: 15),
+    this.timeout = const Duration(seconds: 10),
   }) : _httpClient = httpClient ?? http.Client();
 
   String? get _authToken => Supabase.instance.client.auth.currentSession?.accessToken;
@@ -45,29 +48,77 @@ class OrchestratorClient {
   }
 
   Future<dynamic> get(String path, {Map<String, String>? headers}) async {
-    final uri = path.startsWith('http') ? Uri.parse(path) : Uri.parse('${ApiConstants.baseUrl}$path');
-    try {
-      final response = await _httpClient
-          .get(uri, headers: _buildHeaders(headers))
-          .timeout(timeout);
-      return _processResponse(response);
-    } on SocketException catch (e) {
-      throw OrchestratorException(statusCode: 0, message: 'Network connection error: $e');
-    } on TimeoutException {
-      throw const OrchestratorException(statusCode: 408, message: 'Request to orchestrator timed out');
+    if (path.startsWith('http')) {
+      return _executeRequest((uri) => _httpClient.get(uri, headers: _buildHeaders(headers)), Uri.parse(path));
     }
+
+    final candidates = ApiConstants.candidateBaseUrls;
+    Exception? lastException;
+
+    for (final base in candidates) {
+      final uri = Uri.parse('$base$path');
+      try {
+        final result = await _executeRequest(
+          (u) => _httpClient.get(u, headers: _buildHeaders(headers)),
+          uri,
+        );
+        ApiConstants.cacheWorkingBaseUrl(base);
+        return result;
+      } on OrchestratorException catch (e) {
+        if (e.statusCode == 0 || e.statusCode == 408) {
+          lastException = e;
+          continue; // Try next candidate (e.g. fallback from 10.0.2.2 to 127.0.0.1)
+        }
+        rethrow;
+      }
+    }
+
+    throw lastException ?? const OrchestratorException(statusCode: 0, message: 'All backend host candidates unreachable');
   }
 
   Future<dynamic> post(String path, {Object? body, Map<String, String>? headers}) async {
-    final uri = path.startsWith('http') ? Uri.parse(path) : Uri.parse('${ApiConstants.baseUrl}$path');
-    try {
-      final response = await _httpClient
-          .post(
-            uri,
+    if (path.startsWith('http')) {
+      return _executeRequest(
+        (uri) => _httpClient.post(
+          uri,
+          headers: _buildHeaders(headers),
+          body: body != null ? jsonEncode(body) : null,
+        ),
+        Uri.parse(path),
+      );
+    }
+
+    final candidates = ApiConstants.candidateBaseUrls;
+    Exception? lastException;
+
+    for (final base in candidates) {
+      final uri = Uri.parse('$base$path');
+      try {
+        final result = await _executeRequest(
+          (u) => _httpClient.post(
+            u,
             headers: _buildHeaders(headers),
             body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(timeout);
+          ),
+          uri,
+        );
+        ApiConstants.cacheWorkingBaseUrl(base);
+        return result;
+      } on OrchestratorException catch (e) {
+        if (e.statusCode == 0 || e.statusCode == 408) {
+          lastException = e;
+          continue; // Try next candidate (e.g. fallback from 10.0.2.2 to 127.0.0.1)
+        }
+        rethrow;
+      }
+    }
+
+    throw lastException ?? const OrchestratorException(statusCode: 0, message: 'All backend host candidates unreachable');
+  }
+
+  Future<dynamic> _executeRequest(Future<http.Response> Function(Uri) requestFn, Uri uri) async {
+    try {
+      final response = await requestFn(uri).timeout(timeout);
       return _processResponse(response);
     } on SocketException catch (e) {
       throw OrchestratorException(statusCode: 0, message: 'Network connection error: $e');
@@ -88,17 +139,14 @@ class OrchestratorClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonBody;
-    } else {
-      String message = 'Orchestrator returned ${response.statusCode}';
-      if (jsonBody is Map<String, dynamic>) {
-        message = jsonBody['detail'] ?? jsonBody['message'] ?? message;
-      }
-      throw OrchestratorException(
-        statusCode: response.statusCode,
-        message: message,
-        details: jsonBody,
-      );
     }
+
+    throw OrchestratorException(
+      statusCode: response.statusCode,
+      message: jsonBody is Map && jsonBody.containsKey('error')
+          ? jsonBody['error'].toString()
+          : 'Request failed with status: ${response.statusCode}',
+      details: jsonBody,
+    );
   }
 }
-
