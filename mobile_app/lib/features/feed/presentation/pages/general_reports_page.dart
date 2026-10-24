@@ -45,9 +45,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 10.0),
+      return Padding(
+        padding: const EdgeInsets.only(left: 0.0, right: 0.0, top: 14.0, bottom: 0.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -128,7 +127,6 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             )
           ],
         ),
-      ),
     );
   }
 }
