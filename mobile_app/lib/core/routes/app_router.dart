@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -80,12 +81,28 @@ class AppRouter {
         builder: (context, state) => const NotificationsPage(),
       ),
 
-      // Community Animal Map route
+      // Community Animal Map route with optional query parameters for targeted report pinning
       GoRoute(
         path: '/map',
         name: 'map',
-        builder: (context, state) =>
-            const MapPage(showBottomNavPlaceholder: true),
+        builder: (context, state) {
+          final reportId = state.uri.queryParameters['reportId'];
+          final latStr = state.uri.queryParameters['lat'];
+          final lngStr = state.uri.queryParameters['lng'];
+          LatLng? initialCenter;
+          if (latStr != null && lngStr != null) {
+            final lat = double.tryParse(latStr);
+            final lng = double.tryParse(lngStr);
+            if (lat != null && lng != null) {
+              initialCenter = LatLng(lat, lng);
+            }
+          }
+          return MapPage(
+            showBottomNavPlaceholder: true,
+            initialReportId: reportId,
+            initialCenter: initialCenter,
+          );
+        },
       ),
 
       // Camera and Animal Report Creation route

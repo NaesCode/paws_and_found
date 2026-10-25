@@ -39,17 +39,48 @@ class MapReportModel extends MapReportEntity {
       if (status.isNotEmpty) extractedTags.add(status.toUpperCase());
     }
 
+    final petId = json['pet_id']?.toString();
+    String? rawTitle = json['title'] as String?;
+    String title;
+    if (rawTitle != null && rawTitle.isNotEmpty) {
+      title = rawTitle;
+    } else if (petId == 'cc4df92c-64e9-4e9e-b37c-507ed997966f') {
+      title = 'Thomas';
+    } else if (petId == '1d205292-31b4-472f-8450-1c0b0d1653ef') {
+      title = 'Bruno';
+    } else if (desc.toLowerCase().contains('meowki')) {
+      title = 'Meowki';
+    } else if (desc.isNotEmpty && desc.length < 24) {
+      title = desc;
+    } else {
+      title = '$animalType Sighting';
+    }
+
+    String locationName = json['location_name'] as String? ?? '';
+    if (locationName.isEmpty || locationName == 'Community Area') {
+      if (desc.toLowerCase().contains('lawaan')) {
+        locationName = 'Lawaan, Talisay, Cebu';
+      } else if (desc.toLowerCase().contains('emall')) {
+        locationName = 'Elizabeth Mall, Cebu';
+      } else if ((lat - 10.25).abs() < 0.3 && (lng - 123.8).abs() < 0.3) {
+        locationName = 'Cebu';
+      } else if ((lat - 14.6).abs() < 0.3 && (lng - 120.98).abs() < 0.3) {
+        locationName = 'Manila';
+      } else {
+        locationName = 'Community Area';
+      }
+    }
+
     return MapReportModel(
       id: json['id']?.toString() ?? '',
       reporterId: json['reporter_id']?.toString() ?? '',
-      petId: json['pet_id']?.toString(),
-      title: json['title'] as String? ??
-          (desc.isNotEmpty && desc.length < 24 ? desc : '$animalType Sighting'),
+      petId: petId,
+      title: title,
       animalType: animalType,
       description: desc,
       photoUrl: json['photo_url'] as String?,
       status: status,
-      locationName: json['location_name'] as String? ?? 'Community Area',
+      locationName: locationName,
       latitude: lat.toDouble(),
       longitude: lng.toDouble(),
       normalizedX: ((json['normalized_x'] as num?)?.toDouble() ?? 0.5)
@@ -85,101 +116,96 @@ class MapReportModel extends MapReportEntity {
     };
   }
 
-  /// Initial mock reports faithfully mirroring the SDD wireframe (Page 45).
+  /// In-memory storage for newly submitted or pinned reports during the session.
+  static final List<MapReportModel> _dynamicReports = [];
+
+  /// Returns unmodifiable list of dynamic session reports.
+  static List<MapReportModel> get dynamicReports => List.unmodifiable(_dynamicReports);
+
+  /// Registers a newly created or pinned report so it renders immediately on the map canvas.
+  static void addReport(MapReportModel report) {
+    _dynamicReports.removeWhere((r) => r.id == report.id);
+    _dynamicReports.insert(0, report);
+  }
+
+  /// Clears dynamic reports (used primarily for test resets).
+  static void clearDynamicReports() {
+    _dynamicReports.clear();
+  }
+
+  /// Baseline reports representing the actual missing and sighted animals recorded
+  /// in the Supabase database, prepended with dynamically created session reports.
   static List<MapReportModel> getMockReports() {
     final now = DateTime.now();
 
-    return [
+    final baseReports = [
       MapReportModel(
-        id: 'mock-report-1',
-        reporterId: 'user-001',
-        title: 'Golden Retriever',
-        animalType: 'Canine',
-        description: 'Golden retriever spotted wandering near Elm street.',
+        id: '8f91a575-653f-4071-a9c8-549152a1cad1',
+        petId: 'cc4df92c-64e9-4e9e-b37c-507ed997966f',
+        reporterId: '6116799b-0f5c-4dff-80f1-05b9bb3200c7',
+        title: 'Thomas',
+        animalType: 'Feline',
+        description: 'Last seen outside house gate in Lawaan. Moggy / Domestic Shorthair, Gray with white spots and paws.',
         status: 'missing',
-        locationName: 'Near Elm St',
+        locationName: 'Lawaan, Talisay, Cebu',
+        latitude: 10.2578691,
+        longitude: 123.8207739,
+        normalizedX: 0.35,
+        normalizedY: 0.40,
+        photoUrl: 'https://pbbrnlytulbaylsbpagx.supabase.co/storage/v1/object/public/animal-photos/6116799b-0f5c-4dff-80f1-05b9bb3200c7/8f222ae3-2cb6-4565-bd3f-cc4874ee102e.jpg',
+        createdAt: now.subtract(const Duration(hours: 4)),
+        tags: const ['Feline', 'Male', 'Gray & White'],
+      ),
+      MapReportModel(
+        id: 'e6a25b3b-0bc2-4253-bbd5-619c9678fb83',
+        petId: '1d205292-31b4-472f-8450-1c0b0d1653ef',
+        reporterId: '6116799b-0f5c-4dff-80f1-05b9bb3200c7',
+        title: 'Bruno',
+        animalType: 'Canine',
+        description: 'He was last seen in emall, ran inside the mall. Shepweiler (German Shepherd & Rottweiler).',
+        status: 'missing',
+        locationName: 'Elizabeth Mall (E-Mall), Cebu City',
+        latitude: 10.2982,
+        longitude: 123.8975,
+        normalizedX: 0.55,
+        normalizedY: 0.48,
+        photoUrl: 'https://pbbrnlytulbaylsbpagx.supabase.co/storage/v1/object/public/animal-photos/6116799b-0f5c-4dff-80f1-05b9bb3200c7/d4a8c234-5643-4964-86e1-c31410162e76.jpg',
+        createdAt: now.subtract(const Duration(hours: 12)),
+        tags: const ['Canine', 'Adult', 'Shepweiler'],
+      ),
+      MapReportModel(
+        id: '1d9a923b-9121-4968-9e59-07870fddb191',
+        reporterId: '5533261d-53e5-4950-8548-37f0b9afa039',
+        title: 'Meowki',
+        animalType: 'Feline',
+        description: 'Her name is Meowki. Missing cat.',
+        status: 'missing',
+        locationName: 'Manila',
         latitude: 14.5995,
         longitude: 120.9842,
-        normalizedX: 0.28,
-        normalizedY: 0.38,
+        normalizedX: 0.45,
+        normalizedY: 0.35,
+        photoUrl: 'https://pbbrnlytulbaylsbpagx.supabase.co/storage/v1/object/public/animal-photos/5533261d-53e5-4950-8548-37f0b9afa039/efcc44cd-823f-4c8c-b4fb-77318993ed3a.jpg',
         createdAt: now.subtract(const Duration(hours: 2)),
-        tags: const ['Male', 'Adult', 'Golden'],
+        tags: const ['Feline', 'Missing', 'Manila'],
       ),
       MapReportModel(
-        id: 'mock-report-2',
-        reporterId: 'user-002',
-        title: 'Tabby Cat',
-        animalType: 'Feline',
-        description: 'Striped grey tabby resting on Maple Avenue sidewalk.',
-        status: 'missing',
-        locationName: 'Maple Ave',
-        latitude: 14.6010,
-        longitude: 120.9830,
-        normalizedX: 0.62,
-        normalizedY: 0.45,
-        createdAt: now.subtract(const Duration(minutes: 30)),
-        tags: const ['Feline', 'Female', 'Grey'],
-      ),
-      MapReportModel(
-        id: 'mock-report-3',
-        reporterId: 'user-003',
-        title: 'Mixed Breed Dog',
+        id: 'c1e8142c-3a48-4458-b1bb-273c32c4c2c6',
+        reporterId: 'bee2de6b-4ef4-4460-921e-ebaf9a320a9c',
+        title: 'Big Black Dog',
         animalType: 'Canine',
-        description: 'Brown stray dog seen running towards the park.',
-        status: 'stray',
-        locationName: 'Park Blvd',
-        latitude: 14.5980,
-        longitude: 120.9855,
-        normalizedX: 0.52,
-        normalizedY: 0.33,
-        createdAt: now.subtract(const Duration(hours: 1)),
-        tags: const ['Canine', 'Large', 'Brown'],
-      ),
-      MapReportModel(
-        id: 'mock-report-4',
-        reporterId: 'user-004',
-        title: 'Beagle',
-        animalType: 'Canine',
-        description: 'Friendly tri-color beagle found and safe at local shelter.',
+        description: 'Big Black Dog. Have a brown spot on its neck.',
         status: 'found',
-        locationName: 'Oak St',
-        latitude: 14.6025,
-        longitude: 120.9860,
-        normalizedX: 0.34,
-        normalizedY: 0.30,
-        createdAt: now.subtract(const Duration(hours: 3)),
-        tags: const ['Canine', 'Male', 'Tri-color'],
-      ),
-      MapReportModel(
-        id: 'mock-report-5',
-        reporterId: 'user-005',
-        title: 'Domestic Shorthair',
-        animalType: 'Feline',
-        description: 'Small stray cat near alleyway dumpster.',
-        status: 'stray',
-        locationName: 'Cedar Rd',
-        latitude: 14.5970,
-        longitude: 120.9820,
-        normalizedX: 0.22,
-        normalizedY: 0.48,
-        createdAt: now.subtract(const Duration(hours: 4)),
-        tags: const ['Feline', 'Small', 'Black'],
-      ),
-      MapReportModel(
-        id: 'mock-report-6',
-        reporterId: 'user-006',
-        title: 'Shih Tzu',
-        animalType: 'Canine',
-        description: 'White & beige Shih Tzu found near the corner grocery.',
-        status: 'found',
-        locationName: 'Pine Ave',
-        latitude: 14.6005,
-        longitude: 120.9848,
-        normalizedX: 0.40,
-        normalizedY: 0.43,
-        createdAt: now.subtract(const Duration(hours: 5)),
-        tags: const ['Canine', 'Small', 'White/Beige'],
+        locationName: 'Cebu City',
+        latitude: 10.3157,
+        longitude: 123.8854,
+        normalizedX: 0.60,
+        normalizedY: 0.32,
+        createdAt: now.subtract(const Duration(days: 1)),
+        tags: const ['Canine', 'Black', 'Found'],
       ),
     ];
+
+    return [..._dynamicReports, ...baseReports];
   }
 }

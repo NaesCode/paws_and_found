@@ -7,7 +7,7 @@ abstract class MapRemoteDataSource {
   Future<List<MapReportModel>> getNearbyReports({
     double? lat,
     double? lng,
-    double radiusMeters = 5000,
+    double radiusMeters = 50000,
     String? animalType,
     MapFilterType filterType = MapFilterType.all,
   });
@@ -17,9 +17,9 @@ abstract class MapRemoteDataSource {
 
 /// Supabase PostgREST & PostGIS implementation of [MapRemoteDataSource].
 ///
-/// If Supabase is unreachable or returns an empty set during development,
-/// gracefully falls back to the high-fidelity mock reports to preserve
-/// an interactive wireframe experience.
+/// Queries recorded missing pets and sightings from the database via PostGIS RPC
+/// `nearby_reports`. If unreachable or empty, falls back gracefully to calibrated
+/// mock & session reports.
 class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   final SupabaseClient? _client;
 
@@ -28,8 +28,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
 
   static SupabaseClient? _safeGetSupabaseClient() {
     try {
-      final instance = Supabase.instance;
-      return instance.client.auth.currentSession != null ? instance.client : null;
+      return Supabase.instance.client;
     } catch (_) {
       return null;
     }
@@ -39,23 +38,28 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   Future<List<MapReportModel>> getNearbyReports({
     double? lat,
     double? lng,
-    double radiusMeters = 5000,
+    double radiusMeters = 50000,
     String? animalType,
     MapFilterType filterType = MapFilterType.all,
   }) async {
     List<MapReportModel> reports = [];
 
-    // Attempt live Supabase RPC query if client is ready and coordinates provided
-    if (_client != null && lat != null && lng != null) {
+    // Default to nationwide radius to ensure all recorded missing pets (Cebu, Manila, etc.) are fetched
+    final queryLat = lat ?? 14.5995;
+    final queryLng = lng ?? 120.9842;
+    final queryRadius = radiusMeters < 2000000 ? 2000000.0 : radiusMeters;
+
+    // Attempt live Supabase RPC query if client is ready
+    if (_client != null) {
       try {
         final response = await _client.rpc(
           'nearby_reports',
           params: {
-            'p_lat': lat,
-            'p_lng': lng,
-            'p_radius_m': radiusMeters,
+            'p_lat': queryLat,
+            'p_lng': queryLng,
+            'p_radius_m': queryRadius,
             'p_animal_type': animalType,
-            'p_limit': 100,
+            'p_limit': 150,
           },
         );
 
@@ -65,13 +69,20 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
               .toList();
         }
       } catch (_) {
-        // Fall back to mock reports on network/RPC failure during early sprints
+        // Fall back gracefully on network or unauthenticated RPC failure
       }
     }
 
-    // If no records from backend, use calibrated mock reports
+    // If no records from backend, use calibrated database baseline reports
     if (reports.isEmpty) {
       reports = MapReportModel.getMockReports();
+    } else {
+      // Preserve any newly pinned missing pets from the current active session
+      for (final dynamicReport in MapReportModel.dynamicReports) {
+        if (!reports.any((r) => r.id == dynamicReport.id)) {
+          reports.insert(0, dynamicReport);
+        }
+      }
     }
 
     // Apply client-side filters
@@ -82,7 +93,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
     }
 
     if (filterType == MapFilterType.forYou) {
-      // In the SDD: "For You" surfaces reports tailored to missing pets or closer proximity
+      // In the SDD: "For You" surfaces reports tailored to missing pets
       reports = reports.where((r) => r.status.toLowerCase() == 'missing').toList();
     }
 

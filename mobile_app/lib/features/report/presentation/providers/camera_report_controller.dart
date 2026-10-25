@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
 
@@ -11,6 +12,7 @@ import '../../domain/repositories/report_repository.dart';
 /// Implements SDD Section 5.8 (CreateReport) & Section 6.1 (5):
 /// - Manages photo capture & gallery picking
 /// - Integrates live GPS coordinates via [LocationService]
+/// - Supports interactive map pinning for alert placement
 /// - Holds animal type, status enum, description, and GPS coordinates
 /// - Handles report submission and pre-configures data for AI matching
 class CameraReportController extends ChangeNotifier {
@@ -28,6 +30,8 @@ class CameraReportController extends ChangeNotifier {
   String _status = 'Stray';
   final TextEditingController descriptionController = TextEditingController();
   bool _isGpsAuto = true;
+  double? _pinnedLat;
+  double? _pinnedLng;
   Uint8List? _selectedImageBytes;
   String? _selectedImagePath;
   bool _isSubmitting = false;
@@ -38,6 +42,8 @@ class CameraReportController extends ChangeNotifier {
   String get animalType => _animalType;
   String get status => _status;
   bool get isGpsAuto => _isGpsAuto;
+  double? get pinnedLat => _pinnedLat;
+  double? get pinnedLng => _pinnedLng;
   Uint8List? get selectedImageBytes => _selectedImageBytes;
   String? get selectedImagePath => _selectedImagePath;
   bool get isSubmitting => _isSubmitting;
@@ -67,6 +73,22 @@ class CameraReportController extends ChangeNotifier {
 
   void toggleGps() {
     _isGpsAuto = !_isGpsAuto;
+    notifyListeners();
+  }
+
+  /// Sets interactive map pin coordinates.
+  void setPinnedLocation(double lat, double lng) {
+    _pinnedLat = lat;
+    _pinnedLng = lng;
+    _isGpsAuto = false;
+    notifyListeners();
+  }
+
+  /// Resets pin to device GPS auto mode.
+  void resetToAutoGps() {
+    _pinnedLat = null;
+    _pinnedLng = null;
+    _isGpsAuto = true;
     notifyListeners();
   }
 
@@ -133,7 +155,8 @@ class CameraReportController extends ChangeNotifier {
   }
 
   /// Submits the report to Supabase or simulates submission in offline wireframe mode.
-  /// Dynamically queries [LocationService] for device GPS if [isGpsAuto] is enabled.
+  /// Dynamically queries [LocationService] for device GPS if [isGpsAuto] is enabled and no
+  /// explicit pin was chosen.
   Future<bool> submitReport() async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -152,11 +175,11 @@ class CameraReportController extends ChangeNotifier {
       }
 
       // Default fallback coordinates (Manila / default demo location)
-      double lat = 14.5995;
-      double lng = 120.9842;
+      double lat = _pinnedLat ?? 14.5995;
+      double lng = _pinnedLng ?? 120.9842;
 
-      // When Auto GPS is enabled, fetch high-accuracy device coordinates with fallback timeout
-      if (_isGpsAuto) {
+      // When Auto GPS is enabled and no custom pin was placed, fetch high-accuracy device coordinates
+      if (_isGpsAuto && _pinnedLat == null) {
         try {
           final position = await _locationService.getCurrentPosition().timeout(
             const Duration(milliseconds: 200),
@@ -184,12 +207,52 @@ class CameraReportController extends ChangeNotifier {
         );
         _successReportId = reportId;
 
+        // Register in active map reports so it immediately appears on the Community Animal Map
+        MapReportModel.addReport(
+          MapReportModel(
+            id: reportId,
+            reporterId: 'current_user',
+            title: '$_animalType (${_status.toUpperCase()})',
+            animalType: _animalType,
+            description: descriptionController.text.trim(),
+            status: _status.toLowerCase(),
+            locationName: 'Reported Area',
+            latitude: lat,
+            longitude: lng,
+            normalizedX: 0.5,
+            normalizedY: 0.5,
+            createdAt: DateTime.now(),
+            tags: [_animalType, _status.toUpperCase()],
+            photoUrl: photoUrl.isNotEmpty ? photoUrl : null,
+          ),
+        );
+
         // Dispatches AI feature extraction & matching request to orchestrator
         // (Handled gracefully with fallback if orchestrator is not yet deployed)
         unawaited(_repository.requestReportAnalysis(reportId));
       } catch (_) {
         // Fallback for development/wireframe mode
-        _successReportId = 'rep-${DateTime.now().millisecondsSinceEpoch}';
+        final fallbackId = 'rep-${DateTime.now().millisecondsSinceEpoch}';
+        _successReportId = fallbackId;
+
+        MapReportModel.addReport(
+          MapReportModel(
+            id: fallbackId,
+            reporterId: 'current_user',
+            title: '$_animalType (${_status.toUpperCase()})',
+            animalType: _animalType,
+            description: descriptionController.text.trim(),
+            status: _status.toLowerCase(),
+            locationName: 'Pinned Location',
+            latitude: lat,
+            longitude: lng,
+            normalizedX: 0.5,
+            normalizedY: 0.5,
+            createdAt: DateTime.now(),
+            tags: [_animalType, _status.toUpperCase()],
+            photoUrl: photoUrl.isNotEmpty ? photoUrl : null,
+          ),
+        );
       }
 
       _isSubmitting = false;

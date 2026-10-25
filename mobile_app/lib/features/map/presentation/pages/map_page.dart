@@ -28,11 +28,15 @@ import '../providers/map_controller.dart';
 class MapPage extends StatefulWidget {
   final MapRepository? repository;
   final bool showBottomNavPlaceholder;
+  final String? initialReportId;
+  final LatLng? initialCenter;
 
   const MapPage({
     super.key,
     this.repository,
     this.showBottomNavPlaceholder = true,
+    this.initialReportId,
+    this.initialCenter,
   });
 
   @override
@@ -49,9 +53,28 @@ class _MapPageState extends State<MapPage> {
     _fmapController = fmap.MapController();
     _controller = MapController(repository: widget.repository);
     _controller.addListener(_onControllerUpdate);
-    _controller.loadReports();
+    _controller.loadReports().then((_) {
+      if (!mounted) return;
+      if (widget.initialReportId != null) {
+        _controller.selectReportById(widget.initialReportId!);
+        final match = _controller.reports.where((r) => r.id == widget.initialReportId);
+        if (match.isNotEmpty) {
+          _fmapController.move(
+            LatLng(match.first.latitude, match.first.longitude),
+            16.0,
+          );
+        } else if (widget.initialCenter != null) {
+          _fmapController.move(widget.initialCenter!, 16.0);
+        }
+      } else if (widget.initialCenter != null) {
+        _fmapController.move(widget.initialCenter!, 16.0);
+      }
+    });
+
     // Non-blocking fetch of device GPS location
-    _controller.fetchUserLocation();
+    if (widget.initialCenter == null) {
+      _controller.fetchUserLocation();
+    }
   }
 
   void _onControllerUpdate() {
@@ -171,7 +194,7 @@ class _MapPageState extends State<MapPage> {
 
       // 3. Map Canvas: Real-world interactive GIS map with custom pin markers
       mapCanvas: InteractiveMapCanvas(
-        center: _controller.mapCenter,
+        center: widget.initialCenter ?? _controller.mapCenter,
         reports: _controller.reports,
         selectedReportId: selected?.id,
         userLocation: _controller.userLocation,
@@ -222,12 +245,7 @@ class _MapPageState extends State<MapPage> {
                     // Already on Map
                     break;
                   case 1:
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Feed (Reports) coming in the next sprint!'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
+                    context.go('/feed');
                     break;
                   case 2:
                     context.go('/camera');
