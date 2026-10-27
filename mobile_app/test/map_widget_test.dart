@@ -118,7 +118,7 @@ void main() {
         const MaterialApp(
           home: Scaffold(
             body: MapReportCard(
-              title: 'Golden Retriever',
+              title: 'Thomas',
               subtitle: 'Near Elm St · 2h ago',
               status: 'missing',
               tags: ['Male', 'Adult', 'Golden'],
@@ -127,7 +127,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Golden Retriever'), findsOneWidget);
+      expect(find.text('Thomas'), findsOneWidget);
       expect(find.text('MISSING'), findsOneWidget);
       expect(find.text('Near Elm St · 2h ago'), findsOneWidget);
       expect(find.text('Male'), findsOneWidget);
@@ -143,8 +143,10 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: InteractiveMapCanvas(
+              center: LatLng(mockReports.first.latitude, mockReports.first.longitude),
+              zoom: 12.0,
               reports: mockReports,
-              userLocation: const LatLng(14.5995, 120.9842),
+              userLocation: LatLng(mockReports.first.latitude, mockReports.first.longitude),
               onReportTap: (r) => tappedReport = r,
             ),
           ),
@@ -199,7 +201,7 @@ void main() {
       expect(find.byType(InteractiveMapCanvas), findsOneWidget);
 
       // Verify floating report card displays first report
-      expect(find.text('Golden Retriever'), findsOneWidget);
+      expect(find.text('Thomas'), findsOneWidget);
 
       // Verify bottom nav
       expect(find.byType(CustomAppBar), findsOneWidget);

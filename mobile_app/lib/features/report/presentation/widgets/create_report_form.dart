@@ -8,7 +8,7 @@ import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 /// - Status selector ("Stray", "Missing", "Found")
 /// - Description text area
 /// - Date / Time readout
-/// - GPS coordinate mode ("Auto")
+/// - GPS / Map Pin coordinate field with interactive Animal Map Pinning
 /// - "Submit Report" primary button
 ///
 /// Adheres to Atomic Design: dumb, stateless UI element relying purely on
@@ -20,9 +20,12 @@ class CreateReportForm extends StatelessWidget {
   final String dateTimeString;
   final bool isGpsAuto;
   final bool isLoading;
+  final double? pinnedLat;
+  final double? pinnedLng;
   final ValueChanged<String> onAnimalTypeChanged;
   final ValueChanged<String> onStatusChanged;
   final VoidCallback onToggleGps;
+  final VoidCallback? onPinOnMap;
   final VoidCallback onSubmit;
 
   const CreateReportForm({
@@ -33,14 +36,19 @@ class CreateReportForm extends StatelessWidget {
     required this.dateTimeString,
     this.isGpsAuto = true,
     this.isLoading = false,
+    this.pinnedLat,
+    this.pinnedLng,
     required this.onAnimalTypeChanged,
     required this.onStatusChanged,
     required this.onToggleGps,
+    this.onPinOnMap,
     required this.onSubmit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isMissing = status.toLowerCase() == 'missing';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
@@ -115,7 +123,7 @@ class CreateReportForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Row 3: Date/Time & GPS
+          // Row 3: Date/Time & GPS / MAP PIN
           Row(
             children: [
               // Date / Time
@@ -148,23 +156,34 @@ class CreateReportForm extends StatelessWidget {
               ),
               const SizedBox(width: 14),
 
-              // GPS Field
+              // Unified GPS / Map Pin Field
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildFieldLabel('GPS'),
+                    _buildFieldLabel('GPS / MAP PIN'),
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: onToggleGps,
+                      onTap: () {
+                        if (onPinOnMap != null) {
+                          onPinOnMap!();
+                        } else {
+                          onToggleGps();
+                        }
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
                           color: WireframeColors.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: WireframeColors.border, width: 1.0),
+                          border: Border.all(
+                            color: pinnedLat != null
+                                ? WireframeColors.primaryDark
+                                : WireframeColors.border,
+                            width: 1.0,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -192,15 +211,36 @@ class CreateReportForm extends StatelessWidget {
                                     )
                                   : null,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isGpsAuto ? 'Auto' : 'Manual',
-                              style: const TextStyle(
-                                color: WireframeColors.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                pinnedLat != null
+                                    ? '${pinnedLat!.toStringAsFixed(2)}°, ${pinnedLng!.toStringAsFixed(2)}°'
+                                    : (isGpsAuto ? 'Auto' : 'Pin on Map'),
+                                style: TextStyle(
+                                  color: pinnedLat != null
+                                      ? WireframeColors.primaryDark
+                                      : WireframeColors.textPrimary,
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            if (onPinOnMap != null)
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(
+                                  Icons.pin_drop_rounded,
+                                  size: 19,
+                                  color: pinnedLat != null
+                                      ? WireframeColors.primaryDark
+                                      : WireframeColors.secondarySlate,
+                                ),
+                                tooltip: 'Pin on Animal Map',
+                                onPressed: onPinOnMap,
+                              ),
                           ],
                         ),
                       ),
@@ -234,9 +274,9 @@ class CreateReportForm extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Submit Report',
-                      style: TextStyle(
+                  : Text(
+                      isMissing ? 'Submit Missing Animal Report' : 'Submit Report',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

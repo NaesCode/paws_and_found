@@ -25,6 +25,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing", 
     "created_at": "2026-10-18T12:00:00.000Z",
+    "lat": 14.5995,
+    "lng": 120.9842,
   },
   {
     "id": "post_102",
@@ -36,6 +38,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-18T10:30:00.000Z",
+    "lat": 14.6010,
+    "lng": 120.9830,
   },
   {
     "id": "post_103",
@@ -47,6 +51,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-18T05:15:00.000Z",
+    "lat": 14.6015,
+    "lng": 120.9840,
   },
   {
     "id": "post_104",
@@ -58,6 +64,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "found",
     "created_at": "2026-10-18T01:00:00.000Z",
+    "lat": 14.6025,
+    "lng": 120.9860,
   },
   {
     "id": "post_105",
@@ -69,6 +77,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-17T21:45:00.000Z",
+    "lat": 14.5975,
+    "lng": 120.9835,
   },
   {
     "id": "post_106",
@@ -80,6 +90,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-17T18:30:00.000Z",
+    "lat": 14.5980,
+    "lng": 120.9855,
   },
   {
     "id": "post_107",
@@ -91,6 +103,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-17T14:20:00.000Z",
+    "lat": 14.5970,
+    "lng": 120.9820,
   },
   {
     "id": "post_108",
@@ -102,6 +116,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "found",
     "created_at": "2026-10-17T09:10:00.000Z",
+    "lat": 14.6005,
+    "lng": 120.9848,
   },
   {
     "id": "post_109",
@@ -113,6 +129,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-16T22:00:00.000Z",
+    "lat": 14.6012,
+    "lng": 120.9838,
   },
   {
     "id": "post_110",
@@ -124,6 +142,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-16T16:40:00.000Z",
+    "lat": 14.5990,
+    "lng": 120.9845,
   },
   {
     "id": "post_111",
@@ -135,6 +155,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-16T11:15:00.000Z",
+    "lat": 14.6018,
+    "lng": 120.9852,
   },
   {
     "id": "post_112",
@@ -146,6 +168,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "found",
     "created_at": "2026-10-15T08:05:00.000Z",
+    "lat": 14.6002,
+    "lng": 120.9839,
   },
   {
     "id": "post_113",
@@ -157,6 +181,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-15T03:50:00.000Z",
+    "lat": 14.5985,
+    "lng": 120.9842,
   },
   {
     "id": "post_114",
@@ -168,6 +194,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-14T19:25:00.000Z",
+    "lat": 14.5998,
+    "lng": 120.9833,
   },
   {
     "id": "post_115",
@@ -179,6 +207,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "found",
     "created_at": "2026-10-14T12:00:00.000Z",
+    "lat": 14.6022,
+    "lng": 120.9858,
   },
   {
     "id": "post_116",
@@ -190,6 +220,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-13T10:10:00.000Z",
+    "lat": 14.5978,
+    "lng": 120.9825,
   },
   {
     "id": "post_117",
@@ -201,6 +233,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-12T07:45:00.000Z",
+    "lat": 14.6008,
+    "lng": 120.9840,
   },
   {
     "id": "post_118",
@@ -212,6 +246,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "found",
     "created_at": "2026-10-11T14:30:00.000Z",
+    "lat": 14.6030,
+    "lng": 120.9865,
   },
   {
     "id": "post_119",
@@ -223,6 +259,8 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "spotted",
     "created_at": "2026-10-10T11:15:00.000Z",
+    "lat": 14.5982,
+    "lng": 120.9847,
   },
   {
     "id": "post_120",
@@ -234,5 +272,7 @@ const List<Map<String, dynamic>> mockPosts = [
     "image_url": "https://unsplash.com",
     "status": "missing",
     "created_at": "2026-10-09T09:00:00.000Z",
+    "lat": 14.6000,
+    "lng": 120.9835,
   },
 ];

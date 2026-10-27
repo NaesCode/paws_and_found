@@ -1,8 +1,10 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../shared/organisms/location_pin_picker_sheet.dart';
 import '../widgets/camera_viewfinder_placeholder.dart';
 import '../widgets/create_report_form.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
@@ -17,6 +19,7 @@ import '../providers/camera_report_controller.dart';
 /// - Animal Type ("Canine", "Feline", "Other") & Status ("Stray", "Missing", "Found")
 /// - Description input block
 /// - Auto GPS via [LocationService] & Date/Time fields
+/// - Interactive map pin placement for missing animals via [LocationPinPickerSheet]
 /// - "Submit Report" button with immediate relations to the Community Map & AI Recovery Pipeline
 /// - Wireframe bottom navigation bar with active Camera indicator
 class CameraReportPage extends StatefulWidget {
@@ -163,6 +166,34 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     }
   }
 
+  Future<void> _handlePinOnMap() async {
+    final initialLat = _controller.pinnedLat ?? 14.5995;
+    final initialLng = _controller.pinnedLng ?? 120.9842;
+
+    final LatLng? picked = await LocationPinPickerSheet.show(
+      context: context,
+      initialLocation: LatLng(initialLat, initialLng),
+      pinStatus: _controller.status,
+      title: 'Pin ${_controller.status} Animal on Map',
+      subtitle: 'Tap anywhere on the map to set the exact sighting or missing pin',
+    );
+
+    if (picked != null) {
+      _controller.setPinnedLocation(picked.latitude, picked.longitude);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pin updated: ${picked.latitude.toStringAsFixed(4)}° N, ${picked.longitude.toStringAsFixed(4)}° E',
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: WireframeColors.primaryDark,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleSubmit() async {
     final success = await _controller.submitReport();
     if (!mounted) return;
@@ -225,7 +256,10 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
-                context.go('/map');
+                final lat = _controller.pinnedLat ?? 14.5995;
+                final lng = _controller.pinnedLng ?? 120.9842;
+                final reportId = _controller.successReportId ?? '';
+                context.go('/map?reportId=$reportId&lat=$lat&lng=$lng');
               },
               child: const Text('View on Map', style: TextStyle(color: Colors.white)),
             ),
@@ -282,9 +316,12 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 dateTimeString: _controller.formattedDateTime,
                 isGpsAuto: _controller.isGpsAuto,
                 isLoading: _controller.isSubmitting,
+                pinnedLat: _controller.pinnedLat,
+                pinnedLng: _controller.pinnedLng,
                 onAnimalTypeChanged: _controller.setAnimalType,
                 onStatusChanged: _controller.setStatus,
                 onToggleGps: _controller.toggleGps,
+                onPinOnMap: _handlePinOnMap,
                 onSubmit: _handleSubmit,
               ),
             ],

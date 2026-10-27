@@ -12,6 +12,8 @@ class PetPostModel extends FeedPost {
     required super.status,
     required super.hoursAgo,
     required super.formattedTime,
+    super.latitude,
+    super.longitude,
   });
 
   factory PetPostModel.fromJoinedData(
@@ -24,6 +26,9 @@ class PetPostModel extends FeedPost {
     final int hours = difference.inHours;
     final String formatted = hours <= 0 ? "Just now" : "${hours}h ago";
 
+    final lat = (postRaw['lat'] ?? postRaw['latitude'] as num?)?.toDouble();
+    final lng = (postRaw['lng'] ?? postRaw['longitude'] as num?)?.toDouble();
+
     return PetPostModel(
       id: postRaw['id'] as String,
       petName: postRaw['pet_name'] as String? ?? "Unnamed Pet",
@@ -35,6 +40,8 @@ class PetPostModel extends FeedPost {
       status: postRaw['status'] as String,
       hoursAgo: hours < 0 ? 0 : hours,
       formattedTime: formatted,
+      latitude: lat,
+      longitude: lng,
     );
   }
 }

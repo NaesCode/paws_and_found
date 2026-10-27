@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
 import '../../../../shared/atoms/paw_text_field.dart';
+import '../../../../shared/organisms/location_pin_picker_sheet.dart';
 import '../../domain/entities/pet.dart';
 
 /// Result data returned when the user submits a missing pet report.
@@ -23,6 +25,7 @@ class ReportMissingResult {
 ///
 /// Features:
 /// - Automatically queries [LocationService] for current device GPS coordinates.
+/// - Allows interactive map pinning via [LocationPinPickerSheet]
 /// - Displays coordinates with a retry option if GPS hardware or permissions are denied.
 /// - Allows inputting an optional last-seen description/note.
 /// - Clear community alert confirmation explaining that an urgent missing pin will be
@@ -288,7 +291,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
 
             // Location Box Section
             const Text(
-              'Last Known Location (GPS)',
+              'Last Known Location (GPS / Animal Map)',
               style: TextStyle(
                 fontFamily: 'Nunito Sans',
                 fontSize: 14,
@@ -361,6 +364,26 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
                               ),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.pin_drop_outlined, size: 20, color: AppColors.primary),
+                          tooltip: 'Pin on Animal Map',
+                          onPressed: () async {
+                            final picked = await LocationPinPickerSheet.show(
+                              context: context,
+                              initialLocation: LatLng(_latitude ?? _defaultLat, _longitude ?? _defaultLng),
+                              pinStatus: 'missing',
+                              title: 'Pin ${widget.pet.name} on Animal Map',
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _latitude = picked.latitude;
+                                _longitude = picked.longitude;
+                                _locationFailed = false;
+                              });
+                            }
+                          },
+                          visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
                           icon: const Icon(Icons.refresh, size: 18, color: AppColors.primary),

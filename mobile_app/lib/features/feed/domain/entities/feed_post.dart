@@ -10,6 +10,8 @@ class FeedPost {
   final String status;
   final int hoursAgo;
   final String formattedTime;
+  final double? latitude;
+  final double? longitude;
 
   const FeedPost({
     required this.id,
@@ -22,5 +24,7 @@ class FeedPost {
     required this.status,
     required this.hoursAgo,
     required this.formattedTime,
+    this.latitude,
+    this.longitude,
   });
 }
