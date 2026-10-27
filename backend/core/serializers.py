@@ -16,3 +16,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "email", "created_at"]
+
+
+class MatchRespondSerializer(serializers.Serializer):
+    decision = serializers.ChoiceField(choices=["confirm", "reject"])

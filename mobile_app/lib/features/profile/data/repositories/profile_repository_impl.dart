@@ -1,4 +1,7 @@
+import 'dart:async' show unawaited;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import '../../../../core/network/orchestrator_client.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -6,9 +9,13 @@ import '../datasources/profile_remote_datasource.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
+  final OrchestratorClient _orchestratorClient;
 
-  ProfileRepositoryImpl({ProfileRemoteDataSource? remoteDataSource})
-      : remoteDataSource = remoteDataSource ?? ProfileRemoteDataSourceImpl();
+  ProfileRepositoryImpl({
+    ProfileRemoteDataSource? remoteDataSource,
+    OrchestratorClient? orchestratorClient,
+  })  : remoteDataSource = remoteDataSource ?? ProfileRemoteDataSourceImpl(),
+        _orchestratorClient = orchestratorClient ?? OrchestratorClient();
 
   @override
   Future<UserProfile> getProfile() async {
@@ -57,7 +64,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? description,
     List<String> photoUrls = const [],
   }) async {
-    return await remoteDataSource.addPet(
+    final pet = await remoteDataSource.addPet(
       name: name,
       species: species,
       breed: breed,
@@ -65,6 +72,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
       description: description,
       photoUrls: photoUrls,
     );
+
+    // Asynchronously dispatch AI pet embedding extraction to Django orchestrator
+    if (pet.photoURLs.isNotEmpty && !pet.petID.startsWith('mock-')) {
+      unawaited(_requestPetAnalysis(pet.petID));
+    }
+
+    return pet;
   }
 
   @override
@@ -74,11 +88,28 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note}) async {
-    return await remoteDataSource.reportPetMissing(petId, lat: lat, lng: lng, note: note);
+    await remoteDataSource.reportPetMissing(petId, lat: lat, lng: lng, note: note);
+
+    // Ensure pet visual embedding is up to date in private.pet_embeddings for matching
+    if (!petId.startsWith('mock-')) {
+      unawaited(_requestPetAnalysis(petId));
+    }
   }
 
   @override
   Future<void> markPetSafe(String petId) async {
     return await remoteDataSource.markPetSafe(petId);
+  }
+
+  /// Dispatches a request to Django's /api/pets/{id}/analyze/ to compute
+  /// and upsert visual embeddings into private.pet_embeddings.
+  Future<void> _requestPetAnalysis(String petId) async {
+    try {
+      await _orchestratorClient.post('/api/pets/$petId/analyze/');
+      debugPrint('[ProfileRepositoryImpl] AI analysis requested for pet: $petId');
+    } catch (e) {
+      // Non-fatal: if orchestrator is offline, the pet is still safely saved in Supabase
+      debugPrint('[ProfileRepositoryImpl] Pet AI analysis dispatch deferred: $e');
+    }
   }
 }
