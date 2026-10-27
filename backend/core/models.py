@@ -55,8 +55,11 @@ class Report(models.Model):
     animal_type = models.TextField()
     description = models.TextField(default="")
     photo_url = models.TextField()
-    location = gis_models.PointField(geography=True, srid=4326)
-    status = models.TextField(default="stray")
+    # Explicit db_column mapping to match the database schema
+    location = gis_models.PointField(geography=True, srid=4326, db_column="location_1")
+    status = models.TextField(default="stray", db_column="report_status")
+    location_text = models.TextField(null=True, blank=True, db_column="location")
+    pet_status = models.TextField(null=True, blank=True, db_column="pet_status")
     analysis_status = models.TextField(default="pending")
     created_at = models.DateTimeField(db_default=Now(), editable=False)
 

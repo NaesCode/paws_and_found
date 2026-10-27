@@ -3,7 +3,6 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_comments.dart';
 import 'feed_comment_input_bar.dart';
-import "./feed_comment_input_bar.dart";
 
 class FeedCommentsModal extends StatefulWidget {
   const FeedCommentsModal({super.key});
