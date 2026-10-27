@@ -26,6 +26,9 @@ class MockLocationService implements LocationService {
   Future<Position?> getCurrentPosition() async => isEnabled ? mockPosition : null;
 
   @override
+  Future<Position?> getLastKnownPosition() async => isEnabled ? mockPosition : null;
+
+  @override
   Stream<Position> getPositionStream({int distanceFilter = 15}) {
     if (mockPosition != null) {
       return Stream.value(mockPosition!);
@@ -40,8 +43,8 @@ void main() {
       final service = MockLocationService(
         isEnabled: false,
         mockPosition: Position(
-          latitude: 14.5995,
-          longitude: 120.9842,
+          latitude: 10.3157,
+          longitude: 123.8854,
           timestamp: DateTime.now(),
           accuracy: 5.0,
           altitude: 0.0,
@@ -59,8 +62,8 @@ void main() {
 
     test('returns position when service is enabled and permission granted', () async {
       final expected = Position(
-        latitude: 14.5995,
-        longitude: 120.9842,
+        latitude: 10.3157,
+        longitude: 123.8854,
         timestamp: DateTime.now(),
         accuracy: 5.0,
         altitude: 0.0,
@@ -79,8 +82,8 @@ void main() {
 
       final position = await service.getCurrentPosition();
       expect(position, isNotNull);
-      expect(position!.latitude, 14.5995);
-      expect(position.longitude, 120.9842);
+      expect(position!.latitude, 10.3157);
+      expect(position.longitude, 123.8854);
     });
   });
 }

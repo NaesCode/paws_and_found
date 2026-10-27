@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
@@ -61,7 +60,7 @@ class FeedCardFooter extends StatelessWidget {
                   onTap: (){
                     _showCommentsModal(context);
                     
-                    print('"See more" clicked!');
+                    debugPrint('"See more" clicked!');
                   },
                   child: const Text(
                     'See More',

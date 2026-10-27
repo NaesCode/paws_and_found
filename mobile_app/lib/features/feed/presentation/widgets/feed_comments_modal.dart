@@ -76,9 +76,9 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                   },
                   onCommentSubmitted: (text, replyTo) {
                     if (replyTo != null) {
-                      print('Replying to $replyTo: $text');
+                      debugPrint('Replying to $replyTo: $text');
                     } else {
-                      print('New comment: $text');
+                      debugPrint('New comment: $text');
                     }
                     setState(() {
                       _replyingToUser = null;

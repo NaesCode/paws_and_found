@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/features/map/domain/entities/map_report_entity.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
@@ -10,6 +12,7 @@ import 'package:paws_and_found/features/map/presentation/widgets/map_legend.dart
 import 'package:paws_and_found/features/map/presentation/widgets/map_pin_badge.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_report_card.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/user_location_marker.dart';
+import 'package:paws_and_found/shared/atoms/current_location_button.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
@@ -205,6 +208,94 @@ void main() {
 
       // Verify bottom nav
       expect(find.byType(CustomAppBar), findsOneWidget);
+
+      // Verify CurrentLocationButton is rendered on bottom right
+      expect(find.byType(CurrentLocationButton), findsOneWidget);
+      expect(find.byKey(const Key('current_location_button')), findsOneWidget);
+    });
+
+    testWidgets('CurrentLocationButton atom renders properly and triggers onTap', (tester) async {
+      bool tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurrentLocationButton(
+              onTap: () => tapped = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(CurrentLocationButton), findsOneWidget);
+      expect(find.byIcon(Icons.my_location_rounded), findsOneWidget);
+
+      await tester.tap(find.byType(CurrentLocationButton));
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('MapPage localizes default center to user phone location and recenters when button tapped', (tester) async {
+      final mockPhonePos = Position(
+        latitude: 10.3297,
+        longitude: 123.9063,
+        timestamp: DateTime.now(),
+        accuracy: 4.0,
+        altitude: 12.0,
+        altitudeAccuracy: 1.0,
+        heading: 0.0,
+        headingAccuracy: 1.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+
+      final mockService = _MapTestMockLocationService(mockPosition: mockPhonePos);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MapPage(
+            locationService: mockService,
+            showBottomNavPlaceholder: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify UserLocationMarker is present for localized phone position
+      expect(find.byType(UserLocationMarker), findsOneWidget);
+
+      // Tap bottom right CurrentLocationButton
+      final recenterBtn = find.byKey(const Key('current_location_button'));
+      expect(recenterBtn, findsOneWidget);
+
+      await tester.tap(recenterBtn);
+      await tester.pumpAndSettle();
+
+      // Map remains centered on user location with marker visible
+      expect(find.byType(UserLocationMarker), findsOneWidget);
     });
   });
+}
+
+class _MapTestMockLocationService implements LocationService {
+  final Position? mockPosition;
+  _MapTestMockLocationService({this.mockPosition});
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<LocationPermission> checkPermission() async => LocationPermission.always;
+
+  @override
+  Future<LocationPermission> requestPermission() async => LocationPermission.always;
+
+  @override
+  Future<Position?> getCurrentPosition() async => mockPosition;
+
+  @override
+  Future<Position?> getLastKnownPosition() async => mockPosition;
+
+  @override
+  Stream<Position> getPositionStream({int distanceFilter = 15}) =>
+      mockPosition != null ? Stream.value(mockPosition!) : const Stream.empty();
 }

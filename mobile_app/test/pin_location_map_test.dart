@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/shared/atoms/map_pin_badge.dart';
 import 'package:paws_and_found/shared/organisms/location_pin_picker_sheet.dart';
@@ -14,7 +16,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LocationPinPickerSheet(
-              initialLocation: const LatLng(14.5995, 120.9842),
+              initialLocation: const LatLng(10.3157, 123.8854),
               title: 'Pin Location on Animal Map',
               subtitle: 'Tap anywhere on the map to set the alert pin',
               pinStatus: 'missing',
@@ -30,7 +32,7 @@ void main() {
       expect(find.text('Tap anywhere on the map to set the alert pin'), findsOneWidget);
 
       // Verify Coordinates pill
-      expect(find.textContaining('Pinned at: 14.59950° N, 120.98420° E'), findsOneWidget);
+      expect(find.textContaining('Pinned at: 10.31570° N, 123.88540° E'), findsOneWidget);
 
       // Verify Missing Pin Badge 'M' is rendered
       expect(find.byType(MapPinBadge), findsOneWidget);
@@ -39,6 +41,9 @@ void main() {
       // Verify Confirm Action Button
       expect(find.text('Confirm Pin Location'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
+
+      // Verify Current Location Button is rendered at the bottom right
+      expect(find.byKey(const Key('pin_picker_current_location_button')), findsOneWidget);
     });
 
     testWidgets('tapping Confirm Pin Location triggers callback with coordinates', (tester) async {
@@ -66,6 +71,47 @@ void main() {
       expect(result, isNotNull);
       expect(result!.latitude, 14.6000);
       expect(result!.longitude, 120.9800);
+    });
+
+    testWidgets('tapping Current Location button in bottom right takes pin to user phone location', (tester) async {
+      final mockPhonePos = Position(
+        latitude: 10.3297,
+        longitude: 123.9063,
+        timestamp: DateTime.now(),
+        accuracy: 5.0,
+        altitude: 10.0,
+        altitudeAccuracy: 1.0,
+        heading: 0.0,
+        headingAccuracy: 1.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+
+      final service = _PinTestMockLocationService(mockPosition: mockPhonePos);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LocationPinPickerSheet(
+              initialLocation: const LatLng(10.3157, 123.8854),
+              title: 'Pin Location on Animal Map',
+              pinStatus: 'missing',
+              locationService: service,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Initial coordinates
+      expect(find.textContaining('10.31570° N, 123.88540° E'), findsOneWidget);
+
+      // Tap bottom right Current Location Button
+      await tester.tap(find.byKey(const Key('pin_picker_current_location_button')));
+      await tester.pump();
+
+      // Pinned coordinates updated to phone location (10.3297, 123.9063)
+      expect(find.textContaining('10.32970° N, 123.90630° E'), findsOneWidget);
     });
   });
 
@@ -107,5 +153,29 @@ void main() {
       expect(reports.first.longitude, 120.9900);
     });
   });
+}
+
+class _PinTestMockLocationService implements LocationService {
+  final Position? mockPosition;
+  _PinTestMockLocationService({this.mockPosition});
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<LocationPermission> checkPermission() async => LocationPermission.always;
+
+  @override
+  Future<LocationPermission> requestPermission() async => LocationPermission.always;
+
+  @override
+  Future<Position?> getCurrentPosition() async => mockPosition;
+
+  @override
+  Future<Position?> getLastKnownPosition() async => mockPosition;
+
+  @override
+  Stream<Position> getPositionStream({int distanceFilter = 15}) =>
+      mockPosition != null ? Stream.value(mockPosition!) : const Stream.empty();
 }
 

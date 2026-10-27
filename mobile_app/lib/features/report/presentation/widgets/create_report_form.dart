@@ -22,6 +22,8 @@ class CreateReportForm extends StatelessWidget {
   final bool isLoading;
   final double? pinnedLat;
   final double? pinnedLng;
+  final double? deviceLat;
+  final double? deviceLng;
   final ValueChanged<String> onAnimalTypeChanged;
   final ValueChanged<String> onStatusChanged;
   final VoidCallback onToggleGps;
@@ -38,6 +40,8 @@ class CreateReportForm extends StatelessWidget {
     this.isLoading = false,
     this.pinnedLat,
     this.pinnedLng,
+    this.deviceLat,
+    this.deviceLng,
     required this.onAnimalTypeChanged,
     required this.onStatusChanged,
     required this.onToggleGps,
@@ -216,9 +220,11 @@ class CreateReportForm extends StatelessWidget {
                               child: Text(
                                 pinnedLat != null
                                     ? '${pinnedLat!.toStringAsFixed(2)}°, ${pinnedLng!.toStringAsFixed(2)}°'
-                                    : (isGpsAuto ? 'Auto' : 'Pin on Map'),
+                                    : (deviceLat != null && isGpsAuto
+                                        ? 'GPS (${deviceLat!.toStringAsFixed(2)}°, ${deviceLng!.toStringAsFixed(2)}°)'
+                                        : (isGpsAuto ? 'Auto' : 'Pin on Map')),
                                 style: TextStyle(
-                                  color: pinnedLat != null
+                                  color: (pinnedLat != null || (deviceLat != null && isGpsAuto))
                                       ? WireframeColors.primaryDark
                                       : WireframeColors.textPrimary,
                                   fontSize: 12.0,

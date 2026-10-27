@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/constants/location_constants.dart';
+import '../../../../shared/atoms/current_location_button.dart';
 import '../../domain/entities/map_report_entity.dart';
 import './map_pin_badge.dart';
 import './user_location_marker.dart';
@@ -12,7 +14,7 @@ import './user_location_marker.dart';
 /// - Dynamic interactive report pins using the Atomic Design [MapPinBadge]
 /// - Device GPS position indicator using [UserLocationMarker]
 /// - Full touch gesture support: pan, pinch-to-zoom, fling
-/// - Floating GPS recenter button
+/// - Floating GPS current location button in the bottom right
 ///
 /// Adheres strictly to Atomic Design: dumb, stateless UI element relying purely
 /// on passed properties and callbacks.
@@ -28,10 +30,11 @@ class InteractiveMapCanvas extends StatelessWidget {
   final VoidCallback? onRecenterTap;
   final String tileUrlTemplate;
   final String userAgentPackageName;
+  final double bottomOffset;
 
   const InteractiveMapCanvas({
     super.key,
-    this.center = const LatLng(14.5995, 120.9842),
+    this.center = LocationConstants.defaultLocation,
     this.zoom = 15.0,
     required this.reports,
     this.selectedReportId,
@@ -42,6 +45,7 @@ class InteractiveMapCanvas extends StatelessWidget {
     this.onRecenterTap,
     this.tileUrlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     this.userAgentPackageName = 'com.pawsandfound.mobile_app',
+    this.bottomOffset = 16.0,
   });
 
   @override
@@ -101,29 +105,13 @@ class InteractiveMapCanvas extends StatelessWidget {
           ],
         ),
 
-        // 2. Floating GPS Recenter Button (Top Right)
+        // 2. Floating Current Location Button (Bottom Right)
         if (onRecenterTap != null)
           Positioned(
-            top: 16,
+            bottom: bottomOffset,
             right: 16,
-            child: Material(
-              color: Colors.white,
-              elevation: 3,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: onRecenterTap,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.my_location_rounded,
-                    color: Color(0xFF1F2937),
-                    size: 22,
-                  ),
-                ),
-              ),
+            child: CurrentLocationButton(
+              onTap: onRecenterTap,
             ),
           ),
       ],

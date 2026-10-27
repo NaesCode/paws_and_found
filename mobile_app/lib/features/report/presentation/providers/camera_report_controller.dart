@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
@@ -32,6 +33,9 @@ class CameraReportController extends ChangeNotifier {
   bool _isGpsAuto = true;
   double? _pinnedLat;
   double? _pinnedLng;
+  double? _deviceLat;
+  double? _deviceLng;
+  bool _isFetchingLocation = false;
   Uint8List? _selectedImageBytes;
   String? _selectedImagePath;
   bool _isSubmitting = false;
@@ -44,6 +48,10 @@ class CameraReportController extends ChangeNotifier {
   bool get isGpsAuto => _isGpsAuto;
   double? get pinnedLat => _pinnedLat;
   double? get pinnedLng => _pinnedLng;
+  double? get deviceLat => _deviceLat;
+  double? get deviceLng => _deviceLng;
+  bool get isFetchingLocation => _isFetchingLocation;
+  LocationService get locationService => _locationService;
   Uint8List? get selectedImageBytes => _selectedImageBytes;
   String? get selectedImagePath => _selectedImagePath;
   bool get isSubmitting => _isSubmitting;
@@ -90,6 +98,25 @@ class CameraReportController extends ChangeNotifier {
     _pinnedLng = null;
     _isGpsAuto = true;
     notifyListeners();
+  }
+
+  /// Proactively fetches device GPS coordinates on startup.
+  Future<void> fetchDeviceLocation() async {
+    _isFetchingLocation = true;
+    notifyListeners();
+
+    try {
+      final pos = await _locationService.getCurrentPosition();
+      if (pos != null) {
+        _deviceLat = pos.latitude;
+        _deviceLng = pos.longitude;
+      }
+    } catch (e) {
+      debugPrint('[CameraReportController] Device GPS fetch error: $e');
+    } finally {
+      _isFetchingLocation = false;
+      notifyListeners();
+    }
   }
 
   /// Pick an animal photo from device gallery
@@ -174,25 +201,10 @@ class CameraReportController extends ChangeNotifier {
         }
       }
 
-      // Default fallback coordinates (Manila / default demo location)
-      double lat = _pinnedLat ?? 14.5995;
-      double lng = _pinnedLng ?? 120.9842;
+      // Default fallback coordinates: Prioritize custom pin, then detected device GPS, then Cebu default
+      double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
+      double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
 
-      // When Auto GPS is enabled and no custom pin was placed, fetch high-accuracy device coordinates
-      if (_isGpsAuto && _pinnedLat == null) {
-        try {
-          final position = await _locationService.getCurrentPosition().timeout(
-            const Duration(milliseconds: 200),
-            onTimeout: () => null,
-          );
-          if (position != null) {
-            lat = position.latitude;
-            lng = position.longitude;
-          }
-        } catch (e) {
-          debugPrint('[CameraReportController] LocationService unavailable, falling back to default: $e');
-        }
-      }
 
       try {
         final reportId = await _repository.createReport(

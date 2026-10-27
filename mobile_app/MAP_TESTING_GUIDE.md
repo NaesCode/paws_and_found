@@ -20,6 +20,7 @@ mobile_app/
 │   │       └── app_router.dart             # Route registry (public /map access)
 │   ├── shared/
 │   │   ├── atoms/
+│   │   │   ├── current_location_button.dart # Atomic bottom-right GPS re-center button
 │   │   │   ├── wireframe_status_badge.dart # Status pill badge
 │   │   │   └── wireframe_tag.dart          # Attribute tags
 │   │   └── organisms/
@@ -66,7 +67,7 @@ mobile_app/
   4. Requires `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, and `INTERNET` permissions in `AndroidManifest.xml`.
 
 ### D. Data Fallback
-* If Supabase is unreachable or in offline mode, `MapRemoteDataSourceImpl` falls back to high-fidelity mock data clustered around realistic coordinates (Metro Manila: `14.5995, 120.9842`).
+* If Supabase is unreachable or in offline mode, `MapRemoteDataSourceImpl` falls back to high-fidelity mock data clustered around realistic coordinates (Cebu City: `10.3157, 123.8854`).
 
 ---
 
@@ -114,7 +115,7 @@ When the map loads on your screen, verify the following interactions:
 | **4** | **Tap Map Background** | Deselects the active report card. |
 | **5** | **Filter: "For You"** | Filters the reports according to the user's pet profile preferences. |
 | **6** | **Filter: "Animal Type ▼"** | Opens bottom sheet allowing filtering by *Canine*, *Feline*, or *All*. |
-| **7** | **Tap "Find My Location" Button** | Prompts for location permission (if first time), displays the blue `UserLocationMarker`, and re-centers the map. |
+| **7** | **Tap "Find My Location" Button (Bottom Right)** | Prompts for location permission (if first time), displays the blue `UserLocationMarker`, and re-centers the map to the user's phone GPS coordinates. |
 | **8** | **Bottom Navigation Bar** | The finalized `CustomAppBar` remains docked at the bottom with slate pill active highlights. |
 
 ---

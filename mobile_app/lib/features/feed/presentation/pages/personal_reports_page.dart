@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
+import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/domain/entities/feed_post.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
@@ -57,8 +58,8 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
   }
 
   Future<void> _handlePinOnMap(FeedPost report) async {
-    final double initialLat = report.latitude ?? 14.5995;
-    final double initialLng = report.longitude ?? 120.9842;
+    final double initialLat = report.latitude ?? LocationConstants.defaultLatitude;
+    final double initialLng = report.longitude ?? LocationConstants.defaultLongitude;
 
     final picked = await LocationPinPickerSheet.show(
       context: context,
@@ -81,8 +82,8 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
   }
 
   void _handleViewOnMap(FeedPost report) {
-    final double lat = report.latitude ?? 14.5995;
-    final double lng = report.longitude ?? 120.9842;
+    final double lat = report.latitude ?? LocationConstants.defaultLatitude;
+    final double lng = report.longitude ?? LocationConstants.defaultLongitude;
     context.go('/map?reportId=${report.id}&lat=$lat&lng=$lng');
   }
 

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../shared/atoms/current_location_button.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../widgets/interactive_map_canvas.dart';
 import '../widgets/map_filter_bar.dart';
@@ -27,6 +29,7 @@ import '../providers/map_controller.dart';
 /// and Clean Architecture (using MapController and MapRepository).
 class MapPage extends StatefulWidget {
   final MapRepository? repository;
+  final LocationService? locationService;
   final bool showBottomNavPlaceholder;
   final String? initialReportId;
   final LatLng? initialCenter;
@@ -34,6 +37,7 @@ class MapPage extends StatefulWidget {
   const MapPage({
     super.key,
     this.repository,
+    this.locationService,
     this.showBottomNavPlaceholder = true,
     this.initialReportId,
     this.initialCenter,
@@ -51,8 +55,13 @@ class _MapPageState extends State<MapPage> {
   void initState() {
     super.initState();
     _fmapController = fmap.MapController();
-    _controller = MapController(repository: widget.repository);
+    _controller = MapController(
+      repository: widget.repository,
+      locationService: widget.locationService,
+    );
     _controller.addListener(_onControllerUpdate);
+
+    // 1. Immediately load reports
     _controller.loadReports().then((_) {
       if (!mounted) return;
       if (widget.initialReportId != null) {
@@ -71,9 +80,16 @@ class _MapPageState extends State<MapPage> {
       }
     });
 
-    // Non-blocking fetch of device GPS location
-    if (widget.initialCenter == null) {
-      _controller.fetchUserLocation();
+    // 2. Fetch user's phone GPS location as the default position for each user
+    if (widget.initialCenter == null && widget.initialReportId == null) {
+      _controller.fetchUserLocation().then((loc) {
+        if (!mounted) return;
+        if (loc != null) {
+          _fmapController.move(loc, 15.5);
+          // Refresh nearby reports based on the user's localized phone position
+          _controller.loadReports();
+        }
+      });
     }
   }
 
@@ -90,12 +106,24 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _handleRecenter() async {
-    await _controller.fetchUserLocation();
+    // 1. Immediately pan/move if location is already available
     if (_controller.userLocation != null) {
       _fmapController.move(_controller.userLocation!, 15.5);
-    } else {
-      _controller.recenterMap();
-      _fmapController.move(_controller.mapCenter, 15.0);
+    }
+
+    // 2. Refresh/query latest GPS fix from device hardware
+    final loc = await _controller.fetchUserLocation();
+    if (!mounted) return;
+
+    if (loc != null) {
+      _fmapController.move(loc, 15.5);
+    } else if (_controller.userLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to obtain current location. Please verify GPS permissions.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -207,7 +235,6 @@ class _MapPageState extends State<MapPage> {
           );
         },
         onCanvasTap: _controller.clearSelection,
-        onRecenterTap: _handleRecenter,
       ),
 
       // 4. Floating Report Detail Card
@@ -234,6 +261,13 @@ class _MapPageState extends State<MapPage> {
 
       // 5. Pin status legend at the bottom
       legend: const MapLegend(),
+
+      // 6. Floating Action Button on Bottom Right: Takes user to their current location
+      floatingActionButton: CurrentLocationButton(
+        key: const Key('current_location_button'),
+        onTap: _handleRecenter,
+        isLoading: _controller.isFetchingLocation,
+      ),
 
       // 6. Bottom navigation bar (CustomAppBar)
       bottomNavigationBar: widget.showBottomNavPlaceholder

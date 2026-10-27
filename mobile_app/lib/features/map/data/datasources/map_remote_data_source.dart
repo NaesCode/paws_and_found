@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../domain/entities/map_filter_type.dart';
 import '../models/map_report_model.dart';
 
@@ -44,9 +45,9 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }) async {
     List<MapReportModel> reports = [];
 
-    // Default to nationwide radius to ensure all recorded missing pets (Cebu, Manila, etc.) are fetched
-    final queryLat = lat ?? 14.5995;
-    final queryLng = lng ?? 120.9842;
+    // Localized to Cebu with nationwide fallback coverage
+    final queryLat = lat ?? LocationConstants.defaultLatitude;
+    final queryLng = lng ?? LocationConstants.defaultLongitude;
     final queryRadius = radiusMeters < 2000000 ? 2000000.0 : radiusMeters;
 
     // Attempt live Supabase RPC query if client is ready

@@ -27,6 +27,9 @@ class TestMockLocationService implements LocationService {
   Future<Position?> getCurrentPosition() async => isEnabled ? mockPosition : null;
 
   @override
+  Future<Position?> getLastKnownPosition() async => isEnabled ? mockPosition : null;
+
+  @override
   Stream<Position> getPositionStream({int distanceFilter = 15}) {
     if (mockPosition != null) {
       return Stream.value(mockPosition!);
@@ -112,8 +115,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Displays default fallback coordinates
-      expect(find.text('14.5995° N, 120.9842° E'), findsOneWidget);
-      expect(find.text('Hardware GPS unavailable (Default Metro Manila)'), findsOneWidget);
+      expect(find.text('10.3157° N, 123.8854° E'), findsOneWidget);
+      expect(find.text('Hardware GPS unavailable (Default Cebu City)'), findsOneWidget);
     });
 
     testWidgets('submitting returns ReportMissingResult with coordinates and note', (tester) async {
