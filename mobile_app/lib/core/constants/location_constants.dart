@@ -1,3 +1,4 @@
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Centralized geographic and location constants for the Paws and Found mobile app.
@@ -47,6 +48,16 @@ class LocationConstants {
   static const double cebuMaxLatitude = 11.4;
   static const double cebuMinLongitude = 123.2;
   static const double cebuMaxLongitude = 124.5;
+
+  static const LatLng cebuSouthWest = LatLng(cebuMinLatitude, cebuMinLongitude);
+  static const LatLng cebuNorthEast = LatLng(cebuMaxLatitude, cebuMaxLongitude);
+
+  /// Geographic bounding box restricting camera movement exclusively to Cebu Province.
+  static final LatLngBounds cebuBounds = LatLngBounds(cebuSouthWest, cebuNorthEast);
+
+  // Zoom bounds restricting view to Cebu Province
+  static const double minCebuZoom = 9.2;
+  static const double maxCebuZoom = 18.5;
 
   /// Checks if given latitude and longitude coordinates fall within Cebu province.
   static bool isWithinCebu(double latitude, double longitude) {

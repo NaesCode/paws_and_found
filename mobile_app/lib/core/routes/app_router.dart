@@ -10,7 +10,12 @@ import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: '/login',
+    // =========================================================================
+    // TODO: TESTING ONLY - Launches directly into the map screen on startup
+    // so the map pins and pet info modal can be verified immediately.
+    // NOTE: MUST BE REVERTED TO '/login' AFTER TESTING.
+    // =========================================================================
+    initialLocation: '/map',
 
     /// Global redirect guard.
     ///

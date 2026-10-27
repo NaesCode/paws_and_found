@@ -108,6 +108,15 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
   }
 
   void _handleMapTap(TapPosition tapPosition, LatLng point) {
+    if (!LocationConstants.isWithinCebu(point.latitude, point.longitude)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pins must be placed within Cebu province.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     setState(() {
       _currentPin = point;
     });
@@ -267,6 +276,11 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
                   options: MapOptions(
                     initialCenter: _currentPin,
                     initialZoom: 15.0,
+                    minZoom: LocationConstants.minCebuZoom,
+                    maxZoom: LocationConstants.maxCebuZoom,
+                    cameraConstraint: CameraConstraint.containCenter(
+                      bounds: LocationConstants.cebuBounds,
+                    ),
                     onTap: _handleMapTap,
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.all,

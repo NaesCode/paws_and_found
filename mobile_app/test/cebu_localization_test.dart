@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' hide MapController;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -228,6 +229,15 @@ void main() {
       expect(LocationConstants.isWithinCebu(0.0, 0.0), isFalse);          // Null Island
       expect(LocationConstants.isWithinCebu(35.6762, 139.6503), isFalse); // Tokyo
     });
+
+    test('LocationConstants defines camera bounds and zoom limits strictly for Cebu Province', () {
+      expect(LocationConstants.cebuBounds.southWest.latitude, 9.4);
+      expect(LocationConstants.cebuBounds.southWest.longitude, 123.2);
+      expect(LocationConstants.cebuBounds.northEast.latitude, 11.4);
+      expect(LocationConstants.cebuBounds.northEast.longitude, 124.5);
+      expect(LocationConstants.minCebuZoom, 9.2);
+      expect(LocationConstants.maxCebuZoom, 18.5);
+    });
   });
 
   group('Data Source & Model Cebu Filtering Tests', () {
@@ -440,5 +450,25 @@ void main() {
       expect(controller.mapCenter, loc);
       expect(LocationConstants.isWithinCebu(controller.mapCenter.latitude, controller.mapCenter.longitude), isTrue);
     });
+
+    testWidgets('InteractiveMapCanvas strictly restricts camera bounds and zoom to Cebu Province', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: InteractiveMapCanvas(
+              center: LocationConstants.defaultLocation,
+              reports: [],
+              userLocation: LocationConstants.defaultLocation,
+            ),
+          ),
+        ),
+      );
+
+      final flutterMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
+      expect(flutterMap.options.minZoom, LocationConstants.minCebuZoom);
+      expect(flutterMap.options.maxZoom, LocationConstants.maxCebuZoom);
+      expect(flutterMap.options.cameraConstraint, isNotNull);
+    });
   });
 }
+

@@ -58,6 +58,11 @@ class InteractiveMapCanvas extends StatelessWidget {
           options: MapOptions(
             initialCenter: center,
             initialZoom: zoom,
+            minZoom: LocationConstants.minCebuZoom,
+            maxZoom: LocationConstants.maxCebuZoom,
+            cameraConstraint: CameraConstraint.containCenter(
+              bounds: LocationConstants.cebuBounds,
+            ),
             onTap: (_, _) => onCanvasTap?.call(),
             interactionOptions: const InteractionOptions(
               flags: InteractiveFlag.all,
