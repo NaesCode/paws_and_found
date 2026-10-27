@@ -50,8 +50,8 @@ void main() {
   );
 
   final testPosition = Position(
-    latitude: 14.5547,
-    longitude: 121.0244,
+    latitude: 10.3297,
+    longitude: 123.9063,
     timestamp: DateTime.now(),
     accuracy: 5.0,
     altitude: 10.0,
@@ -90,7 +90,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify coordinates displayed
-      expect(find.text('14.5547° N, 121.0244° E'), findsOneWidget);
+      expect(find.text('10.3297° N, 123.9063° E'), findsOneWidget);
       expect(find.text('Device GPS Location'), findsOneWidget);
       expect(find.text('Broadcast Alert'), findsOneWidget);
     });
@@ -163,8 +163,8 @@ void main() {
 
       // Verify result
       expect(result, isNotNull);
-      expect(result!.latitude, 14.5547);
-      expect(result!.longitude, 121.0244);
+      expect(result!.latitude, 10.3297);
+      expect(result!.longitude, 123.9063);
       expect(result!.note, 'Last seen near the neighborhood park at 5 PM');
     });
 

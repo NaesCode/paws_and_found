@@ -98,6 +98,30 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
       reports = reports.where((r) => r.status.toLowerCase() == 'missing').toList();
     }
 
+    // Strictly ensure only Cebu content is considered and rendered
+    reports = reports.where((r) {
+      final inCebuBounds = LocationConstants.isWithinCebu(r.latitude, r.longitude);
+      if (!inCebuBounds) return false;
+
+      final locLower = r.locationName.toLowerCase();
+      const nonCebuKeywords = [
+        'manila',
+        'quezon city',
+        'makati',
+        'davao',
+        'baguio',
+        'cavite',
+        'laguna',
+        'taguig',
+        'pasig',
+      ];
+      if (nonCebuKeywords.any((kw) => locLower.contains(kw))) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
     return reports;
   }
 

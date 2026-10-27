@@ -53,7 +53,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LocationPinPickerSheet(
-              initialLocation: const LatLng(14.6000, 120.9800),
+              initialLocation: const LatLng(10.3297, 123.9063),
               title: 'Pin Location on Animal Map',
               pinStatus: 'missing',
               onLocationConfirmed: (point) {
@@ -69,8 +69,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(result, isNotNull);
-      expect(result!.latitude, 14.6000);
-      expect(result!.longitude, 120.9800);
+      expect(result!.latitude, 10.3297);
+      expect(result!.longitude, 123.9063);
     });
 
     testWidgets('tapping Current Location button in bottom right takes pin to user phone location', (tester) async {
@@ -132,11 +132,11 @@ void main() {
         reporterId: 'user_001',
         title: 'Buster',
         animalType: 'Canine',
-        description: 'Lost near the fountain park.',
+        description: 'Lost near Fuente circle.',
         status: 'missing',
-        locationName: 'Fountain Park',
-        latitude: 14.6100,
-        longitude: 120.9900,
+        locationName: 'Fuente Osmeña, Cebu City',
+        latitude: 10.3117,
+        longitude: 123.8924,
         normalizedX: 0.5,
         normalizedY: 0.5,
         createdAt: DateTime.now(),
@@ -149,8 +149,8 @@ void main() {
       expect(reports.length, initialCount + 1);
       expect(reports.first.id, 'new-missing-001');
       expect(reports.first.status, 'missing');
-      expect(reports.first.latitude, 14.6100);
-      expect(reports.first.longitude, 120.9900);
+      expect(reports.first.latitude, 10.3117);
+      expect(reports.first.longitude, 123.8924);
     });
   });
 }

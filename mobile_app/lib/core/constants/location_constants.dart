@@ -39,4 +39,20 @@ class LocationConstants {
   static const LatLng baniladMandaue = LatLng(10.3396, 123.9115);
   static const LatLng guadalupeCebu = LatLng(10.3242, 123.8821);
   static const LatLng ayalaCenterCebu = LatLng(10.3173, 123.9058);
+
+  // ---------------------------------------------------------------------------
+  // Cebu Geographic Bounds (Covers Cebu Province & Metro Cebu)
+  // ---------------------------------------------------------------------------
+  static const double cebuMinLatitude = 9.4;
+  static const double cebuMaxLatitude = 11.4;
+  static const double cebuMinLongitude = 123.2;
+  static const double cebuMaxLongitude = 124.5;
+
+  /// Checks if given latitude and longitude coordinates fall within Cebu province.
+  static bool isWithinCebu(double latitude, double longitude) {
+    return latitude >= cebuMinLatitude &&
+        latitude <= cebuMaxLatitude &&
+        longitude >= cebuMinLongitude &&
+        longitude <= cebuMaxLongitude;
+  }
 }
