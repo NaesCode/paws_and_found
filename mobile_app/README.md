@@ -100,6 +100,23 @@ features/auth/
 
 ---
 
+## 4. Development & QA Test Accounts
+
+For running the app locally or QA testing frontend flows without registering new email addresses or verifying inboxes, three pre-seeded test accounts exist on Supabase Auth:
+
+| Role / Persona | Email | Password | Profile State | Primary QA Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pet Owner**<br>(Alex Rivera) | `petowner.test@pawsandfound.com` | `PawsTest2026!` | **Complete** (Phone & Address set) | Register pets, report lost pets, view pet details |
+| **Stray Finder**<br>(Sam Cruz) | `strayfinder.test@pawsandfound.com` | `PawsTest2026!` | **Complete** (Phone & Address set) | Report stray sightings, add map pins, test matches & feed |
+| **New User**<br>(Jordan Lee) | `newuser.onboarding@pawsandfound.com` | `PawsTest2026!` | **Incomplete** (No phone/address) | Test initial onboarding and profile setup flow |
+
+> [!TIP]
+> * **Instant Login:** All test accounts have `email_confirm: true` in Supabase Auth, bypassing email confirmation checks.
+> * **First-Time Detection:** In the app, `checkIsFirstTimeUser` checks if phone or address is empty. Logging in as `newuser.onboarding@pawsandfound.com` routes you directly to the profile setup screen, whereas the other two jump straight into the main app feed and map.
+
+---
+
 ## Feature Guides & Testing
 
 *   **[Community Animal Map Testing Guide](MAP_TESTING_GUIDE.md)**: Comprehensive architectural overview, OpenStreetMap tile details, interactive QA checklist, and test commands for the interactive map subsystem.
+
