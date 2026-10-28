@@ -96,6 +96,7 @@ class MapController extends ChangeNotifier {
       final position = await _locationService.getCurrentPosition();
       if (position != null) {
         _userLocation = LatLng(position.latitude, position.longitude);
+        await loadReports();
         notifyListeners();
         return _userLocation;
       }

@@ -25,7 +25,7 @@ class MapReportModel extends MapReportEntity {
   /// Factory constructor to parse rows returned from Supabase queries or the
   /// `nearby_reports` PostGIS RPC.
   factory MapReportModel.fromJson(Map<String, dynamic> json) {
-    final status = json['status'] as String? ?? 'stray';
+    final status = json['status'] as String? ?? json['report_status'] as String? ?? 'stray';
     final animalType = json['animal_type'] as String? ?? 'Other';
     final desc = json['description'] as String? ?? '';
     final lat = (json['lat'] ?? json['latitude'] ?? LocationConstants.defaultLatitude) as num;

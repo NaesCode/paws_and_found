@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/constants/location_constants.dart';
 import '../models/user_profile_model.dart';
 import '../models/pet_model.dart';
 import '../../domain/entities/pet.dart';
@@ -21,7 +20,13 @@ abstract class ProfileRemoteDataSource {
     List<String> photoUrls = const [],
   });
   Future<void> deletePet(String petId);
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note});
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  });
   Future<void> markPetSafe(String petId);
 }
 
@@ -201,7 +206,13 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note}) async {
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  }) async {
     if (petId.startsWith('mock-')) {
       final index = _mockPets.indexWhere((p) => p.petID == petId);
       if (index != -1) {
@@ -210,11 +221,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       return;
     }
 
+    if (lat == null || lng == null) {
+      throw ArgumentError('Real GPS coordinates (lat, lng) are required to report a pet missing.');
+    }
+
     await supabase.rpc('report_pet_missing', params: {
       'p_pet_id': petId,
-      'p_lat': lat ?? LocationConstants.defaultLatitude,
-      'p_lng': lng ?? LocationConstants.defaultLongitude,
+      'p_lat': lat,
+      'p_lng': lng,
       'p_note': note ?? '',
+      'p_missing_since': (missingSince ?? DateTime.now()).toUtc().toIso8601String(),
     });
   }
 

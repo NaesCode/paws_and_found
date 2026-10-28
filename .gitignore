@@ -65,3 +65,10 @@ supabase/.branches/
 
 # Agent Rules
 .agents/
+
+
+# AI Model Evaluation (Phase 4 / 5G - never commit photos or eval CSVs)
+backend/eval_data/
+eval_data/
+*.pth
+matching_eval_results.csv

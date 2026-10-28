@@ -23,15 +23,15 @@ class OrchestratorException implements Exception {
 /// HTTP client dedicated to communicating with the Django orchestrator micro-service.
 /// Automatically attaches the current user's Supabase JWT access token.
 ///
-/// Features automatic fallback between Android Emulator (10.0.2.2) and Physical Phone / adb reverse (127.0.0.1)
-/// so neither teammates nor physical device workflows break.
+/// Features automatic fallback between Android Emulator (10.0.2.2), Physical Phone / adb reverse (127.0.0.1),
+/// and Ngrok HTTPS tunnel, plus network error retry with exponential backoff.
 class OrchestratorClient {
   final http.Client _httpClient;
   final Duration timeout;
 
   OrchestratorClient({
     http.Client? httpClient,
-    this.timeout = const Duration(seconds: 10),
+    this.timeout = const Duration(seconds: 60),
   }) : _httpClient = httpClient ?? http.Client();
 
   String? get _authToken => Supabase.instance.client.auth.currentSession?.accessToken;
@@ -39,6 +39,7 @@ class OrchestratorClient {
   Map<String, String> _buildHeaders([Map<String, String>? extra]) {
     final headers = {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': '1',
       if (_authToken != null) 'Authorization': 'Bearer $_authToken',
     };
     if (extra != null) {
@@ -117,13 +118,34 @@ class OrchestratorClient {
   }
 
   Future<dynamic> _executeRequest(Future<http.Response> Function(Uri) requestFn, Uri uri) async {
-    try {
-      final response = await requestFn(uri).timeout(timeout);
-      return _processResponse(response);
-    } on SocketException catch (e) {
-      throw OrchestratorException(statusCode: 0, message: 'Network connection error: $e');
-    } on TimeoutException {
-      throw const OrchestratorException(statusCode: 408, message: 'Request to orchestrator timed out');
+    int attempts = 0;
+    const maxAttempts = 3;
+    Duration delay = const Duration(milliseconds: 500);
+
+    while (true) {
+      attempts++;
+      try {
+        final response = await requestFn(uri).timeout(timeout);
+        return _processResponse(response);
+      } on SocketException catch (e) {
+        if (attempts >= maxAttempts) {
+          throw OrchestratorException(statusCode: 0, message: 'Network connection error: $e');
+        }
+        await Future.delayed(delay);
+        delay *= 2;
+      } on TimeoutException {
+        if (attempts >= maxAttempts) {
+          throw const OrchestratorException(statusCode: 408, message: 'Request to orchestrator timed out');
+        }
+        await Future.delayed(delay);
+        delay *= 2;
+      } on http.ClientException catch (e) {
+        if (attempts >= maxAttempts) {
+          throw OrchestratorException(statusCode: 0, message: 'HTTP client error: $e');
+        }
+        await Future.delayed(delay);
+        delay *= 2;
+      }
     }
   }
 

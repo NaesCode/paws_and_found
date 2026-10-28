@@ -38,7 +38,13 @@ abstract class ProfileRepository {
   Future<void> deletePet(String petId);
 
   /// Reports a registered pet as missing.
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note});
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  });
 
   /// Marks a missing pet as safe.
   Future<void> markPetSafe(String petId);

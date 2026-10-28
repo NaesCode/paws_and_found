@@ -8,11 +8,21 @@ class ApiConstants {
   static const String localhost = '127.0.0.1';
   static const int port = 8000;
 
+  static const String djangoBaseUrl = String.fromEnvironment('DJANGO_BASE_URL');
+  static const String ngrokUrl = String.fromEnvironment('NGROK_URL');
+
   static String? _resolvedBaseUrl;
 
   /// Returns the active base URL for the Django orchestrator backend.
   static String get baseUrl {
     if (_resolvedBaseUrl != null) return _resolvedBaseUrl!;
+
+    if (djangoBaseUrl.isNotEmpty) {
+      return djangoBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    }
+    if (ngrokUrl.isNotEmpty) {
+      return ngrokUrl.replaceAll(RegExp(r'/+$'), '');
+    }
 
     const override = String.fromEnvironment('BACKEND_HOST');
     if (override.isNotEmpty) {
@@ -27,8 +37,15 @@ class ApiConstants {
   }
 
   /// Alternate candidate URLs to attempt if the primary URL is unreachable
-  /// (e.g. physical phone with adb reverse vs. emulator).
+  /// (e.g. physical phone with adb reverse vs. emulator vs. ngrok tunnel).
   static List<String> get candidateBaseUrls {
+    if (djangoBaseUrl.isNotEmpty) {
+      return [djangoBaseUrl.replaceAll(RegExp(r'/+$'), '')];
+    }
+    if (ngrokUrl.isNotEmpty) {
+      return [ngrokUrl.replaceAll(RegExp(r'/+$'), '')];
+    }
+
     const override = String.fromEnvironment('BACKEND_HOST');
     if (override.isNotEmpty) {
       return ['http://$override:$port'];
@@ -53,4 +70,3 @@ class ApiConstants {
   static String analyzePetEndpoint(String petId) => '$baseUrl/api/pets/$petId/analyze/';
   static String respondMatchEndpoint(String matchId) => '$baseUrl/api/matches/$matchId/respond/';
 }
-
