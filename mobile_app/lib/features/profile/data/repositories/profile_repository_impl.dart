@@ -86,10 +86,22 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note}) async {
-    await remoteDataSource.reportPetMissing(petId, lat: lat, lng: lng, note: note);
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  }) async {
+    await remoteDataSource.reportPetMissing(
+      petId,
+      lat: lat,
+      lng: lng,
+      note: note,
+      missingSince: missingSince,
+    );
 
-    // Ensure pet visual embedding is up to date in private.pet_embeddings for matching
+    // Ensure pet visual embedding is up to date in private.pet_embeddings for reverse matching
     if (!petId.startsWith('mock-')) {
       unawaited(_requestPetAnalysis(petId));
     }
@@ -102,10 +114,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   /// Dispatches a request to Django's /api/pets/{id}/analyze/ to compute
   /// and upsert visual embeddings into private.pet_embeddings.
-  Future<void> _requestPetAnalysis(String petId) async {
+  Future<void> _requestPetAnalysis(String petId, {bool refresh = false}) async {
     try {
-      await _orchestratorClient.post('/api/pets/$petId/analyze/');
-      debugPrint('[ProfileRepositoryImpl] AI analysis requested for pet: $petId');
+      await _orchestratorClient.post(
+        '/api/pets/$petId/analyze/',
+        body: refresh ? {'refresh': true} : null,
+      );
+      debugPrint('[ProfileRepositoryImpl] AI analysis requested for pet: $petId (refresh=$refresh)');
     } catch (e) {
       // Non-fatal: if orchestrator is offline, the pet is still safely saved in Supabase
       debugPrint('[ProfileRepositoryImpl] Pet AI analysis dispatch deferred: $e');
