@@ -29,19 +29,47 @@ class PetPostModel extends FeedPost {
     final lat = (postRaw['lat'] ?? postRaw['latitude'] as num?)?.toDouble();
     final lng = (postRaw['lng'] ?? postRaw['longitude'] as num?)?.toDouble();
 
+    // Sanitize location string: If the database returned a raw PostGIS EWKB hex string,
+    // convert it to human-readable coordinates instead of displaying machine code.
+    final String rawLocation = postRaw['location_text']?.toString() ??
+        postRaw['location']?.toString() ??
+        '';
+    final String displayLocation;
+    if (rawLocation.startsWith('01010000') || rawLocation.length > 32) {
+      if (lat != null && lng != null) {
+        displayLocation = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+      } else {
+        displayLocation = 'Nearby Location';
+      }
+    } else if (rawLocation.trim().isNotEmpty) {
+      displayLocation = rawLocation;
+    } else if (lat != null && lng != null) {
+      displayLocation = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+    } else {
+      displayLocation = 'Cebu, Philippines';
+    }
+
+    final String postedBy = userRaw != null && (userRaw['name'] as String?)?.isNotEmpty == true
+        ? userRaw['name'] as String
+        : (postRaw['reporter_name'] as String? ?? "Community Member");
+
     return PetPostModel(
-      id: postRaw['id'] as String,
+      id: postRaw['id']?.toString() ?? '',
       petName: postRaw['pet_name'] as String? ?? "Unnamed Pet",
-      postedBy: userRaw != null ? userRaw['name'] as String : "Unknown User",
-      species: postRaw['species'] as String,
-      location: postRaw['location'] as String,
-      description: postRaw['description'] as String,
-      imageUrl: postRaw['image_url'] as String,
-      status: postRaw['status'] as String,
+      postedBy: postedBy,
+      species: postRaw['species'] as String? ?? postRaw['animal_type'] as String? ?? "Unknown",
+      location: displayLocation,
+      description: postRaw['description'] as String? ?? '',
+      imageUrl: postRaw['image_url'] as String? ?? postRaw['photo_url'] as String? ?? '',
+      status: postRaw['status'] as String? ?? 'spotted',
       hoursAgo: hours < 0 ? 0 : hours,
       formattedTime: formatted,
       latitude: lat,
       longitude: lng,
     );
+  }
+
+  factory PetPostModel.fromJson(Map<String, dynamic> json) {
+    return PetPostModel.fromJoinedData(json, null);
   }
 }
