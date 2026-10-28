@@ -27,6 +27,9 @@ class TestMockLocationService implements LocationService {
   Future<Position?> getCurrentPosition() async => isEnabled ? mockPosition : null;
 
   @override
+  Future<Position?> getLastKnownPosition() async => isEnabled ? mockPosition : null;
+
+  @override
   Stream<Position> getPositionStream({int distanceFilter = 15}) {
     if (mockPosition != null) {
       return Stream.value(mockPosition!);
@@ -47,8 +50,8 @@ void main() {
   );
 
   final testPosition = Position(
-    latitude: 14.5547,
-    longitude: 121.0244,
+    latitude: 10.3297,
+    longitude: 123.9063,
     timestamp: DateTime.now(),
     accuracy: 5.0,
     altitude: 10.0,
@@ -87,7 +90,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify coordinates displayed
-      expect(find.text('14.5547° N, 121.0244° E'), findsOneWidget);
+      expect(find.text('10.3297° N, 123.9063° E'), findsOneWidget);
       expect(find.text('Device GPS Location'), findsOneWidget);
       expect(find.text('Broadcast Alert'), findsOneWidget);
     });
@@ -112,8 +115,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Displays default fallback coordinates
-      expect(find.text('14.5995° N, 120.9842° E'), findsOneWidget);
-      expect(find.text('Hardware GPS unavailable (Default Metro Manila)'), findsOneWidget);
+      expect(find.text('10.3157° N, 123.8854° E'), findsOneWidget);
+      expect(find.text('Hardware GPS unavailable (Default Cebu City)'), findsOneWidget);
     });
 
     testWidgets('submitting returns ReportMissingResult with coordinates and note', (tester) async {
@@ -160,8 +163,8 @@ void main() {
 
       // Verify result
       expect(result, isNotNull);
-      expect(result!.latitude, 14.5547);
-      expect(result!.longitude, 121.0244);
+      expect(result!.latitude, 10.3297);
+      expect(result!.longitude, 123.9063);
       expect(result!.note, 'Last seen near the neighborhood park at 5 PM');
     });
 

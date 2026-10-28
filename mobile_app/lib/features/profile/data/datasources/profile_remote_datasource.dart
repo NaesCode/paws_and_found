@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../models/user_profile_model.dart';
 import '../models/pet_model.dart';
 import '../../domain/entities/pet.dart';
@@ -211,8 +212,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
     await supabase.rpc('report_pet_missing', params: {
       'p_pet_id': petId,
-      'p_lat': lat ?? 14.5995,
-      'p_lng': lng ?? 120.9842,
+      'p_lat': lat ?? LocationConstants.defaultLatitude,
+      'p_lng': lng ?? LocationConstants.defaultLongitude,
       'p_note': note ?? '',
     });
   }

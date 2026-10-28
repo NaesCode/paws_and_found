@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:paws_and_found/core/constants/location_constants.dart';
+import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/shared/atoms/current_location_button.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/shared/atoms/map_pin_badge.dart';
 import 'package:paws_and_found/shared/atoms/paw_button.dart';
@@ -25,6 +28,7 @@ class LocationPinPickerSheet extends StatefulWidget {
   final String subtitle;
   final String pinStatus;
   final ValueChanged<LatLng>? onLocationConfirmed;
+  final LocationService? locationService;
 
   const LocationPinPickerSheet({
     super.key,
@@ -33,25 +37,50 @@ class LocationPinPickerSheet extends StatefulWidget {
     this.subtitle = 'Tap anywhere on the map to set the alert pin',
     this.pinStatus = 'missing',
     this.onLocationConfirmed,
+    this.locationService,
   });
 
   /// Static helper to display the modal bottom sheet.
+  ///
+  /// If [initialLocation] is null, queries the user's phone GPS location via [LocationService]
+  /// and falls back to [LocationConstants.defaultLocation] if unavailable.
   static Future<LatLng?> show({
     required BuildContext context,
     LatLng? initialLocation,
     String title = 'Pin Location on Animal Map',
     String subtitle = 'Tap anywhere on the map to set the alert pin',
     String pinStatus = 'missing',
-  }) {
+    LocationService? locationService,
+  }) async {
+    LatLng startingLocation;
+    if (initialLocation != null) {
+      startingLocation = initialLocation;
+    } else {
+      final service = locationService ?? const GeolocatorLocationService();
+      try {
+        final pos = await service.getCurrentPosition();
+        if (pos != null) {
+          startingLocation = LatLng(pos.latitude, pos.longitude);
+        } else {
+          startingLocation = LocationConstants.defaultLocation;
+        }
+      } catch (_) {
+        startingLocation = LocationConstants.defaultLocation;
+      }
+    }
+
+    if (!context.mounted) return null;
+
     return showModalBottomSheet<LatLng>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => LocationPinPickerSheet(
-        initialLocation: initialLocation ?? const LatLng(14.5995, 120.9842),
+        initialLocation: startingLocation,
         title: title,
         subtitle: subtitle,
         pinStatus: pinStatus,
+        locationService: locationService,
       ),
     );
   }
@@ -63,6 +92,7 @@ class LocationPinPickerSheet extends StatefulWidget {
 class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
   late LatLng _currentPin;
   late final MapController _mapController;
+  bool _isLocating = false;
 
   @override
   void initState() {
@@ -78,16 +108,47 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
   }
 
   void _handleMapTap(TapPosition tapPosition, LatLng point) {
+    if (!LocationConstants.isWithinCebu(point.latitude, point.longitude)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pins must be placed within Cebu province.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     setState(() {
       _currentPin = point;
     });
   }
 
-  void _handleRecenter() {
+  Future<void> _handleRecenter() async {
     setState(() {
-      _currentPin = widget.initialLocation;
+      _isLocating = true;
     });
-    _mapController.move(widget.initialLocation, 15.5);
+
+    final service = widget.locationService ?? const GeolocatorLocationService();
+    try {
+      final pos = await service.getCurrentPosition();
+      if (!mounted) return;
+      if (pos != null) {
+        final target = LatLng(pos.latitude, pos.longitude);
+        setState(() {
+          _currentPin = target;
+          _isLocating = false;
+        });
+        _mapController.move(target, 15.5);
+        return;
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _isLocating = false;
+        _currentPin = widget.initialLocation;
+      });
+      _mapController.move(widget.initialLocation, 15.5);
+    }
   }
 
   void _handleConfirm() {
@@ -215,6 +276,11 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
                   options: MapOptions(
                     initialCenter: _currentPin,
                     initialZoom: 15.0,
+                    minZoom: LocationConstants.minCebuZoom,
+                    maxZoom: LocationConstants.maxCebuZoom,
+                    cameraConstraint: CameraConstraint.containCenter(
+                      bounds: LocationConstants.cebuBounds,
+                    ),
                     onTap: _handleMapTap,
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.all,
@@ -244,38 +310,13 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
                   ],
                 ),
 
-                // Recenter Button
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Material(
-                    color: Colors.white,
-                    elevation: 3,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: _handleRecenter,
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.my_location_rounded,
-                          color: AppColors.darkCharcoal,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Tap Guide Banner at Bottom of Map
+                // Tap Guide Banner at Bottom-Left of Map
                 Positioned(
                   left: 12,
-                  right: 12,
-                  bottom: 10,
+                  right: 58,
+                  bottom: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(8),
@@ -285,16 +326,31 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
                       children: [
                         Icon(Icons.touch_app_rounded, color: Colors.white, size: 14),
                         SizedBox(width: 6),
-                        Text(
-                          'Tap anywhere on map to reposition pin',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            'Tap map to reposition pin',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
                     ),
+                  ),
+                ),
+
+                // Current Location Button at Bottom Right
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: CurrentLocationButton(
+                    key: const Key('pin_picker_current_location_button'),
+                    size: 38,
+                    onTap: _handleRecenter,
+                    isLoading: _isLocating,
                   ),
                 ),
               ],

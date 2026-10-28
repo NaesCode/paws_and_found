@@ -9,6 +9,7 @@ abstract class LocationService {
   Future<LocationPermission> checkPermission();
   Future<LocationPermission> requestPermission();
   Future<Position?> getCurrentPosition();
+  Future<Position?> getLastKnownPosition() async => null;
   Stream<Position> getPositionStream({int distanceFilter = 15});
 }
 
@@ -53,6 +54,23 @@ class GeolocatorLocationService implements LocationService {
   }
 
   @override
+  Future<Position?> getLastKnownPosition() async {
+    try {
+      final serviceEnabled = await isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+      final permission = await checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+      return await Geolocator.getLastKnownPosition();
+    } catch (e) {
+      debugPrint('[LocationService] Error fetching last known position: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<Position?> getCurrentPosition() async {
     try {
       // 1. Verify device GPS hardware is turned on
@@ -78,10 +96,15 @@ class GeolocatorLocationService implements LocationService {
       }
 
       // 3. Request high-accuracy position with a defensive timeout
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 8),
-      );
+      try {
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 8),
+        );
+      } catch (e) {
+        debugPrint('[LocationService] Active GPS query timeout/error, trying last known position: $e');
+        return await Geolocator.getLastKnownPosition();
+      }
     } catch (e) {
       debugPrint('[LocationService] Error fetching current location: $e');
       return null;

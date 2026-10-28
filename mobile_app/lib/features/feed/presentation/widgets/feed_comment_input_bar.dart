@@ -46,7 +46,7 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
         color: AppColors.background1,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -2),
             blurRadius: 10,
           ),
@@ -73,7 +73,7 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
                     hintText: widget.replyingToUser != null ? 'Add a reply...' : 'Add a comment...',
                     hintStyle: const TextStyle(color: AppColors.text3, fontSize: 14),
                     filled: true,
-                    fillColor: Colors.grey.withOpacity(0.1),
+                    fillColor: Colors.grey.withValues(alpha: 0.1),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24.0),

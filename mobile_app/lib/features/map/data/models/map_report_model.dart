@@ -1,3 +1,4 @@
+import '../../../../core/constants/location_constants.dart';
 import '../../domain/entities/map_report_entity.dart';
 
 /// Data class extending [MapReportEntity] with JSON serialization and mock factories.
@@ -27,8 +28,8 @@ class MapReportModel extends MapReportEntity {
     final status = json['status'] as String? ?? 'stray';
     final animalType = json['animal_type'] as String? ?? 'Other';
     final desc = json['description'] as String? ?? '';
-    final lat = (json['lat'] ?? json['latitude'] ?? 14.5995) as num;
-    final lng = (json['lng'] ?? json['longitude'] ?? 120.9842) as num;
+    final lat = (json['lat'] ?? json['latitude'] ?? LocationConstants.defaultLatitude) as num;
+    final lng = (json['lng'] ?? json['longitude'] ?? LocationConstants.defaultLongitude) as num;
 
     // Build reasonable tags from metadata
     final List<String> extractedTags = [];
@@ -62,12 +63,10 @@ class MapReportModel extends MapReportEntity {
         locationName = 'Lawaan, Talisay, Cebu';
       } else if (desc.toLowerCase().contains('emall')) {
         locationName = 'Elizabeth Mall, Cebu';
-      } else if ((lat - 10.25).abs() < 0.3 && (lng - 123.8).abs() < 0.3) {
-        locationName = 'Cebu';
-      } else if ((lat - 14.6).abs() < 0.3 && (lng - 120.98).abs() < 0.3) {
-        locationName = 'Manila';
+      } else if ((lat - 10.3).abs() < 0.4 && (lng - 123.9).abs() < 0.4) {
+        locationName = 'Cebu City';
       } else {
-        locationName = 'Community Area';
+        locationName = 'Cebu Community Area';
       }
     }
 
@@ -178,16 +177,16 @@ class MapReportModel extends MapReportEntity {
         reporterId: '5533261d-53e5-4950-8548-37f0b9afa039',
         title: 'Meowki',
         animalType: 'Feline',
-        description: 'Her name is Meowki. Missing cat.',
+        description: 'Her name is Meowki. Missing cat last seen near Lahug.',
         status: 'missing',
-        locationName: 'Manila',
-        latitude: 14.5995,
-        longitude: 120.9842,
+        locationName: 'Lahug, Cebu City',
+        latitude: LocationConstants.cebuITPark.latitude,
+        longitude: LocationConstants.cebuITPark.longitude,
         normalizedX: 0.45,
         normalizedY: 0.35,
         photoUrl: 'https://pbbrnlytulbaylsbpagx.supabase.co/storage/v1/object/public/animal-photos/5533261d-53e5-4950-8548-37f0b9afa039/efcc44cd-823f-4c8c-b4fb-77318993ed3a.jpg',
         createdAt: now.subtract(const Duration(hours: 2)),
-        tags: const ['Feline', 'Missing', 'Manila'],
+        tags: const ['Feline', 'Missing', 'Cebu'],
       ),
       MapReportModel(
         id: 'c1e8142c-3a48-4458-b1bb-273c32c4c2c6',

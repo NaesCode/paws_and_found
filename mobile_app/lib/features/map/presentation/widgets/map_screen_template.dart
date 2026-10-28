@@ -9,6 +9,7 @@ import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 /// - [mapCanvas]: Interactive geographic map area (or placeholder).
 /// - [reportCard]: Floating report detail card (nullable).
 /// - [legend]: Pin status legend at the bottom (nullable).
+/// - [floatingActionButton]: Floating action button docked on the bottom right (nullable).
 /// - [bottomNavigationBar]: Bottom navigation bar or placeholder (nullable).
 ///
 /// Adheres to Atomic Design: dumb, stateless layout template.
@@ -18,6 +19,7 @@ class MapScreenTemplate extends StatelessWidget {
   final Widget mapCanvas;
   final Widget? reportCard;
   final Widget? legend;
+  final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
 
   const MapScreenTemplate({
@@ -27,6 +29,7 @@ class MapScreenTemplate extends StatelessWidget {
     required this.mapCanvas,
     this.reportCard,
     this.legend,
+    this.floatingActionButton,
     this.bottomNavigationBar,
   });
 
@@ -64,7 +67,16 @@ class MapScreenTemplate extends StatelessWidget {
                     bottom: 0,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (floatingActionButton != null)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16.0, bottom: 12.0),
+                              child: floatingActionButton!,
+                            ),
+                          ),
                         if (reportCard != null) ...[
                           reportCard!,
                           const SizedBox(height: 10),

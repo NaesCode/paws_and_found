@@ -69,7 +69,7 @@ mobile_app/
 
 ### D. GPS Location Ingestion
 * When **GPS** is set to **"Auto"**, the form dynamically queries `LocationService.getCurrentPosition()`.
-* If GPS hardware is active and permitted, high-accuracy latitude and longitude are recorded into the report payload. If offline or denied, it defaults to demo coordinates (`14.5995, 120.9842`).
+* If GPS hardware is active and permitted, high-accuracy latitude and longitude are recorded into the report payload. If offline or denied, it defaults to demo coordinates (`10.3157, 123.8854`).
 
 ### E. AI Preparation & Handover Hook
 * Submitting a report calls the Supabase PostgreSQL RPC `create_report(...)`, saving the report with:
