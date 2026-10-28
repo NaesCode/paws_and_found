@@ -227,8 +227,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
     await supabase.rpc('report_pet_missing', params: {
       'p_pet_id': petId,
-      'p_lat': lat!,
-      'p_lng': lng!,
+      'p_lat': lat,
+      'p_lng': lng,
       'p_note': note ?? '',
       'p_missing_since': (missingSince ?? DateTime.now()).toUtc().toIso8601String(),
     });
