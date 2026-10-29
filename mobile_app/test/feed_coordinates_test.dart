@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:paws_and_found/features/feed/data/datasources/feed_remote_data_source.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
@@ -87,6 +87,28 @@ void main() {
       expect(post.location, equals('Lahug, Cebu City (Near IT Park)'));
       expect(post.latitude, equals(10.3297));
       expect(post.longitude, equals(123.9063));
+    });
+
+    test('Prioritizes location_name from geocoding over raw machine code or coordinates', () {
+      final rawRowWithLocationName = {
+        'id': 'post_102',
+        'reporter_name': 'Sarah Cruz',
+        'pet_name': 'Rusty',
+        'animal_type': 'Cat',
+        'location': '0101000020E6100000492EFF21FD3E5E406DE7FBA9F1322D40',
+        'location_name': 'Kasambagan, Cebu City',
+        'description': 'Orange tabby spotted near bakery.',
+        'photo_url': 'https://example.com/rusty.jpg',
+        'status': 'stray',
+        'created_at': DateTime.now().toIso8601String(),
+        'latitude': 10.3200,
+        'longitude': 123.9050,
+      };
+
+      final post = PetPostModel.fromJson(rawRowWithLocationName);
+      expect(post.location, equals('Kasambagan, Cebu City'));
+      expect(post.latitude, equals(10.3200));
+      expect(post.longitude, equals(123.9050));
     });
 
     test('FeedRepository fetches live reports when remote data source returns rows', () async {
