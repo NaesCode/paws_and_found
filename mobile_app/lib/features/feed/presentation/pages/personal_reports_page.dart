@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
-import 'package:paws_and_found/features/feed/domain/entities/feed_post.dart';
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
-import 'package:paws_and_found/shared/organisms/location_pin_picker_sheet.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Screen displaying personal animal reports submitted by the logged-in user.
-///
-/// Features:
-/// - Category filtering ("Latest", "Oldest", "Missing", "Found", "Spotted")
-/// - Interactive "Pin on Map" option allowing users to reposition/pin missing pets
-/// - Direct "View on Map" integration which deep-links to the Community Animal Map
 class PersonalReportsPage extends StatefulWidget {
   final bool showBottomNavPlaceholder;
 
@@ -34,21 +26,57 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
   final FeedRepository _repository = FeedRepositoryImpl();
   late Future<List<FeedPost>> _reportsFuture;
 
-  // for the filter dropdown
-  String _selectedFilter = 'latest';
+  String _selectedFilter = 'Latest';
   final List<String> _personalFilters = ['Latest', 'Oldest', 'Missing', 'Found', 'Spotted'];
 
   @override
   void initState() {
     super.initState();
-    _reportsFuture = _repository.getPersonalReports("user_001");
+    _fetchPersonalReports(_selectedFilter); // Load initial data
+  }
+
+  void _fetchPersonalReports(String filterValue) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    
+    setState(
+      () {
+      _selectedFilter = filterValue;
+       String dbFilterValue = filterValue;
+      if (filterValue.toLowerCase() == 'spotted') {
+        dbFilterValue = 'stray';
+      }
+      
+      switch (filterValue.toLowerCase()) {
+        case 'missing':
+          _reportsFuture = _repository.getPersonalReports(currentUserId, filterStatus: filterValue);
+            break;
+        case 'found':
+          _reportsFuture = _repository.getPersonalReports(currentUserId, filterStatus: filterValue);
+          break;
+        case 'spotted': //spotted ni siya kapoy na change sa db
+          _reportsFuture = _repository.getPersonalReports(currentUserId, filterStatus: dbFilterValue);
+          break;
+        case 'oldest':
+          _reportsFuture = _repository.getPersonalReports(currentUserId).then((list) {
+            list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+            return list;
+          });
+          break;
+          
+        case 'latest':
+        default:
+          _reportsFuture = _repository.getPersonalReports(currentUserId);
+          break;
+        }
+      }
+    );
   }
 
   BannerType _getBannerType(String status) {
     switch (status.toLowerCase()) {
       case 'missing':
         return BannerType.missing;
-      case 'spotted':
+      case 'stray':
         return BannerType.spotted;
       case 'found':
         return BannerType.found;
@@ -57,7 +85,9 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     }
   }
 
-  Future<void> _handlePinOnMap(FeedPost report) async {
+  /*
+    ---THIS SHOULD BE INSIDE THE EDIT PA---
+    Future<void> _handlePinOnMap(FeedPost report) async {
     final double initialLat = report.latitude ?? LocationConstants.defaultLatitude;
     final double initialLng = report.longitude ?? LocationConstants.defaultLongitude;
 
@@ -85,7 +115,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     final double lat = report.latitude ?? LocationConstants.defaultLatitude;
     final double lng = report.longitude ?? LocationConstants.defaultLongitude;
     context.go('/map?reportId=${report.id}&lat=$lat&lng=$lng');
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -104,9 +134,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                     selectedLabel: _selectedFilter,
                     filterOptions: _personalFilters,
                     onFilterChanged: (newValue) {
-                      setState(() {
-                        _selectedFilter = newValue;
-                      });
+                      _fetchPersonalReports(newValue);
                     },
                   ),
                 ),
@@ -125,6 +153,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                   if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
+                  
                   final reports = snapshot.data ?? [];
                   if (reports.isEmpty) {
                     return const Center(child: Text('No Reports Found'));
@@ -150,28 +179,19 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         return ReportCardItem(
                           bannerType: _getBannerType(report.status),
                           petName: report.petName,
-                          postedBy: report.postedBy,
+                          postedBy: "You",
                           species: report.species,
-                          location: report.location,
+                          location:report.location,
                           description: report.description,
                           formattedTime: report.formattedTime,
                           imageURL: report.imageUrl.isNotEmpty
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
-                          button1Text: isMissing ? "Pin on Map" : "View on Map",
-                          button2Text: isMissing ? "View Map" : "Found",
-                          onButton1Pressed: () {
-                            if (isMissing) {
-                              _handlePinOnMap(report);
-                            } else {
-                              _handleViewOnMap(report);
-                            }
-                          },
-                          onButton2Pressed: () {
-                            if (isMissing) {
-                              _handleViewOnMap(report);
-                            }
-                          },
+                          button1Text: isMissing ? "View Map" : "Edit",
+                          button2Text: isMissing ? "Edit" : "Found",
+                          userImageUrl: report.userImageUrl,
+                          onButton1Pressed: () {},
+                          onButton2Pressed: () {},
                         );
                       },
                     ),

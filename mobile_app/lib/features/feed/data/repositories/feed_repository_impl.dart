@@ -1,64 +1,72 @@
-import '../../domain/entities/feed_post.dart';
-import '../../domain/repositories/feed_repository.dart';
-import '../datasources/feed_mock_data.dart';
-import '../datasources/feed_remote_data_source.dart';
-import '../models/feed_post_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
+import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
+
+//fetching data both personal and general with each filters na
 
 class FeedRepositoryImpl implements FeedRepository {
-  final FeedRemoteDataSource _remoteDataSource;
-
-  FeedRepositoryImpl({FeedRemoteDataSource? remoteDataSource})
-      : _remoteDataSource = remoteDataSource ?? FeedRemoteDataSourceImpl();
-
-  List<PetPostModel> _joinAndMapReports(List<Map<String, dynamic>> rawPostList) {
-    return rawPostList.map((postRaw) {
-      final Map<String, dynamic> userRaw = mockUsers.firstWhere(
-        (user) => user['id'] == postRaw['user_id'],
-        orElse: () => <String, dynamic>{},
-      );
-
-      return PetPostModel.fromJoinedData(
-        postRaw,
-        userRaw.isEmpty ? null : userRaw,
-      );
-    }).toList();
-  }
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
-  Future<List<FeedPost>> getGeneralReports() async {
-    // 1. Attempt to fetch live community reports from the Supabase view
+  Future<List<FeedPost>> getPersonalReports(String userId, {String? filterStatus}) async {
     try {
-      final remoteRows = await _remoteDataSource.getFeedReports();
-      if (remoteRows.isNotEmpty) {
-        return remoteRows.map(PetPostModel.fromJson).toList();
-      }
-    } catch (_) {
-      // Fallback below
-    }
+      var query = _supabase.from('reports').select('''
+        id,
+        reporter_id,
+        pet_id,
+        animal_type,
+        description,
+        photo_url,
+        location,
+        status,
+        analysis_status,
+        created_at,
+        profiles(name, profile_photo_url),
+        pets(name)
+      ''').eq('reporter_id', userId);
 
-    // 2. Fallback to calibrated local mock data if offline or remote returns empty
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _joinAndMapReports(mockPosts);
+      if (filterStatus != null && filterStatus.isNotEmpty) {
+        query = query.ilike('status', filterStatus); 
+      }
+
+      final List<Map<String, dynamic>> response = await query.order('created_at', ascending: false);
+
+      return response.map((json) => FeedPost.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch personal reports: $e');
+    }
   }
 
-  @override
-  Future<List<FeedPost>> getPersonalReports(String currentUserId) async {
-    // 1. Attempt to fetch user's live reports from Supabase
+  @override 
+  Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}) async {
     try {
-      final remoteRows = await _remoteDataSource.getUserFeedReports(currentUserId);
-      if (remoteRows.isNotEmpty) {
-        return remoteRows.map(PetPostModel.fromJson).toList();
+      var query = _supabase.from('reports').select('''
+        id, 
+        reporter_id, 
+        pet_id, 
+        animal_type, 
+        description, 
+        photo_url, 
+        location, 
+        status, 
+        analysis_status, 
+        created_at,
+        profiles(name, profile_photo_url),
+        pets(name)
+      ''').neq('reporter_id', userId);
+
+      if (filterStatus != null && filterStatus.isNotEmpty) {
+        query = query.ilike('status', filterStatus);
       }
-    } catch (_) {
-      // Fallback below
+
+      final List<Map<String, dynamic>> response = await query.order(
+        'created_at', 
+        ascending: sortOldest,
+      );
+
+      return response.map((json) => FeedPost.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch general reports: $e');
     }
-
-    // 2. Fallback to calibrated local mock data
-    await Future.delayed(const Duration(milliseconds: 300));
-    final List<Map<String, dynamic>> userSpecificPosts = mockPosts
-        .where((post) => post['user_id'] == currentUserId)
-        .toList();
-
-    return _joinAndMapReports(userSpecificPosts);
   }
 }
