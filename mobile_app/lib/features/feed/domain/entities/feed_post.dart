@@ -27,4 +27,21 @@ class FeedPost {
     this.latitude,
     this.longitude,
   });
+
+  FeedPost copyWithLocation(String newLocation) {
+    return FeedPost(
+      id: id,
+      petName: petName,
+      postedBy: postedBy,
+      species: species,
+      location: newLocation,
+      description: description,
+      imageUrl: imageUrl,
+      status: status,
+      hoursAgo: hoursAgo,
+      formattedTime: formattedTime,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
 }
