@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -48,8 +49,12 @@ class CameraReportController extends ChangeNotifier {
   String? _errorMessage;
   String? _successReportId;
   String? _geocodedAddress;
+  String? _linkedThreadId;
+  String? _linkedThreadPetName;
 
   // Getters
+  String? get linkedThreadId => _linkedThreadId;
+  String? get linkedThreadPetName => _linkedThreadPetName;
   String get animalType => _animalType;
   String get status => _status;
   bool get isGpsAuto => _isGpsAuto;
@@ -85,6 +90,18 @@ class CameraReportController extends ChangeNotifier {
 
   void setStatus(String value) {
     _status = value;
+    notifyListeners();
+  }
+
+  void setThreadContext({String? threadId, String? petName}) {
+    _linkedThreadId = threadId;
+    _linkedThreadPetName = petName;
+    notifyListeners();
+  }
+
+  void clearThreadContext() {
+    _linkedThreadId = null;
+    _linkedThreadPetName = null;
     notifyListeners();
   }
 
@@ -262,6 +279,26 @@ class CameraReportController extends ChangeNotifier {
           locationName: _geocodedAddress,
         );
         _successReportId = reportId;
+
+        if (_linkedThreadId != null) {
+          try {
+            final client = Supabase.instance.client;
+            final currentUserId = client.auth.currentUser?.id;
+            if (currentUserId != null) {
+              final petLabel = (_linkedThreadPetName != null && _linkedThreadPetName!.isNotEmpty)
+                  ? 'for ${_linkedThreadPetName!} '
+                  : '';
+              final locationLabel = _geocodedAddress ?? 'Reported Area';
+              await client.from('comments').insert({
+                'post_id': _linkedThreadId,
+                'user_id': currentUserId,
+                'content': '🐾 Sighting reported ${petLabel}at $locationLabel!\nhttps://pawsandfound.org/report/$reportId',
+              });
+            }
+          } catch (e) {
+            debugPrint('[CameraReportController] Failed to auto-link comment: $e');
+          }
+        }
 
         // Register in active map reports so it immediately appears on the Community Animal Map
         MapReportModel.addReport(

@@ -6,6 +6,7 @@ import './feed_card_footer.dart';
 import './feed_status_banner.dart';
 
 class ReportCardItem extends StatelessWidget {
+  final String? id;
   final String button1Text;
   final String button2Text;
   final VoidCallback onButton1Pressed;
@@ -23,6 +24,7 @@ class ReportCardItem extends StatelessWidget {
 
   const ReportCardItem({
     super.key,
+    this.id,
     required this.button1Text,
     required this.button2Text,
     required this.onButton1Pressed,
@@ -68,9 +70,12 @@ class ReportCardItem extends StatelessWidget {
               description: description,
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-            child: FeedCardFooter(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+            child: FeedCardFooter(
+              reportId: id,
+              petName: petName,
+            ),
           )
         ],
       ),

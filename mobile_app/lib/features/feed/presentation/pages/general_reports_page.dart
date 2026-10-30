@@ -1,3 +1,4 @@
+﻿import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_reports_dropdown.dart';
@@ -143,19 +144,24 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         final report = reports[index];
 
                         return ReportCardItem(
+                          id: report.id,
                           bannerType: _getBannerType(report.status),
                           petName: report.petName,
                           postedBy: report.postedBy,
                           species: report.species,
-                          location:report.location,
+                          location: report.location,
                           description: report.description,
                           formattedTime: report.formattedTime,
                           imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
                           userImageUrl: report.userImageUrl,
                           button1Text: "Spotted",
                           button2Text: "Found",
-                          onButton1Pressed: () {}, //TODO: need to put what should be shown
-                          onButton2Pressed: () {},
+                          onButton1Pressed: () {
+                            context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray');
+                          },
+                          onButton2Pressed: () {
+                            context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found');
+                          },
                         );
                       },
                     ),

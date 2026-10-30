@@ -1,4 +1,8 @@
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
+import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_footer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -28,6 +32,9 @@ class CameraReportPage extends StatefulWidget {
   final LocationService? locationService;
   final bool showBottomNavPlaceholder;
   final bool isActiveTab;
+  final String? threadId;
+  final String? threadPetName;
+  final String? defaultStatus;
 
   const CameraReportPage({
     super.key,
@@ -35,6 +42,9 @@ class CameraReportPage extends StatefulWidget {
     this.locationService,
     this.showBottomNavPlaceholder = true,
     this.isActiveTab = true,
+    this.threadId,
+    this.threadPetName,
+    this.defaultStatus,
   });
 
   @override
@@ -60,6 +70,16 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     _controller.fetchDeviceLocation().then((_) {
       _controller.reverseGeocodeCurrentCoords(); 
     });
+
+    if (widget.threadId != null) {
+      _controller.setThreadContext(
+        threadId: widget.threadId,
+        petName: widget.threadPetName,
+      );
+    }
+    if (widget.defaultStatus != null && widget.defaultStatus!.isNotEmpty) {
+      _controller.setStatus(widget.defaultStatus!);
+    }
 
     if (widget.isActiveTab) {
       _initLiveCamera();
@@ -112,7 +132,17 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
   void didUpdateWidget(covariant CameraReportPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActiveTab != widget.isActiveTab) {
-      if (widget.isActiveTab) {
+      if (widget.threadId != null) {
+      _controller.setThreadContext(
+        threadId: widget.threadId,
+        petName: widget.threadPetName,
+      );
+    }
+    if (widget.defaultStatus != null && widget.defaultStatus!.isNotEmpty) {
+      _controller.setStatus(widget.defaultStatus!);
+    }
+
+    if (widget.isActiveTab) {
         if (_cameraController == null) {
           _initLiveCamera();
         } else if (_cameraController!.value.isInitialized) {
@@ -204,6 +234,116 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     }
   }
 
+  Future<void> _handlePickThread() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: WireframeColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: WireframeColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.link_rounded, color: WireframeColors.primaryDark),
+                        SizedBox(width: 8),
+                        Text(
+                          'Select Missing Pet Thread',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: WireframeColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: FutureBuilder<List<FeedPost>>(
+                      future: FeedRepositoryImpl().getGeneralReports('', filterStatus: 'missing'),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: WireframeColors.primaryDark));
+                        }
+                        final missingReports = snapshot.data ?? [];
+                        if (missingReports.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No active missing pet reports found.',
+                              style: TextStyle(color: WireframeColors.textSecondary),
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          controller: scrollController,
+                          itemCount: missingReports.length,
+                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final pet = missingReports[index];
+                            final hasPic = pet.imageUrl.isNotEmpty &&
+                                (pet.imageUrl.startsWith('http://') || pet.imageUrl.startsWith('https://'));
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: WireframeColors.surfaceSecondary,
+                                backgroundImage: hasPic ? NetworkImage(pet.imageUrl) : null,
+                                child: hasPic
+                                    ? null
+                                    : const Icon(Icons.pets, color: WireframeColors.primaryDark),
+                              ),
+                              title: Text(
+                                pet.petName,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                '${pet.species} • ${pet.location.isNotEmpty ? pet.location : "Cebu"}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(Icons.chevron_right, size: 20),
+                              onTap: () {
+                                Navigator.of(modalCtx).pop();
+                                _controller.setThreadContext(
+                                  threadId: pet.id,
+                                  petName: pet.petName,
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _handleSubmit() async {
     final success = await _controller.submitReport();
     if (!mounted) return;
@@ -256,6 +396,30 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
             ],
           ),
           actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy Link'),
+              onPressed: () {
+                final reportId = _controller.successReportId ?? '';
+                Clipboard.setData(ClipboardData(text: 'https://pawsandfound.org/report/$reportId'));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sighting link copied to clipboard!')),
+                );
+              },
+            ),
+            if (_controller.linkedThreadId != null)
+              TextButton.icon(
+                icon: const Icon(Icons.forum_outlined, size: 16),
+                label: const Text('Open Thread'),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  showFeedCommentsModal(
+                    context,
+                    reportId: _controller.linkedThreadId,
+                    petName: _controller.linkedThreadPetName,
+                  );
+                },
+              ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Stay Here'),
@@ -317,6 +481,70 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 onGalleryTap: _controller.pickFromGallery,
                 onRetakeTap: _controller.clearPhoto,
               ),
+
+              if (_controller.linkedThreadId != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: WireframeColors.surfaceSecondary,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: WireframeColors.primaryDark, width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.link_rounded, size: 22, color: WireframeColors.primaryDark),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'LINKED TO PET THREAD: ${(_controller.linkedThreadPetName ?? "MISSING PET").toUpperCase()}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: WireframeColors.primaryDark,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'This sighting will be automatically embedded into the pet discussion thread.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: WireframeColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18, color: WireframeColors.textSecondary),
+                        onPressed: _controller.clearThreadContext,
+                        tooltip: 'Unlink from thread',
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: WireframeColors.primaryDark,
+                      side: const BorderSide(color: WireframeColors.border, width: 1.0),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                    icon: const Icon(Icons.link_rounded, size: 18),
+                    label: const Text(
+                      'Link sighting to an existing Missing Pet thread (Optional)',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: _handlePickThread,
+                  ),
+                ),
 
               // 2. "CREATE REPORT" Form Block
               CreateReportForm(

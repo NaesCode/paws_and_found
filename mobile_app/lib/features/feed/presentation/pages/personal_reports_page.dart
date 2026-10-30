@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -176,6 +176,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         final isMissing = report.status.toLowerCase() == 'missing';
 
                         return ReportCardItem(
+                          id: report.id,
                           bannerType: _getBannerType(report.status),
                           petName: report.petName,
                           postedBy: "You",

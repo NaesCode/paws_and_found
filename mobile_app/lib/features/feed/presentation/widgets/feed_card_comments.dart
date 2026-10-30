@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-// import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
-
+import 'package:paws_and_found/features/feed/presentation/widgets/embedded_sighting_card.dart';
 
 class FeedCardComments extends StatelessWidget {
-
   final VoidCallback? onReplyTap;
   final String username;
   final String timeAgo;
   final String commentText;
+  final String? userPhotoUrl;
+  final String? linkedReportId;
 
   const FeedCardComments({
     super.key,
@@ -16,19 +16,27 @@ class FeedCardComments extends StatelessWidget {
     required this.commentText,
     required this.timeAgo,
     required this.username,
-    });
+    this.userPhotoUrl,
+    this.linkedReportId,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasPhoto = userPhotoUrl != null &&
+        (userPhotoUrl!.startsWith('http://') || userPhotoUrl!.startsWith('https://'));
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TODO: change to receive pfp
           CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.text3,
+            backgroundColor: AppColors.contrast1.withValues(alpha: 0.2),
+            backgroundImage: hasPhoto ? NetworkImage(userPhotoUrl!) : null,
+            child: hasPhoto
+                ? null
+                : const Icon(Icons.person, size: 20, color: AppColors.contrast1),
           ),
           const SizedBox(width: 12.0),
           Expanded(
@@ -50,23 +58,26 @@ class FeedCardComments extends StatelessWidget {
                     const SizedBox(width: 8.0),
                     Text(
                       timeAgo,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.text3,
                         fontSize: 12.0,
                       ),
                     ),
                   ],
                 ),
-                
                 const SizedBox(height: 4.0),
                 Text(
                   commentText,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.text2,
                     fontSize: 14.0,
-                    height: 1.3
+                    height: 1.3,
                   ),
                 ),
+                if (linkedReportId != null && linkedReportId!.isNotEmpty) ...[
+                  EmbeddedSightingCard(reportId: linkedReportId!),
+                  const SizedBox(height: 4.0),
+                ],
                 const SizedBox(height: 6.0),
                 GestureDetector(
                   onTap: onReplyTap,
@@ -76,14 +87,14 @@ class FeedCardComments extends StatelessWidget {
                       color: AppColors.text3,
                       fontSize: 12.0,
                       fontWeight: FontWeight.bold,
-                    )
-                  )
-                )
+                    ),
+                  ),
+                ),
               ],
-            )
-          ) 
+            ),
+          ),
         ],
-      )
+      ),
     );
   }
 }
