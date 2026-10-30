@@ -1,13 +1,14 @@
-import 'dart:async' show unawaited;
+﻿import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/location_constants.dart';
+import '../../../../core/services/geocoding_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
-import 'package:paws_and_found/core/services/geocoder-pro.dart';
+import 'package:paws_and_found/core/services/geocoding_service.dart';
 
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
@@ -20,14 +21,17 @@ import 'package:paws_and_found/core/services/geocoder-pro.dart';
 class CameraReportController extends ChangeNotifier {
   final ReportRepository _repository;
   final LocationService _locationService;
+  final GeocodingService _geocodingService;
   final ImagePicker _picker = ImagePicker();
-  final GeocoderProImpl geocoder = const GeocoderProImpl();
+final GeocodingService geocoderService = GeocoderProService(); 
 
   CameraReportController({
     ReportRepository? repository,
     LocationService? locationService,
+    GeocodingService? geocodingService,
   })  : _repository = repository ?? ReportRepositoryImpl(),
-        _locationService = locationService ?? const GeolocatorLocationService();
+        _locationService = locationService ?? const GeolocatorLocationService(),
+        _geocodingService = geocodingService ?? GeocoderProService();
 
   String _animalType = 'Canine';
   String _status = 'Stray';
@@ -43,6 +47,7 @@ class CameraReportController extends ChangeNotifier {
   bool _isSubmitting = false;
   String? _errorMessage;
   String? _successReportId;
+  String? _resolvedLocationName;
 
   // Getters
   String get animalType => _animalType;
@@ -93,6 +98,8 @@ class CameraReportController extends ChangeNotifier {
     _pinnedLat = lat;
     _pinnedLng = lng;
     _isGpsAuto = false;
+    _resolvedLocationName = null;
+    unawaited(_updateResolvedLocation(lat, lng));
     notifyListeners();
   }
 
@@ -101,6 +108,10 @@ class CameraReportController extends ChangeNotifier {
     _pinnedLat = null;
     _pinnedLng = null;
     _isGpsAuto = true;
+    _resolvedLocationName = null;
+    if (_deviceLat != null && _deviceLng != null) {
+      unawaited(_updateResolvedLocation(_deviceLat!, _deviceLng!));
+    }
     notifyListeners();
   }
 
@@ -114,12 +125,27 @@ class CameraReportController extends ChangeNotifier {
       if (pos != null) {
         _deviceLat = pos.latitude;
         _deviceLng = pos.longitude;
+        if (_isGpsAuto && _pinnedLat == null) {
+          unawaited(_updateResolvedLocation(pos.latitude, pos.longitude));
+        }
       }
     } catch (e) {
       debugPrint('[CameraReportController] Device GPS fetch error: $e');
     } finally {
       _isFetchingLocation = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _updateResolvedLocation(double lat, double lng) async {
+    try {
+      final name = await _geocodingService.reverseGeocode(lat, lng);
+      if (name != null && name.isNotEmpty) {
+        _resolvedLocationName = name;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Graceful fallback to raw coordinate readout
     }
   }
 
@@ -240,7 +266,7 @@ class CameraReportController extends ChangeNotifier {
             animalType: _animalType,
             description: descriptionController.text.trim(),
             status: _status.toLowerCase(),
-            locationName: 'Reported Area',
+            locationName: _resolvedLocationName ?? 'Reported Area',
             latitude: lat,
             longitude: lng,
             normalizedX: 0.5,
@@ -267,7 +293,7 @@ class CameraReportController extends ChangeNotifier {
             animalType: _animalType,
             description: descriptionController.text.trim(),
             status: _status.toLowerCase(),
-            locationName: 'Pinned Location',
+            locationName: _resolvedLocationName ?? 'Pinned Location',
             latitude: lat,
             longitude: lng,
             normalizedX: 0.5,
@@ -294,9 +320,9 @@ class CameraReportController extends ChangeNotifier {
     final double? lat = pinnedLat ?? deviceLat;
     final double? lng = pinnedLng ?? deviceLng;
 
-    if (lat != null && lng != null && geocoder != null) {
+    if (lat != null && lng != null && geocoderService != null) {
       // Calls your perfect geocoder_pro service method
-      final address = await geocoder!.getAddressFromCoords(lat, lng);
+      final String? address = await geocoderService.reverseGeocode(lat, lng);
       _geocodedAddress = address;
       notifyListeners();
     }
