@@ -1,4 +1,4 @@
-﻿import 'package:camera/camera.dart';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -335,6 +335,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 onToggleGps: _controller.toggleGps,
                 onPinOnMap: _handlePinOnMap,
                 onSubmit: _handleSubmit,
+                resolvedLocationName: _controller.geocodedAddress,
                 geocodeAddress: _controller.geocodedAddress,
               ),
             ],

@@ -222,8 +222,8 @@ class CreateReportForm extends StatelessWidget {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                resolvedLocationName != null && resolvedLocationName!.isNotEmpty
-                                    ? (pinnedLat != null ? 'Pin: $resolvedLocationName' : 'GPS: $resolvedLocationName')
+                                (resolvedLocationName?.isNotEmpty == true || geocodeAddress?.isNotEmpty == true)
+                                    ? (pinnedLat != null ? 'Pin: ${resolvedLocationName ?? geocodeAddress}' : 'GPS: ${resolvedLocationName ?? geocodeAddress}')
                                     :
                                 pinnedLat != null
                                     ? '${pinnedLat!.toStringAsFixed(4)}°, ${pinnedLng!.toStringAsFixed(4)}°'

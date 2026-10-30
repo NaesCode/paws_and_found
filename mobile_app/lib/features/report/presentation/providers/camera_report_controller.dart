@@ -1,4 +1,4 @@
-﻿import 'dart:async' show unawaited;
+import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,7 +8,6 @@ import '../../../../core/services/location_service.dart';
 import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
-import 'package:paws_and_found/core/services/geocoding_service.dart';
 
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
@@ -23,7 +22,8 @@ class CameraReportController extends ChangeNotifier {
   final LocationService _locationService;
   final GeocodingService _geocodingService;
   final ImagePicker _picker = ImagePicker();
-final GeocodingService geocoderService = GeocoderProService(); 
+
+  GeocodingService get geocoderService => _geocodingService;
 
   CameraReportController({
     ReportRepository? repository,
@@ -47,7 +47,7 @@ final GeocodingService geocoderService = GeocoderProService();
   bool _isSubmitting = false;
   String? _errorMessage;
   String? _successReportId;
-  String? _resolvedLocationName;
+  String? _geocodedAddress;
 
   // Getters
   String get animalType => _animalType;
@@ -64,8 +64,8 @@ final GeocodingService geocoderService = GeocoderProService();
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
   String? get successReportId => _successReportId;
-  String? _geocodedAddress;
   String? get geocodedAddress => _geocodedAddress;
+  String? get resolvedLocationName => _geocodedAddress;
 
   /// Formatted date/time string matching wireframe "MM/DD/YY HH:MM"
   String get formattedDateTime {
@@ -98,7 +98,7 @@ final GeocodingService geocoderService = GeocoderProService();
     _pinnedLat = lat;
     _pinnedLng = lng;
     _isGpsAuto = false;
-    _resolvedLocationName = null;
+    _geocodedAddress = null;
     unawaited(_updateResolvedLocation(lat, lng));
     notifyListeners();
   }
@@ -108,7 +108,7 @@ final GeocodingService geocoderService = GeocoderProService();
     _pinnedLat = null;
     _pinnedLng = null;
     _isGpsAuto = true;
-    _resolvedLocationName = null;
+    _geocodedAddress = null;
     if (_deviceLat != null && _deviceLng != null) {
       unawaited(_updateResolvedLocation(_deviceLat!, _deviceLng!));
     }
@@ -141,11 +141,21 @@ final GeocodingService geocoderService = GeocoderProService();
     try {
       final name = await _geocodingService.reverseGeocode(lat, lng);
       if (name != null && name.isNotEmpty) {
-        _resolvedLocationName = name;
+        _geocodedAddress = name;
         notifyListeners();
       }
     } catch (_) {
       // Graceful fallback to raw coordinate readout
+    }
+  }
+
+  /// Manually triggers reverse-geocoding on current active coordinates
+  Future<void> reverseGeocodeCurrentCoords() async {
+    final double? lat = pinnedLat ?? deviceLat;
+    final double? lng = pinnedLng ?? deviceLng;
+
+    if (lat != null && lng != null) {
+      await _updateResolvedLocation(lat, lng);
     }
   }
 
@@ -220,9 +230,6 @@ final GeocodingService geocoderService = GeocoderProService();
     _successReportId = null;
     notifyListeners();
 
-    final double targetLat = pinnedLat ?? deviceLat ?? 0.0;
-    final double targetLng = pinnedLng ?? deviceLng ?? 0.0;
-
     if (_geocodedAddress == null || _geocodedAddress!.isEmpty) {
       await reverseGeocodeCurrentCoords();
     }
@@ -241,7 +248,6 @@ final GeocodingService geocoderService = GeocoderProService();
       // Default fallback coordinates: Prioritize custom pin, then detected device GPS, then Cebu default
       double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
       double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
-
 
       try {
         final reportId = await _repository.createReport(
@@ -266,7 +272,7 @@ final GeocodingService geocoderService = GeocoderProService();
             animalType: _animalType,
             description: descriptionController.text.trim(),
             status: _status.toLowerCase(),
-            locationName: _resolvedLocationName ?? 'Reported Area',
+            locationName: _geocodedAddress ?? 'Reported Area',
             latitude: lat,
             longitude: lng,
             normalizedX: 0.5,
@@ -293,7 +299,7 @@ final GeocodingService geocoderService = GeocoderProService();
             animalType: _animalType,
             description: descriptionController.text.trim(),
             status: _status.toLowerCase(),
-            locationName: _resolvedLocationName ?? 'Pinned Location',
+            locationName: _geocodedAddress ?? 'Pinned Location',
             latitude: lat,
             longitude: lng,
             normalizedX: 0.5,
@@ -313,18 +319,6 @@ final GeocodingService geocoderService = GeocoderProService();
       _isSubmitting = false;
       notifyListeners();
       return false;
-    }
-  }
-
-   Future<void> reverseGeocodeCurrentCoords() async {
-    final double? lat = pinnedLat ?? deviceLat;
-    final double? lng = pinnedLng ?? deviceLng;
-
-    if (lat != null && lng != null && geocoderService != null) {
-      // Calls your perfect geocoder_pro service method
-      final String? address = await geocoderService.reverseGeocode(lat, lng);
-      _geocodedAddress = address;
-      notifyListeners();
     }
   }
 

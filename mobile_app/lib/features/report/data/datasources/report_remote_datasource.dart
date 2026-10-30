@@ -1,3 +1,4 @@
+// ignore_for_file: use_null_aware_elements
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -146,7 +147,6 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
       'p_lat': lat,
       'p_lng': lng,
       'p_status': status.toLowerCase(),
-      // ignore: use_null_aware_elements
       if (petId != null) 'p_pet_id': petId,
         if (locationName != null) 'p_location_name': locationName,
       });
