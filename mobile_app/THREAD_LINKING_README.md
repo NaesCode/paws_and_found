@@ -190,3 +190,4 @@ flutter analyze lib
    - When a comment containing a sighting link is inserted into `comments`, a database webhook or Edge Function can trigger a push notification to the missing pet's reporter.
 3. **Deep Link Handling on Launch**:
    - The regex supports custom URI schemes (`pawsandfound://report/<id>`) and web links (`https://pawsandfound.org/report/<id>`), ready for `app_links` or `uni_links` initialization in `main.dart`.
+
