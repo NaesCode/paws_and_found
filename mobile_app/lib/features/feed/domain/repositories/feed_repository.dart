@@ -1,6 +1,5 @@
-import '../entities/feed_post.dart';
-
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 abstract class FeedRepository {
-  Future<List<FeedPost>> getGeneralReports();
-  Future<List<FeedPost>> getPersonalReports(String currentUserId);
+  Future<List<FeedPost>> getPersonalReports(String userId, {String? filterStatus});
+  Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}); 
 }

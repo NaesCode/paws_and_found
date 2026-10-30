@@ -56,20 +56,23 @@ class FeedPetInfoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Positioned.fill(
-                  child: imageUrl.startsWith('http')
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.fill,
-                          errorBuilder: (_, _, _) => Image.asset(
-                            AppAssets.petPlaceholder,
-                            fit: BoxFit.fill,
-                          ),
-                        )
-                      : Image.asset(
-                          imageUrl.isNotEmpty ? imageUrl : AppAssets.petPlaceholder,
+               Positioned.fill(
+                child: (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.fill,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          AppAssets.petPlaceholder,
                           fit: BoxFit.fill,
                         ),
+                      )
+                    : Image.asset(
+                        // Only attempt to load if it looks like a valid asset path (e.g., contains 'assets/')
+                        (imageUrl.isNotEmpty && imageUrl.contains('/'))
+                            ? imageUrl
+                            : AppAssets.petPlaceholder,
+                        fit: BoxFit.fill,
+                      ),
                 ),
               ],
             ),
