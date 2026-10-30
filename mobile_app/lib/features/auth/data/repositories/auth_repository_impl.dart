@@ -12,6 +12,9 @@ class AuthRepositoryImpl implements AuthRepository {
   User? get currentUser => _remoteDataSource.currentUser;
 
   @override
+  bool get isCurrentUserAdmin => _remoteDataSource.isCurrentUserAdmin;
+
+  @override
   Future<AuthResponse> signInWithPassword({
     required String email,
     required String password,

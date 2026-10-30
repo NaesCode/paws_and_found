@@ -35,7 +35,9 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           onSelected: (value) async {
-            if (value == 'edit') {
+            if (value == 'admin') {
+              context.push('/admin');
+            } else if (value == 'edit') {
               onEditPressed?.call();
             } else if (value == 'logout') {
               await Supabase.instance.client.auth.signOut();
@@ -44,31 +46,49 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
               }
             }
           },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                  SizedBox(width: 10),
-                  Text('Edit Profile', style: TextStyle(fontSize: 14)),
-                ],
+          itemBuilder: (context) {
+            final user = Supabase.instance.client.auth.currentUser;
+            final isAdmin = user != null &&
+                (user.appMetadata['is_admin'] == true ||
+                 user.appMetadata['role'] == 'admin' ||
+                 user.appMetadata['role'] == 'ADMIN');
+
+            return [
+              if (isAdmin)
+                const PopupMenuItem(
+                  value: 'admin',
+                  child: Row(
+                    children: [
+                      Icon(Icons.admin_panel_settings_outlined, size: 18, color: AppColors.primary),
+                      SizedBox(width: 10),
+                      Text('Admin Console', style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                    SizedBox(width: 10),
+                    Text('Edit Profile', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'logout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout, size: 18, color: AppColors.contrast2),
-                  SizedBox(width: 10),
-                  Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
-                ],
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 18, color: AppColors.contrast2),
+                    SizedBox(width: 10),
+                    Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ];
+          },
         ),
       ],
     );
   }
 }
-

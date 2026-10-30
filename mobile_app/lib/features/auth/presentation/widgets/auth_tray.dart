@@ -272,6 +272,14 @@ class _AuthTrayState extends State<AuthTray> {
     }
 
     try {
+      // 1. Admin routing check (Method 1: strictly tamper-proof app_metadata)
+      if (_authRepository.isCurrentUserAdmin) {
+        if (!mounted) return;
+        context.go('/admin');
+        return;
+      }
+
+      // 2. Standard user onboarding check
       final isFirstTimeUser = await _authRepository.checkIsFirstTimeUser(user.id);
 
       if (!mounted) return;

@@ -207,6 +207,12 @@ class _NotificationTile extends StatelessWidget {
         return Icons.location_on_rounded;
       case 'pet_safe':
         return Icons.check_circle_rounded;
+      case 'warning':
+        return Icons.warning_amber_rounded;
+      case 'suspension':
+        return Icons.block_rounded;
+      case 'status_update':
+        return Icons.verified_user_outlined;
       default:
         return Icons.notifications_rounded;
     }
@@ -222,6 +228,12 @@ class _NotificationTile extends StatelessWidget {
         return AppColors.primary;
       case 'pet_safe':
         return Colors.green;
+      case 'warning':
+        return Colors.amber[800]!;
+      case 'suspension':
+        return Colors.redAccent;
+      case 'status_update':
+        return Colors.blueAccent;
       default:
         return AppColors.text3;
     }
