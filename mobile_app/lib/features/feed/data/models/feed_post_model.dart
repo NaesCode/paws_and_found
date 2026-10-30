@@ -71,7 +71,7 @@ class FeedPost {
       species: json['animal_type'] as String? ?? 'Other',
       description: json['description'] as String? ?? '',
       imageUrl: cleanImageUrl,
-      location: json['location'] as String? ?? '',
+      location: json['location_name'] as String? ?? '',
       status: json['status'] as String? ?? 'Missing',
       analysisStatus: json['analysis_status'] as String? ?? 'Pending',
       createdAt: DateTime.parse(json['created_at'] as String),

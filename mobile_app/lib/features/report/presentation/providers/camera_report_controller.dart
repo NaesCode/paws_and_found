@@ -7,6 +7,7 @@ import '../../../../core/services/location_service.dart';
 import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
+import 'package:paws_and_found/core/services/geocoder-pro.dart';
 
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
@@ -20,6 +21,7 @@ class CameraReportController extends ChangeNotifier {
   final ReportRepository _repository;
   final LocationService _locationService;
   final ImagePicker _picker = ImagePicker();
+  final GeocoderProImpl geocoder = const GeocoderProImpl();
 
   CameraReportController({
     ReportRepository? repository,
@@ -57,6 +59,8 @@ class CameraReportController extends ChangeNotifier {
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
   String? get successReportId => _successReportId;
+  String? _geocodedAddress;
+  String? get geocodedAddress => _geocodedAddress;
 
   /// Formatted date/time string matching wireframe "MM/DD/YY HH:MM"
   String get formattedDateTime {
@@ -190,6 +194,13 @@ class CameraReportController extends ChangeNotifier {
     _successReportId = null;
     notifyListeners();
 
+    final double targetLat = pinnedLat ?? deviceLat ?? 0.0;
+    final double targetLng = pinnedLng ?? deviceLng ?? 0.0;
+
+    if (_geocodedAddress == null || _geocodedAddress!.isEmpty) {
+      await reverseGeocodeCurrentCoords();
+    }
+
     try {
       String photoUrl = '';
       if (_selectedImageBytes != null && _selectedImageBytes!.isNotEmpty) {
@@ -216,6 +227,7 @@ class CameraReportController extends ChangeNotifier {
           lat: lat,
           lng: lng,
           status: _status.toLowerCase(),
+          locationName: _geocodedAddress,
         );
         _successReportId = reportId;
 
@@ -275,6 +287,18 @@ class CameraReportController extends ChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
       return false;
+    }
+  }
+
+   Future<void> reverseGeocodeCurrentCoords() async {
+    final double? lat = pinnedLat ?? deviceLat;
+    final double? lng = pinnedLng ?? deviceLng;
+
+    if (lat != null && lng != null && geocoder != null) {
+      // Calls your perfect geocoder_pro service method
+      final address = await geocoder!.getAddressFromCoords(lat, lng);
+      _geocodedAddress = address;
+      notifyListeners();
     }
   }
 

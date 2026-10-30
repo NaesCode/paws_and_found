@@ -29,6 +29,7 @@ class CreateReportForm extends StatelessWidget {
   final VoidCallback onToggleGps;
   final VoidCallback? onPinOnMap;
   final VoidCallback onSubmit;
+  final String? geocodeAddress;
 
   const CreateReportForm({
     super.key,
@@ -47,6 +48,7 @@ class CreateReportForm extends StatelessWidget {
     required this.onToggleGps,
     this.onPinOnMap,
     required this.onSubmit,
+    this.geocodeAddress,
   });
 
   @override
@@ -251,6 +253,19 @@ class CreateReportForm extends StatelessWidget {
                         ),
                       ),
                     ),
+                    /*if(geocodeAddress != null && geocodeAddress!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Padding(padding: const EdgeInsets.only(left: 4.0),
+                      child: Text(
+                        geocodeAddress!,
+                        style: const TextStyle(color: WireframeColors.textSecondary,
+                        fontSize: 11.0,
+                        fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ))
+                    ]*/
                   ],
                 ),
               ),

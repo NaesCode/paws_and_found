@@ -11,6 +11,7 @@ class SightingReport {
   final double lat;
   final double lng;
   final double? distanceMeters;
+  final String? locationName;
 
   const SightingReport({
     required this.id,
@@ -25,6 +26,7 @@ class SightingReport {
     required this.lat,
     required this.lng,
     this.distanceMeters,
+    this.locationName,
   });
 
   bool get isAnalysisPending => analysisStatus == 'pending';

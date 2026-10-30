@@ -1,10 +1,9 @@
 import 'dart:typed_data';
 import 'package:geocoder_pro/geocoder_pro.dart';
 
-class LocationService {
-  const LocationService();
+class GeocoderProImpl {
+  const GeocoderProImpl();
 
-  /// Step A: Keeps parsing the binary data out of your Supabase PostGIS hex column
   Future<String> getAddressFromHexEWKB(String? hexStr) async {
     if (hexStr == null || hexStr.isEmpty || hexStr.toLowerCase() == 'null') {
       return "No location pinned";
