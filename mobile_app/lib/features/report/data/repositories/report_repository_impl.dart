@@ -58,6 +58,7 @@ class ReportRepositoryImpl implements ReportRepository {
     required double lng,
     String status = 'stray',
     String? petId,
+    String? locationName,
   }) async {
     try {
       return await _dataSource.createReport(
@@ -68,6 +69,7 @@ class ReportRepositoryImpl implements ReportRepository {
         lng: lng,
         status: status,
         petId: petId,
+        locationName: locationName
       );
     } catch (e) {
       throw Exception('Failed to create report: $e');

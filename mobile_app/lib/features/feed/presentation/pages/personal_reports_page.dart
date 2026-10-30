@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
-import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';

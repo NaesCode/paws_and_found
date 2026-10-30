@@ -56,7 +56,10 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
       locationService: widget.locationService,
     );
     _controller.addListener(_onControllerUpdate);
-    _controller.fetchDeviceLocation();
+    // _controller.fetchDeviceLocation();
+    _controller.fetchDeviceLocation().then((_) {
+      _controller.reverseGeocodeCurrentCoords(); 
+    });
 
     if (widget.isActiveTab) {
       _initLiveCamera();
@@ -186,6 +189,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
 
     if (picked != null) {
       _controller.setPinnedLocation(picked.latitude, picked.longitude);
+      await _controller.reverseGeocodeCurrentCoords();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -331,6 +335,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 onToggleGps: _controller.toggleGps,
                 onPinOnMap: _handlePinOnMap,
                 onSubmit: _handleSubmit,
+                resolvedLocationName: _controller.geocodedAddress,
+                geocodeAddress: _controller.geocodedAddress,
               ),
             ],
           ),
