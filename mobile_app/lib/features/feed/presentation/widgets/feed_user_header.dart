@@ -8,6 +8,7 @@ class FeedUserHeader extends StatelessWidget {
   final String timeAgo;
   final String location;
   final String userImageUrl;
+  final VoidCallback? onUndoPressed;
 
   const FeedUserHeader({
     super.key,
@@ -16,6 +17,7 @@ class FeedUserHeader extends StatelessWidget {
     required this.timeAgo,
     required this.location,
     required this.userImageUrl,
+    this.onUndoPressed,
   });
 
   @override
@@ -89,6 +91,37 @@ class FeedUserHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onUndoPressed != null) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: onUndoPressed,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.red.shade200, width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.undo_rounded, size: 14, color: Colors.red.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Undo',
+                          style: TextStyle(
+                            fontFamily: 'Nunito Sans',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

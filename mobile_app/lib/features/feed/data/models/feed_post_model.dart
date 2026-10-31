@@ -8,6 +8,7 @@ class FeedPost {
   final String location;
   final String status;
   final String analysisStatus;
+  final String moderationStatus;
   final DateTime createdAt;
   final String username;
   final String userImageUrl;
@@ -23,6 +24,7 @@ class FeedPost {
     required this.location,
     required this.status,
     required this.analysisStatus,
+    this.moderationStatus = 'approved',
     required this.createdAt,
     required this.username,
     required this.userImageUrl,
@@ -32,6 +34,8 @@ class FeedPost {
   // Updated: Returns the actual profile name fetched from the database
   String get postedBy => username.isNotEmpty ? username : "Anonymous User";
   
+  bool get isFlagged => moderationStatus.toLowerCase() == 'flagged';
+
   String get formattedTime {
     final difference = DateTime.now().difference(createdAt);
     if (difference.inDays > 0) return '${difference.inDays}d ago';
@@ -65,21 +69,22 @@ class FeedPost {
         : rawPhotoUrl;
 
     return FeedPost(
-      id: json['id'] as String,
-      reporterId: json['reporter_id'] as String,
-      petId: json['pet_id'] as String?,
+      id: json['id']?.toString() ?? '',
+      reporterId: json['reporter_id']?.toString() ?? '',
+      petId: json['pet_id']?.toString(),
       species: json['animal_type'] as String? ?? 'Other',
       description: json['description'] as String? ?? '',
       imageUrl: cleanImageUrl,
       location: json['location_name'] as String? ?? '',
       status: json['status'] as String? ?? 'Missing',
       analysisStatus: json['analysis_status'] as String? ?? 'Pending',
-      createdAt: DateTime.parse(json['created_at'] as String),
+      moderationStatus: json['moderation_status'] as String? ?? 'approved',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
       username: parsedName,
       userImageUrl: cleanPetImageUrl,
       petName: parsedPetName,
     );
   }
 }
-
- 

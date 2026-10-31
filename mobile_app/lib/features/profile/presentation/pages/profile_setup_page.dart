@@ -172,15 +172,20 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             _isLoading = false;
           });
 
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
               content: Text('${pet.name} reported missing. Community alert active!'),
               backgroundColor: AppColors.contrast2,
-              duration: const Duration(seconds: 5),
+              duration: const Duration(seconds: 4),
               action: SnackBarAction(
                 label: 'View Map',
                 textColor: Colors.white,
                 onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   context.push('/map');
                 },
               ),
