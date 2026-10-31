@@ -19,7 +19,7 @@ abstract class ProfileRemoteDataSource {
     String? description,
     List<String> photoUrls = const [],
   });
-  Future<void> deletePet(String petId);
+  Future<void> deletePet(String petId, {String? reason, String? details});
   Future<void> reportPetMissing(
     String petId, {
     double? lat,
@@ -152,13 +152,29 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> deletePet(String petId) async {
+  Future<void> deletePet(String petId, {String? reason, String? details}) async {
     final uid = _currentUserId;
     if (uid == null) {
       throw Exception('User is not authenticated');
     }
 
-    await supabase.from('pets').delete().eq('id', petId).eq('owner_id', uid);
+    if (petId.startsWith('mock-')) {
+      _mockPets.removeWhere((p) => p.petID == petId);
+      return;
+    }
+
+    try {
+      await supabase.rpc('delete_pet', params: {
+        'p_pet_id': petId,
+        'p_reason': reason ?? 'User requested removal',
+        if (details != null && details.trim().isNotEmpty) 'p_details': details.trim(),
+      });
+    } catch (_) {
+      // Fallback in case RPC hasn't been migrated yet in cloud
+      await supabase.from('reports').delete().eq('pet_id', petId);
+      await supabase.from('matches').delete().eq('pet_id', petId);
+      await supabase.from('pets').delete().eq('id', petId).eq('owner_id', uid);
+    }
   }
 
   // --- Mock fixtures fallback if user has no pets yet ---

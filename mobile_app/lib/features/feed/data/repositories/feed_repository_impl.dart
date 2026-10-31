@@ -20,6 +20,7 @@ class FeedRepositoryImpl implements FeedRepository {
         location_name,
         status,
         analysis_status,
+        moderation_status,
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
@@ -50,6 +51,7 @@ class FeedRepositoryImpl implements FeedRepository {
         location_name, 
         status, 
         analysis_status, 
+        moderation_status, 
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
@@ -67,6 +69,32 @@ class FeedRepositoryImpl implements FeedRepository {
       return response.map((json) => FeedPost.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to fetch general reports: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteReport(String reportId, {String? reason, String? details}) async {
+    try {
+      await _supabase.rpc('delete_report', params: {
+        'p_report_id': reportId,
+        'p_reason': reason ?? 'Mistake / False Alarm',
+        if (details != null && details.trim().isNotEmpty) 'p_details': details.trim(),
+      });
+    } catch (_) {
+      // Direct deletion fallback if RPC is not yet migrated in database
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId != null) {
+        final row = await _supabase.from('reports').select('pet_id').eq('id', reportId).maybeSingle();
+        if (row != null && row['pet_id'] != null) {
+          await _supabase.from('pets').update({
+            'status': 'safe',
+            'missing_since': null,
+            'last_known_location': null,
+          }).eq('id', row['pet_id']).eq('owner_id', currentUserId);
+        }
+        await _supabase.from('matches').delete().eq('report_id', reportId);
+        await _supabase.from('reports').delete().eq('id', reportId).eq('reporter_id', currentUserId);
+      }
     }
   }
 }

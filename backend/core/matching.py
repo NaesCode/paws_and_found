@@ -207,13 +207,15 @@ def match_report_against_pets(report: Report) -> MatchSummary:
             if is_new and matches_created <= max_notified:
                 dist_km_msg = f"{round(dist_km, 1):.1f}"
 
+                loc_context = f" in {report.location_name}" if getattr(report, "location_name", None) else ""
+
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(
                     user=pet.owner,
                     related_match=match_obj,
                     type="match_found",
                     defaults={
-                        "message": f"A pet that looks like {pet.name} was reported nearby ({dist_km_msg} km away).",
+                        "message": f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away).",
                     },
                 )
                 if owner_notif_created:
@@ -225,7 +227,7 @@ def match_report_against_pets(report: Report) -> MatchSummary:
                     related_match=match_obj,
                     type="verification_request",
                     defaults={
-                        "message": f"A potential match was found for your {report.animal_type} sighting ({dist_km_msg} km away).",
+                        "message": f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away).",
                     },
                 )
                 if reporter_notif_created:
@@ -344,13 +346,15 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
             if is_new and matches_created <= max_notified:
                 dist_km_msg = f"{round(dist_km, 1):.1f}"
 
+                loc_context = f" in {report.location_name}" if getattr(report, "location_name", None) else ""
+
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(
                     user=pet.owner,
                     related_match=match_obj,
                     type="match_found",
                     defaults={
-                        "message": f"A pet that looks like {pet.name} was reported nearby ({dist_km_msg} km away).",
+                        "message": f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away).",
                     },
                 )
                 if owner_notif_created:
@@ -362,7 +366,7 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
                     related_match=match_obj,
                     type="verification_request",
                     defaults={
-                        "message": f"A potential match was found for your {report.animal_type} sighting ({dist_km_msg} km away).",
+                        "message": f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away).",
                     },
                 )
                 if reporter_notif_created:

@@ -34,8 +34,8 @@ abstract class ProfileRepository {
     List<String> photoUrls = const [],
   });
 
-  /// Deletes a registered pet.
-  Future<void> deletePet(String petId);
+  /// Deletes a registered pet with an audit reason.
+  Future<void> deletePet(String petId, {String? reason, String? details});
 
   /// Reports a registered pet as missing.
   Future<void> reportPetMissing(
