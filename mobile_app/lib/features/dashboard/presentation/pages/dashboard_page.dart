@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
@@ -31,14 +32,35 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   late int _currentIndex;
 
-  // Notification badge count — fetched once on mount.
+  // Notification badge count — fetched once on mount and kept in sync via stream.
   int _unreadCount = 0;
+  StreamSubscription<int>? _unreadSub;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _fetchUnreadCount();
+    _subscribeToUnreadCount();
+  }
+
+  void _subscribeToUnreadCount() {
+    try {
+      _unreadSub = NotificationRepositoryImpl()
+          .streamUnreadCount()
+          .listen(
+            (count) {
+              if (mounted) setState(() => _unreadCount = count);
+            },
+            onError: (_) {},
+          );
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _unreadSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -80,6 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
       case 4:
         return NotificationsPage(
           repository: NotificationRepositoryImpl(),
+          isActiveTab: _currentIndex == 4,
         );
       default:
         return const MapPage(showBottomNavPlaceholder: false);
@@ -103,8 +126,7 @@ class _DashboardPageState extends State<DashboardPage> {
         hasUnreadNotifications: _unreadCount > 0,
         onTabSelected: (index) {
           setState(() => _currentIndex = index);
-          // Refresh badge whenever the user switches away from notifications.
-          if (index != 4) _fetchUnreadCount();
+          _fetchUnreadCount();
         },
       ),
     );

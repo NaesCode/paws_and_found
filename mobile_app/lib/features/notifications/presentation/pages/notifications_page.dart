@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 
@@ -11,37 +12,82 @@ import '../../domain/repositories/notification_repository.dart';
 /// Each tap marks the tapped item as read; a "Mark all" button clears all.
 class NotificationsPage extends StatefulWidget {
   final NotificationRepository? repository;
+  final bool isActiveTab;
 
-  const NotificationsPage({super.key, this.repository});
+  const NotificationsPage({
+    super.key,
+    this.repository,
+    this.isActiveTab = true,
+  });
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  late final NotificationRepository _repo;
+  late NotificationRepository _repo;
 
   List<AppNotification> _notifications = [];
   bool _isLoading = true;
   String? _error;
+  StreamSubscription<List<AppNotification>>? _subscription;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.repository ?? NotificationRepositoryImpl();
     _load();
+    _subscribe();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  @override
+  void didUpdateWidget(covariant NotificationsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.repository != oldWidget.repository) {
+      _repo = widget.repository ?? NotificationRepositoryImpl();
+      _subscription?.cancel();
+      _subscribe();
+    }
+    if (!oldWidget.isActiveTab && widget.isActiveTab) {
+      _load(isSilent: true);
+    }
+  }
+
+  void _subscribe() {
+    try {
+      _subscription = _repo.streamNotifications().listen(
+        (items) {
+          if (mounted) {
+            setState(() {
+              _notifications = items;
+              _isLoading = false;
+              _error = null;
+            });
+          }
+        },
+        onError: (_) {},
+      );
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool isSilent = false}) async {
+    if (!isSilent || _notifications.isEmpty) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final items = await _repo.getNotifications();
       if (mounted) setState(() => _notifications = items);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted && _notifications.isEmpty) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -110,7 +156,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_isLoading && _notifications.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
