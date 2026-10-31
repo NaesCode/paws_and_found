@@ -15,6 +15,7 @@ class PawsProfileSection extends StatelessWidget {
   final List<Pet> pets;
   final bool isLoading;
   final ValueChanged<Pet> onStatusToggle;
+  final ValueChanged<Pet>? onDeletePet;
   final ValueChanged<Pet>? onPetTap;
   final VoidCallback? onAddPetPressed;
 
@@ -23,6 +24,7 @@ class PawsProfileSection extends StatelessWidget {
     required this.pets,
     this.isLoading = false,
     required this.onStatusToggle,
+    this.onDeletePet,
     this.onPetTap,
     this.onAddPetPressed,
   });
@@ -135,6 +137,7 @@ class PawsProfileSection extends StatelessWidget {
               (pet) => PetItem(
                 pet: pet,
                 onStatusActionPressed: () => onStatusToggle(pet),
+                onDeletePressed: onDeletePet != null ? () => onDeletePet!(pet) : null,
                 onTap: () => onPetTap?.call(pet),
               ),
             ),

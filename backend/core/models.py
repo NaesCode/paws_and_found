@@ -57,6 +57,7 @@ class Report(models.Model):
     description = models.TextField(default="")
     photo_url = models.TextField()
     location = gis_models.PointField(geography=True, srid=4326)
+    location_name = models.TextField(null=True, blank=True)
     status = models.TextField(default="stray")
     analysis_status = models.TextField(default="pending")
     created_at = models.DateTimeField(db_default=Now(), editable=False)
