@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../domain/repositories/admin_repository.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 import 'admin_posts_page.dart';
 import 'admin_users_page.dart';
 
 /// Unified Admin Shell allowing developers and administrators to seamlessly
-/// toggle between SDD Screen 09 (Users) and Screen 10 (Posts) via the top header dropdown.
+/// toggle between SDD Screen 09 (User Management) and Screen 10 (Post Management)
+/// via the bottom appbar navigation.
 class AdminPage extends StatefulWidget {
   final int initialTabIndex; // 0 for Users, 1 for Posts
   final VoidCallback? onLogout;
+  final AdminRepository? repository;
 
   const AdminPage({
     super.key,
     this.initialTabIndex = 0,
     this.onLogout,
+    this.repository,
   });
 
   @override
@@ -70,13 +75,21 @@ class _AdminPageState extends State<AdminPage> {
             selectedTabIndex: _selectedTab,
             onTabChanged: _onTabChanged,
             onLogout: widget.onLogout,
+            repository: widget.repository,
+            showBottomNav: false,
           ),
           AdminPostsPage(
             selectedTabIndex: _selectedTab,
             onTabChanged: _onTabChanged,
             onLogout: widget.onLogout,
+            repository: widget.repository,
+            showBottomNav: false,
           ),
         ],
+      ),
+      bottomNavigationBar: AdminBottomNavBar(
+        currentIndex: _selectedTab,
+        onTabSelected: _onTabChanged,
       ),
     );
   }

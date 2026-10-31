@@ -89,7 +89,7 @@ void main() {
   }
 
   group('Admin Functions & Static UI Tests (SDD Screens 09 & 10)', () {
-    testWidgets('AdminHeader renders title dropdown selector and circular dropdown button with Log Out', (tester) async {
+    testWidgets('AdminHeader renders title and direct Logout button', (tester) async {
       bool loggedOut = false;
       int selectedTab = 0;
 
@@ -110,17 +110,11 @@ void main() {
       expect(find.text('A'), findsOneWidget);
       expect(find.text('User Management'), findsOneWidget);
 
-      // Verify circular dropdown button beside ADMIN rectangle
-      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
-
-      // Tap circular button to open dropdown menu
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-
-      // Verify 'Log Out' item is visible
+      // Verify direct Logout button
       expect(find.text('Log Out'), findsOneWidget);
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
 
-      // Tap 'Log Out'
+      // Tap 'Log Out' directly
       await tester.tap(find.text('Log Out'));
       await tester.pumpAndSettle();
 
@@ -181,7 +175,7 @@ void main() {
 
       // Verify Header & Columns
       expect(find.text('User Management'), findsOneWidget);
-      expect(find.text('ADMIN'), findsOneWidget);
+      expect(find.text('Log Out'), findsOneWidget);
       expect(find.text('Search users...'), findsOneWidget);
       expect(find.text('NAME'), findsOneWidget);
       expect(find.text('STATUS'), findsOneWidget);
@@ -404,7 +398,7 @@ void main() {
       expect(post.isFlagged, isTrue);
     });
 
-    testWidgets('AdminPage shell smoothly toggles between Users and Posts via title dropdown selector', (tester) async {
+    testWidgets('AdminPage shell smoothly toggles between Users and Posts via bottom appbar navigation', (tester) async {
       setMobileScreen(tester);
 
       await tester.pumpWidget(
@@ -415,25 +409,19 @@ void main() {
       await tester.pumpAndSettle();
 
       // Initially on Tab 0: Users
-      expect(find.text('User Management'), findsOneWidget);
+      expect(find.byKey(const Key('admin_nav_users')), findsOneWidget);
+      expect(find.byKey(const Key('admin_nav_posts')), findsOneWidget);
+      expect(find.text('User Management'), findsWidgets);
 
-      // Tap title dropdown to switch to Posts
-      await tester.tap(find.text('User Management'));
+      // Tap bottom appbar navigation item for Post Management
+      await tester.tap(find.byKey(const Key('admin_nav_posts')));
       await tester.pumpAndSettle();
+      expect(find.text('Post Management'), findsWidgets);
 
-      // Select 'Post Management'
-      await tester.tap(find.text('Post Management').last);
+      // Tap bottom appbar navigation item for User Management
+      await tester.tap(find.byKey(const Key('admin_nav_users')));
       await tester.pumpAndSettle();
-      expect(find.text('Post Management'), findsOneWidget);
-
-      // Tap title dropdown to switch back to Users
-      await tester.tap(find.text('Post Management'));
-      await tester.pumpAndSettle();
-
-      // Select 'User Management'
-      await tester.tap(find.text('User Management').last);
-      await tester.pumpAndSettle();
-      expect(find.text('User Management'), findsOneWidget);
+      expect(find.text('User Management'), findsWidgets);
     });
 
     testWidgets('Screen 09 — AdminUsersPage taps status pill and updates user status with notification message', (tester) async {

@@ -4,6 +4,7 @@ import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_user_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
 import '../../domain/repositories/admin_repository.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 import '../widgets/admin_header.dart';
 import '../widgets/admin_user_status_pill.dart';
 
@@ -20,6 +21,7 @@ class AdminUsersPage extends StatefulWidget {
   final VoidCallback? onLogout;
   final int selectedTabIndex;
   final AdminRepository? repository;
+  final bool showBottomNav;
 
   const AdminUsersPage({
     super.key,
@@ -27,6 +29,7 @@ class AdminUsersPage extends StatefulWidget {
     this.onLogout,
     this.selectedTabIndex = 0,
     this.repository,
+    this.showBottomNav = false,
   });
 
   @override
@@ -161,6 +164,66 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ),
             ),
 
+            // 3. Actions Row below Search Bar: Total Count, Export, and + Add User
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 4.0, 16.0, 8.0),
+              child: Row(
+                children: [
+                  Text(
+                    '${_displayedUsers.length} users total',
+                    style: const TextStyle(
+                      color: WireframeColors.textSecondary,
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+
+                  // Export Button
+                  OutlinedButton(
+                    onPressed: () => _showActionFeedback('User export', 'CSV'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: WireframeColors.primaryDark,
+                      side: const BorderSide(color: WireframeColors.border, width: 1.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                    ),
+                    child: const Text(
+                      'Export',
+                      style: TextStyle(
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // + Add User Button
+                  ElevatedButton(
+                    onPressed: () => _showActionFeedback('Add user modal', 'New User'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: WireframeColors.primaryDark,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                    ),
+                    child: const Text(
+                      '+ Add User',
+                      style: TextStyle(
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 6),
 
             // 3. Table Column Headers
@@ -230,70 +293,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               child: _buildUserListContent(),
             ),
 
-            const Divider(height: 1, thickness: 1, color: WireframeColors.divider),
-
-            // 5. Bottom Action Bar (Screen 09)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-              child: Row(
-                children: [
-                  Text(
-                    '${_displayedUsers.length} users total',
-                    style: const TextStyle(
-                      color: WireframeColors.textSecondary,
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-
-                  // Export Button
-                  OutlinedButton(
-                    onPressed: () => _showActionFeedback('User export', 'CSV'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: WireframeColors.primaryDark,
-                      side: const BorderSide(color: WireframeColors.border, width: 1.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 10.0),
-                    ),
-                    child: const Text(
-                      'Export',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // + Add User Button
-                  ElevatedButton(
-                    onPressed: () => _showActionFeedback('Add user modal', 'New User'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: WireframeColors.primaryDark,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 10.0),
-                    ),
-                    child: const Text(
-                      '+ Add User',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
+      bottomNavigationBar: widget.showBottomNav
+          ? AdminBottomNavBar(
+              currentIndex: 0,
+              onTabSelected: widget.onTabChanged ?? (_) {},
+            )
+          : null,
     );
   }
 
