@@ -352,6 +352,47 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
     @patch("core.models.ReportEmbedding.objects.update_or_create")
     @patch("core.views._download_image")
     @patch("core.models.Report.objects.get")
+    @patch("core.views.embed_image")
+    @patch("core.views._download_image")
+    @patch("core.models.Report.objects.get")
+    def test_analyze_report_smart_moderation_flags_non_animal(
+        self,
+        mock_get_report,
+        mock_download,
+        mock_embed,
+    ):
+        from core.ai.features import EmbeddingResult
+
+        mock_report = MagicMock()
+        mock_report.id = self.report_id
+        mock_report.reporter_id = self.user_b_id
+        mock_report.photo_url = "https://supabase.example.com/storage/v1/object/public/animal-photos/spam.jpg"
+        mock_report.animal_type = "dog"
+        mock_report.pet_id = None
+        mock_report.status = "stray"
+        mock_report.analysis_status = "pending"
+        mock_get_report.return_value = mock_report
+        mock_download.return_value = b"fake_meme_or_spam_bytes"
+
+        # Mock SSDLite320 detecting no animal (score = 0.0, no crop)
+        mock_embed.return_value = EmbeddingResult(
+            vector=[1.0 / np.sqrt(512)] * 512,
+            model_version="resnet18-in1k-v1+ssdlite-crop-v1",
+            used_crop=False,
+            detector_score=0.05,
+        )
+
+        response = self.client.post(
+            f"/api/reports/{self.report_id}/analyze/",
+            HTTP_AUTHORIZATION=f"Bearer {self.user_b_token}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "flagged")
+        self.assertEqual(mock_report.moderation_status, "flagged")
+        self.assertIn("Flagged by AI", mock_report.moderation_notes)
+        self.assertEqual(response.data["matches_created"], 0)
+
     def test_analyze_report_workflow_and_idempotency(
         self,
         mock_get_report,

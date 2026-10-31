@@ -81,8 +81,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<void> deletePet(String petId) async {
-    return await remoteDataSource.deletePet(petId);
+  Future<void> deletePet(String petId, {String? reason, String? details}) async {
+    return await remoteDataSource.deletePet(petId, reason: reason, details: details);
   }
 
   @override

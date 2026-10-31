@@ -147,11 +147,12 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           petName: report.petName,
                           postedBy: report.postedBy,
                           species: report.species,
-                          location:report.location,
+                          location: report.location,
                           description: report.description,
                           formattedTime: report.formattedTime,
                           imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
                           userImageUrl: report.userImageUrl,
+                          isFlagged: report.isFlagged,
                           button1Text: "Spotted",
                           button2Text: "Found",
                           onButton1Pressed: () {}, //TODO: need to put what should be shown

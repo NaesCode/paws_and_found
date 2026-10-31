@@ -124,6 +124,35 @@ class ReportAnalyzeView(APIView):
             photo_bytes = _download_image(report.photo_url)
             emb_result = embed_image(photo_bytes)
 
+            # Smart Content Moderation check via SSDLite320
+            # If the user selected cat or dog, but the detector found no animal (confidence < 0.35 and no crop)
+            # flag the post for admin review to prevent spam, offensive images, or non-animal posts.
+            target_species = report.animal_type.lower()
+            is_canine_or_feline = target_species in ("canine", "feline", "dog", "cat")
+            is_unrecognized = not emb_result.used_crop and emb_result.detector_score < 0.35
+
+            if is_canine_or_feline and is_unrecognized:
+                with transaction.atomic():
+                    report.moderation_status = "flagged"
+                    report.moderation_notes = (
+                        f"Flagged by AI: Low animal confidence score ({emb_result.detector_score:.2f}) "
+                        f"for claimed {report.animal_type} sighting. Pending administrative verification."
+                    )
+                    report.analysis_status = "done"
+                    report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
+
+                logger.warning("Report %s flagged by AI moderation (score: %.2f)", report.id, emb_result.detector_score)
+
+                return Response({
+                    "status": "flagged",
+                    "report_id": str(report.id),
+                    "reason": "Image flagged for administrative review: no clear animal detected.",
+                    "detector_score": emb_result.detector_score,
+                    "matches_created": 0,
+                    "matches_updated": 0,
+                    "notifications_sent": 0,
+                })
+
             with transaction.atomic():
                 # 4. Upsert report embedding with model version
                 ReportEmbedding.objects.update_or_create(
@@ -135,9 +164,10 @@ class ReportAnalyzeView(APIView):
                     },
                 )
 
-                # 5. Mark report analysis as complete
+                # 5. Mark report analysis as complete & approved
                 report.analysis_status = "done"
-                report.save(update_fields=["analysis_status"])
+                report.moderation_status = "approved"
+                report.save(update_fields=["analysis_status", "moderation_status"])
 
             # 6. Run forward matching against currently missing pets
             summary = match_report_against_pets(report)

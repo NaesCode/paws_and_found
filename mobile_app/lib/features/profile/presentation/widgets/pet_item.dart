@@ -12,12 +12,14 @@ import 'pet_info_card.dart';
 class PetItem extends StatelessWidget {
   final Pet pet;
   final VoidCallback? onStatusActionPressed;
+  final VoidCallback? onDeletePressed;
   final VoidCallback? onTap;
 
   const PetItem({
     super.key,
     required this.pet,
     this.onStatusActionPressed,
+    this.onDeletePressed,
     this.onTap,
   });
 
@@ -30,32 +32,59 @@ class PetItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Right-aligned status action pill directly above card
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
-              child: isSafe
-                  ? PawPillButton.danger(
-                      text: 'Report Missing!',
-                      onPressed: onStatusActionPressed,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      trailingIcon: const Icon(
-                        Icons.pets,
-                        size: 11,
-                        color: AppColors.text1,
-                      ),
-                    )
-                  : PawPillButton.primary(
-                      text: 'Mark as Safe',
-                      onPressed: onStatusActionPressed,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      trailingIcon: const Icon(
-                        Icons.check_circle_outline,
-                        size: 12,
-                        color: AppColors.text1,
+          // Action row above card: Delete icon button on left, Status action pill on right
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (onDeletePressed != null)
+                  InkWell(
+                    onTap: onDeletePressed,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, size: 15, color: Colors.red.shade600),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Delete',
+                            style: TextStyle(
+                              fontFamily: 'Nunito Sans',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.red.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  )
+                else
+                  const SizedBox.shrink(),
+                isSafe
+                    ? PawPillButton.danger(
+                        text: 'Report Missing!',
+                        onPressed: onStatusActionPressed,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        trailingIcon: const Icon(
+                          Icons.pets,
+                          size: 11,
+                          color: AppColors.text1,
+                        ),
+                      )
+                    : PawPillButton.primary(
+                        text: 'Mark as Safe',
+                        onPressed: onStatusActionPressed,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        trailingIcon: const Icon(
+                          Icons.check_circle_outline,
+                          size: 12,
+                          color: AppColors.text1,
+                        ),
+                      ),
+              ],
             ),
           ),
 

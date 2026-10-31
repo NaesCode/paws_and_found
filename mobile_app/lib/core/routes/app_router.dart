@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -36,7 +37,13 @@ class AppRouter {
 
       // Not logged in and NOT heading to a public route → force login
       if (!isLoggedIn && !isPublicRoute) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         return '/login';
+      }
+
+      // Clear any lingering snackbars when heading to login
+      if (state.matchedLocation == '/login') {
+        ScaffoldMessenger.of(context).clearSnackBars();
       }
 
       // Already logged in and heading to login → send to home
