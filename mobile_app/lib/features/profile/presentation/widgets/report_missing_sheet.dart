@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/drag_handle.dart';
@@ -70,9 +71,9 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   bool _isFetchingLocation = true;
   bool _locationFailed = false;
 
-  // Manila Metro default fallback coordinates if hardware GPS is unavailable
-  static const double _defaultLat = 14.5995;
-  static const double _defaultLng = 120.9842;
+  // Cebu default fallback coordinates if hardware GPS is unavailable
+  static const double _defaultLat = LocationConstants.defaultLatitude;
+  static const double _defaultLng = LocationConstants.defaultLongitude;
 
   @override
   void initState() {
@@ -354,7 +355,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
                               ),
                               Text(
                                 _locationFailed
-                                    ? 'Hardware GPS unavailable (Default Metro Manila)'
+                                    ? LocationConstants.defaultFallbackNote
                                     : 'Device GPS Location',
                                 style: TextStyle(
                                   fontFamily: 'Ek Mukta',
@@ -374,6 +375,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
                               initialLocation: LatLng(_latitude ?? _defaultLat, _longitude ?? _defaultLng),
                               pinStatus: 'missing',
                               title: 'Pin ${widget.pet.name} on Animal Map',
+                              locationService: _locationService,
                             );
                             if (picked != null) {
                               setState(() {

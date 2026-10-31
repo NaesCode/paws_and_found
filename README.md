@@ -178,6 +178,16 @@ The single source of truth for the database schema is [`supabase/migrations/`](.
 > **Android Emulator Networking:**
 > The Android emulator connects to your host machine's localhost via **`10.0.2.2`**. The orchestrator endpoint is configured at `http://10.0.2.2:8000/api/`. On a physical device, update `DJANGO_BASE_URL` with your workstation's LAN IP.
 
+### Test Accounts for Development & QA
+
+For rapid local testing without having to register new email addresses or verify inboxes, three pre-seeded dummy accounts are available on Supabase Auth (`email_confirm: true`):
+
+| Account Role | Email | Password | Profile Status | Suggested QA Use Cases |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pet Owner** | `petowner.test@pawsandfound.com` | `PawsTest2026!` | **Complete** (Phone & Address set) | Registering pets, reporting pets missing, viewing owned pets |
+| **Stray Finder / Rescuer** | `strayfinder.test@pawsandfound.com` | `PawsTest2026!` | **Complete** (Phone & Address set) | Reporting sightings on map, feed interactions, cross-user matching |
+| **New User** | `newuser.onboarding@pawsandfound.com` | `PawsTest2026!` | **Incomplete** (No phone/address) | Testing first-time login and profile completion onboarding flow |
+
 ---
 
 ## 7. Geospatial Architecture (PostGIS & GeoDjango)

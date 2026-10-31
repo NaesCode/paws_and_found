@@ -14,6 +14,7 @@ class SightingReportModel extends SightingReport {
     required super.lat,
     required super.lng,
     super.distanceMeters,
+    super.locationName,
   });
 
   factory SightingReportModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +33,7 @@ class SightingReportModel extends SightingReport {
       lat: ((json['lat'] ?? 0.0) as num).toDouble(),
       lng: ((json['lng'] ?? 0.0) as num).toDouble(),
       distanceMeters: json['distance_m'] != null ? ((json['distance_m'] as num).toDouble()) : null,
+      locationName: json['location_name'] as String?,
     );
   }
 }

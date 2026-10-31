@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,7 +14,12 @@ import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: '/login',
+    // =========================================================================
+    // TODO: TESTING ONLY - Launches directly into the map screen on startup
+    // so the map pins and pet info modal can be verified immediately.
+    // NOTE: MUST BE REVERTED TO '/login' AFTER TESTING.
+    // =========================================================================
+    initialLocation: '/map',
 
     /// Global redirect guard.
     ///
@@ -43,6 +49,7 @@ class AppRouter {
 
       // 1. Not logged in and NOT heading to a public route → force login
       if (!isLoggedIn && !isPublicRoute) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         return '/login';
       }
 
@@ -53,6 +60,12 @@ class AppRouter {
            user.appMetadata['role'] == 'ADMIN');
 
       // 2. Already logged in and heading to login → send to respective home
+      // Clear any lingering snackbars when heading to login
+      if (state.matchedLocation == '/login') {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+
+      // Already logged in and heading to login → send to home
       if (isLoggedIn && state.matchedLocation == '/login') {
         return isAdmin ? '/admin' : '/home';
       }

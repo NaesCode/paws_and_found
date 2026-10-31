@@ -19,8 +19,14 @@ abstract class ProfileRemoteDataSource {
     String? description,
     List<String> photoUrls = const [],
   });
-  Future<void> deletePet(String petId);
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note});
+  Future<void> deletePet(String petId, {String? reason, String? details});
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  });
   Future<void> markPetSafe(String petId);
 }
 
@@ -146,13 +152,29 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> deletePet(String petId) async {
+  Future<void> deletePet(String petId, {String? reason, String? details}) async {
     final uid = _currentUserId;
     if (uid == null) {
       throw Exception('User is not authenticated');
     }
 
-    await supabase.from('pets').delete().eq('id', petId).eq('owner_id', uid);
+    if (petId.startsWith('mock-')) {
+      _mockPets.removeWhere((p) => p.petID == petId);
+      return;
+    }
+
+    try {
+      await supabase.rpc('delete_pet', params: {
+        'p_pet_id': petId,
+        'p_reason': reason ?? 'User requested removal',
+        if (details != null && details.trim().isNotEmpty) 'p_details': details.trim(),
+      });
+    } catch (_) {
+      // Fallback in case RPC hasn't been migrated yet in cloud
+      await supabase.from('reports').delete().eq('pet_id', petId);
+      await supabase.from('matches').delete().eq('pet_id', petId);
+      await supabase.from('pets').delete().eq('id', petId).eq('owner_id', uid);
+    }
   }
 
   // --- Mock fixtures fallback if user has no pets yet ---
@@ -200,7 +222,13 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> reportPetMissing(String petId, {double? lat, double? lng, String? note}) async {
+  Future<void> reportPetMissing(
+    String petId, {
+    double? lat,
+    double? lng,
+    String? note,
+    DateTime? missingSince,
+  }) async {
     if (petId.startsWith('mock-')) {
       final index = _mockPets.indexWhere((p) => p.petID == petId);
       if (index != -1) {
@@ -209,11 +237,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       return;
     }
 
+    if (lat == null || lng == null) {
+      throw ArgumentError('Real GPS coordinates (lat, lng) are required to report a pet missing.');
+    }
+
     await supabase.rpc('report_pet_missing', params: {
       'p_pet_id': petId,
-      'p_lat': lat ?? 14.5995,
-      'p_lng': lng ?? 120.9842,
+      'p_lat': lat,
+      'p_lng': lng,
       'p_note': note ?? '',
+      'p_missing_since': (missingSince ?? DateTime.now()).toUtc().toIso8601String(),
     });
   }
 

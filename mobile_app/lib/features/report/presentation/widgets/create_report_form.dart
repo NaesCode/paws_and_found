@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 
 /// Form organism for Animal Report Creation (SDD Screen 05).
@@ -22,11 +22,15 @@ class CreateReportForm extends StatelessWidget {
   final bool isLoading;
   final double? pinnedLat;
   final double? pinnedLng;
+  final double? deviceLat;
+  final double? deviceLng;
+  final String? resolvedLocationName;
   final ValueChanged<String> onAnimalTypeChanged;
   final ValueChanged<String> onStatusChanged;
   final VoidCallback onToggleGps;
   final VoidCallback? onPinOnMap;
   final VoidCallback onSubmit;
+  final String? geocodeAddress;
 
   const CreateReportForm({
     super.key,
@@ -38,11 +42,15 @@ class CreateReportForm extends StatelessWidget {
     this.isLoading = false,
     this.pinnedLat,
     this.pinnedLng,
+    this.deviceLat,
+    this.deviceLng,
+    this.resolvedLocationName,
     required this.onAnimalTypeChanged,
     required this.onStatusChanged,
     required this.onToggleGps,
     this.onPinOnMap,
     required this.onSubmit,
+    this.geocodeAddress,
   });
 
   @override
@@ -214,11 +222,16 @@ class CreateReportForm extends StatelessWidget {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
+                                (resolvedLocationName?.isNotEmpty == true || geocodeAddress?.isNotEmpty == true)
+                                    ? (pinnedLat != null ? 'Pin: ${resolvedLocationName ?? geocodeAddress}' : 'GPS: ${resolvedLocationName ?? geocodeAddress}')
+                                    :
                                 pinnedLat != null
-                                    ? '${pinnedLat!.toStringAsFixed(2)}°, ${pinnedLng!.toStringAsFixed(2)}°'
-                                    : (isGpsAuto ? 'Auto' : 'Pin on Map'),
+                                    ? '${pinnedLat!.toStringAsFixed(4)}°, ${pinnedLng!.toStringAsFixed(4)}°'
+                                    : (deviceLat != null && isGpsAuto
+                                        ? 'GPS (${deviceLat!.toStringAsFixed(4)}°, ${deviceLng!.toStringAsFixed(4)}°)'
+                                        : (isGpsAuto ? 'Auto' : 'Pin on Map')),
                                 style: TextStyle(
-                                  color: pinnedLat != null
+                                  color: (pinnedLat != null || (deviceLat != null && isGpsAuto))
                                       ? WireframeColors.primaryDark
                                       : WireframeColors.textPrimary,
                                   fontSize: 12.0,
@@ -245,6 +258,19 @@ class CreateReportForm extends StatelessWidget {
                         ),
                       ),
                     ),
+                    /*if(geocodeAddress != null && geocodeAddress!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Padding(padding: const EdgeInsets.only(left: 4.0),
+                      child: Text(
+                        geocodeAddress!,
+                        style: const TextStyle(color: WireframeColors.textSecondary,
+                        fontSize: 11.0,
+                        fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ))
+                    ]*/
                   ],
                 ),
               ),

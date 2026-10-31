@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/organisms/location_pin_picker_sheet.dart';
@@ -55,6 +56,10 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
       locationService: widget.locationService,
     );
     _controller.addListener(_onControllerUpdate);
+    // _controller.fetchDeviceLocation();
+    _controller.fetchDeviceLocation().then((_) {
+      _controller.reverseGeocodeCurrentCoords(); 
+    });
 
     if (widget.isActiveTab) {
       _initLiveCamera();
@@ -167,19 +172,24 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
   }
 
   Future<void> _handlePinOnMap() async {
-    final initialLat = _controller.pinnedLat ?? 14.5995;
-    final initialLng = _controller.pinnedLng ?? 120.9842;
+    final double? defaultLat = _controller.pinnedLat ?? _controller.deviceLat;
+    final double? defaultLng = _controller.pinnedLng ?? _controller.deviceLng;
+    final LatLng? initial = (defaultLat != null && defaultLng != null)
+        ? LatLng(defaultLat, defaultLng)
+        : null;
 
     final LatLng? picked = await LocationPinPickerSheet.show(
       context: context,
-      initialLocation: LatLng(initialLat, initialLng),
+      initialLocation: initial,
       pinStatus: _controller.status,
       title: 'Pin ${_controller.status} Animal on Map',
       subtitle: 'Tap anywhere on the map to set the exact sighting or missing pin',
+      locationService: _controller.locationService,
     );
 
     if (picked != null) {
       _controller.setPinnedLocation(picked.latitude, picked.longitude);
+      await _controller.reverseGeocodeCurrentCoords();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -256,8 +266,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
-                final lat = _controller.pinnedLat ?? 14.5995;
-                final lng = _controller.pinnedLng ?? 120.9842;
+                final lat = _controller.pinnedLat ?? _controller.deviceLat ?? LocationConstants.defaultLatitude;
+                final lng = _controller.pinnedLng ?? _controller.deviceLng ?? LocationConstants.defaultLongitude;
                 final reportId = _controller.successReportId ?? '';
                 context.go('/map?reportId=$reportId&lat=$lat&lng=$lng');
               },
@@ -318,11 +328,15 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 isLoading: _controller.isSubmitting,
                 pinnedLat: _controller.pinnedLat,
                 pinnedLng: _controller.pinnedLng,
+                deviceLat: _controller.deviceLat,
+                deviceLng: _controller.deviceLng,
                 onAnimalTypeChanged: _controller.setAnimalType,
                 onStatusChanged: _controller.setStatus,
                 onToggleGps: _controller.toggleGps,
                 onPinOnMap: _handlePinOnMap,
                 onSubmit: _handleSubmit,
+                resolvedLocationName: _controller.geocodedAddress,
+                geocodeAddress: _controller.geocodedAddress,
               ),
             ],
           ),

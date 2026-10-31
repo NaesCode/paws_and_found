@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../data/repositories/map_repository_impl.dart';
 import '../../domain/entities/map_filter_type.dart';
@@ -29,8 +30,8 @@ class MapController extends ChangeNotifier {
   LatLng? _userLocation;
   bool _isFetchingLocation = false;
 
-  // Default coordinate: Metro Manila (14.5995, 120.9842) matching mock data
-  static const LatLng defaultCenter = LatLng(14.5995, 120.9842);
+  // Default coordinate: Cebu City (10.3157, 123.8854) matching localized Cebu database records
+  static const LatLng defaultCenter = LocationConstants.defaultLocation;
 
   // Getters
   List<MapReportEntity> get reports => _reports;
@@ -41,12 +42,9 @@ class MapController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   LatLng? get userLocation => _userLocation;
   bool get isFetchingLocation => _isFetchingLocation;
+  LocationService get locationService => _locationService;
 
-  LatLng get mapCenter =>
-      _userLocation ??
-      (_reports.isNotEmpty
-          ? LatLng(_reports.first.latitude, _reports.first.longitude)
-          : defaultCenter);
+  LatLng get mapCenter => _userLocation ?? defaultCenter;
 
   /// Loads reports based on active filters and optional GPS coordinates.
   Future<void> loadReports() async {
@@ -81,17 +79,31 @@ class MapController extends ChangeNotifier {
   }
 
   /// Obtains current GPS coordinates using [LocationService].
-  Future<void> fetchUserLocation() async {
+  ///
+  /// Checks last known device position first for immediate responsiveness,
+  /// followed by high-accuracy live GPS query.
+  Future<LatLng?> fetchUserLocation() async {
     _isFetchingLocation = true;
     notifyListeners();
 
     try {
+      final lastKnown = await _locationService.getLastKnownPosition();
+      if (lastKnown != null) {
+        _userLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
+        notifyListeners();
+      }
+
       final position = await _locationService.getCurrentPosition();
       if (position != null) {
         _userLocation = LatLng(position.latitude, position.longitude);
+        await loadReports();
+        notifyListeners();
+        return _userLocation;
       }
+      return _userLocation;
     } catch (e) {
       debugPrint('[MapController] Location fetch failed: $e');
+      return _userLocation;
     } finally {
       _isFetchingLocation = false;
       notifyListeners();
@@ -135,11 +147,8 @@ class MapController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Re-centers the map view.
+  /// Re-centers the map view to user location or default.
   void recenterMap() {
-    if (_reports.isNotEmpty) {
-      _selectedReport = _reports.first;
-      notifyListeners();
-    }
+    clearSelection();
   }
 }

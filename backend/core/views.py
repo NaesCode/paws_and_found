@@ -1,59 +1,89 @@
 import logging
-import requests
-import numpy as np
+from typing import List
 
+import requests
 from django.conf import settings
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.measure import D
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from .ai.features import cosine_similarity, extract_features
+from .ai.features import average_embeddings, embed_image
+from .matching import MatchSummary, match_pet_against_reports, match_report_against_pets
 from .models import Match, Notification, Pet, PetEmbedding, Profile, Report, ReportEmbedding
 from .serializers import MatchRespondSerializer
 
 logger = logging.getLogger(__name__)
 
-MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
+ALLOWED_IMAGE_CONTENT_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+}
 
 
-def _download_image(url: str, max_bytes: int = MAX_IMAGE_SIZE_BYTES) -> bytes:
+class AiAnalyzeThrottle(UserRateThrottle):
+    """Tighter per-user throttle applied only to CPU-intensive AI analyze endpoints."""
+    scope = "ai_analyze"
+
+
+def _download_image(url: str, max_bytes: int = None) -> bytes:
     """
-    Download image bytes from a remote URL with strict timeouts,
-    size caps, and content-type validation.
+    Download image bytes from an untrusted remote URL with strict security guards:
+    - URL must start with {SUPABASE_URL}/storage/v1/object/public/animal-photos/
+    - No HTTP redirects allowed (allow_redirects=False)
+    - Strict connect/read timeouts (3, 10)
+    - Streamed payload size cap (MAX_IMAGE_BYTES)
+    - Content-Type header allowlist
     """
+    if not url or not isinstance(url, str):
+        raise ValueError("Invalid image URL provided.")
+
+    supabase_url = getattr(settings, "SUPABASE_URL", "").rstrip("/")
+    if supabase_url.endswith("/rest/v1"):
+        supabase_url = supabase_url[:-8].rstrip("/")
+    expected_prefix = f"{supabase_url}/storage/v1/object/public/animal-photos/"
+
+    if not url.startswith(expected_prefix):
+        raise ValueError(f"Untrusted photo URL. Must begin with {expected_prefix}")
+
+    max_bytes = max_bytes or getattr(settings, "MAX_IMAGE_BYTES", 10 * 1024 * 1024)
+
     try:
-        response = requests.get(url, timeout=10, stream=True)
+        response = requests.get(url, timeout=(3, 10), stream=True, allow_redirects=False)
         response.raise_for_status()
 
-        content_type = response.headers.get("Content-Type", "").lower()
-        # Accept common image content types or octet-stream from storage buckets
-        if not (content_type.startswith("image/") or "octet-stream" in content_type):
-            raise ValueError(f"Invalid content type: {content_type}. Expected an image.")
+        raw_content_type = response.headers.get("Content-Type", "")
+        content_type = raw_content_type.split(";")[0].strip().lower()
+
+        if content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
+            raise ValueError(f"Unsupported image content type: '{content_type}'")
 
         content = bytearray()
         for chunk in response.iter_content(chunk_size=65536):
             content.extend(chunk)
             if len(content) > max_bytes:
-                raise ValueError("Image exceeds maximum allowed size (10 MB).")
+                raise ValueError(f"Image exceeds maximum size of {max_bytes} bytes.")
 
         return bytes(content)
     except Exception as e:
-        logger.warning("Failed to fetch image from %s: %s", url, e)
+        logger.warning("Failed to download image from %s: %s", url, e)
         raise
 
 
 class HealthView(APIView):
-    """Health check endpoint.
-    Proves JWT verification and the database connection."""
+    """
+    Health check endpoint.
+    Proves JWT verification and database connectivity.
+    """
 
     def get(self, request):
         Profile.objects.exists()
         return Response({
-            "user_id": request.user.id,
+            "user_id": str(request.user.id),
             "db": "ok",
         })
 
@@ -61,9 +91,14 @@ class HealthView(APIView):
 class ReportAnalyzeView(APIView):
     """
     POST /api/reports/{id}/analyze/
-    Idempotent AI feature extraction and candidate spatial matching.
     Caller must be the report's reporter.
+    - If the report is an owner's missing listing (pet_id not null) or its status is not
+      'stray'/'found': sets analysis_status='done' and skips matching.
+    - Otherwise fetches photo, extracts 512-d feature vector with crop, upserts
+      ReportEmbedding with current model_version, and runs forward matching.
+    - Idempotent and atomic.
     """
+    throttle_classes = [AiAnalyzeThrottle]
 
     def post(self, request, id):
         try:
@@ -78,87 +113,71 @@ class ReportAnalyzeView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        try:
-            # 2. Fetch the photo
-            photo_bytes = _download_image(report.photo_url)
+        # 2. Skip matching if this is an owner's missing pet listing or non-sighting status
+        if report.pet_id is not None or report.status not in ("stray", "found"):
+            report.analysis_status = "done"
+            report.save(update_fields=["analysis_status"])
+            return Response({"status": "done", "skipped": "owner_listing"})
 
-            # 3. Extract visual features
-            feature_vector = extract_features(photo_bytes)
+        try:
+            # 3. Securely fetch photo and run AI embedding pipeline
+            photo_bytes = _download_image(report.photo_url)
+            emb_result = embed_image(photo_bytes)
+
+            # Smart Content Moderation check via SSDLite320
+            # If the user selected cat or dog, but the detector found no animal (confidence < 0.35 and no crop)
+            # flag the post for admin review to prevent spam, offensive images, or non-animal posts.
+            target_species = report.animal_type.lower()
+            is_canine_or_feline = target_species in ("canine", "feline", "dog", "cat")
+            is_unrecognized = not emb_result.used_crop and emb_result.detector_score < 0.35
+
+            if is_canine_or_feline and is_unrecognized:
+                with transaction.atomic():
+                    report.moderation_status = "flagged"
+                    report.moderation_notes = (
+                        f"Flagged by AI: Low animal confidence score ({emb_result.detector_score:.2f}) "
+                        f"for claimed {report.animal_type} sighting. Pending administrative verification."
+                    )
+                    report.analysis_status = "done"
+                    report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
+
+                logger.warning("Report %s flagged by AI moderation (score: %.2f)", report.id, emb_result.detector_score)
+
+                return Response({
+                    "status": "flagged",
+                    "report_id": str(report.id),
+                    "reason": "Image flagged for administrative review: no clear animal detected.",
+                    "detector_score": emb_result.detector_score,
+                    "matches_created": 0,
+                    "matches_updated": 0,
+                    "notifications_sent": 0,
+                })
 
             with transaction.atomic():
-                # 4. Upsert report embedding into private schema
+                # 4. Upsert report embedding with model version
                 ReportEmbedding.objects.update_or_create(
                     report=report,
                     defaults={
-                        "vector": feature_vector,
+                        "vector": emb_result.vector,
+                        "model_version": emb_result.model_version,
                         "updated_at": timezone.now(),
                     },
                 )
 
-                # 5. Candidate search with GeoDjango PostGIS
-                # Find missing pets within radius, excluding reporter's own pets
-                search_radius_m = getattr(settings, "MATCH_SEARCH_RADIUS_M", 10000)
-                min_similarity = getattr(settings, "MATCH_MIN_SIMILARITY", 0.75)
-
-                candidate_pets = (
-                    Pet.objects.filter(
-                        status="missing",
-                        last_known_location__dwithin=(report.location, D(m=search_radius_m)),
-                    )
-                    .exclude(owner_id=report.reporter_id)
-                    .annotate(distance=Distance("last_known_location", report.location))
-                )
-
-                matches_created_or_updated = 0
-
-                # 6. Score candidate pets using cosine similarity
-                for pet in candidate_pets:
-                    try:
-                        pet_embedding = PetEmbedding.objects.get(pet=pet)
-                    except PetEmbedding.DoesNotExist:
-                        continue  # Skip pets with no embedding
-
-                    score = cosine_similarity(feature_vector, pet_embedding.vector)
-
-                    if score >= min_similarity:
-                        distance_km = round(pet.distance.km, 2) if hasattr(pet.distance, "km") else 0.0
-
-                        match, _ = Match.objects.update_or_create(
-                            report=report,
-                            pet=pet,
-                            defaults={
-                                "similarity_score": round(score, 4),
-                                "distance_km": distance_km,
-                                "status": "pending",
-                            },
-                        )
-                        matches_created_or_updated += 1
-
-                        # Idempotent notifications: do not duplicate for the same match
-                        if not Notification.objects.filter(related_match=match, type="match_found").exists():
-                            Notification.objects.create(
-                                user=pet.owner,
-                                type="match_found",
-                                message=f"A pet that looks like {pet.name} was reported nearby.",
-                                related_match=match,
-                            )
-
-                        if not Notification.objects.filter(related_match=match, type="verification_request").exists():
-                            Notification.objects.create(
-                                user=report.reporter,
-                                type="verification_request",
-                                message=f"A potential match was found for your {report.animal_type} sighting.",
-                                related_match=match,
-                            )
-
-                # 7. Mark report analysis as complete
+                # 5. Mark report analysis as complete & approved
                 report.analysis_status = "done"
-                report.save(update_fields=["analysis_status"])
+                report.moderation_status = "approved"
+                report.save(update_fields=["analysis_status", "moderation_status"])
+
+            # 6. Run forward matching against currently missing pets
+            summary = match_report_against_pets(report)
 
             return Response({
                 "status": "done",
                 "report_id": str(report.id),
-                "matches_scored": matches_created_or_updated,
+                "matches_created": summary.matches_created,
+                "matches_updated": summary.matches_updated,
+                "notifications_sent": summary.notifications_sent,
             })
 
         except Exception as e:
@@ -169,7 +188,7 @@ class ReportAnalyzeView(APIView):
             except Exception:
                 pass
             return Response(
-                {"error": "Analysis failed", "detail": str(e)},
+                {"error": "Analysis failed", "detail": "An internal error occurred during report analysis."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -177,9 +196,13 @@ class ReportAnalyzeView(APIView):
 class PetAnalyzeView(APIView):
     """
     POST /api/pets/{id}/analyze/
-    Recomputes and upserts pet_embeddings from the pet's photo URLs.
     Caller must be the pet's owner.
+    - Builds embedding from up to 5 photos and upserts PetEmbedding.
+    - Skips re-extraction if embedding exists for current model_version unless body has {"refresh": true}.
+    - Runs reverse matching if pet status is 'missing'.
+    - Returns counts only.
     """
+    throttle_classes = [AiAnalyzeThrottle]
 
     def post(self, request, id):
         try:
@@ -194,54 +217,79 @@ class PetAnalyzeView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if not pet.photo_urls:
-            return Response(
-                {"error": "Pet has no photos to extract embeddings from."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        current_version = getattr(settings, "EMBEDDING_MODEL_VERSION", "resnet18-in1k-v1+ssdlite-crop-v1")
+        req_body = request.data if isinstance(request.data, dict) else {}
+        force_refresh = bool(req_body.get("refresh", False))
+
+        # Check existing embedding for current model version
+        existing_embedding = PetEmbedding.objects.filter(pet_id=pet.id, model_version=current_version).first()
 
         try:
-            vectors = []
-            for photo_url in pet.photo_urls:
-                try:
-                    img_bytes = _download_image(photo_url)
-                    vec = extract_features(img_bytes)
-                    vectors.append(vec)
-                except Exception as ex:
-                    logger.warning("Could not download pet photo %s: %s", photo_url, ex)
-
-            if not vectors:
-                return Response(
-                    {"error": "Could not download any valid pet photos."},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-
-            # Average over photos and L2 normalize
-            avg_vector = np.mean(vectors, axis=0)
-            norm = np.linalg.norm(avg_vector)
-            if norm > 0:
-                final_vector = (avg_vector / norm).tolist()
+            if existing_embedding and not force_refresh:
+                logger.info("Pet %s already has up-to-date embedding (%s); skipping photo re-extraction.", pet.id, current_version)
+                photos_analyzed = 0
             else:
-                final_vector = avg_vector.tolist()
+                if not pet.photo_urls:
+                    return Response(
+                        {"error": "Pet has no photos to extract embeddings from."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-            PetEmbedding.objects.update_or_create(
-                pet=pet,
-                defaults={
-                    "vector": [float(x) for x in final_vector],
-                    "updated_at": timezone.now(),
-                },
-            )
+                vectors: List[List[float]] = []
+                # Cap at 5 photos
+                candidate_urls = pet.photo_urls[:5]
+
+                for photo_url in candidate_urls:
+                    try:
+                        img_bytes = _download_image(photo_url)
+                        emb = embed_image(img_bytes)
+                        vectors.append(emb.vector)
+                    except Exception as ex:
+                        logger.warning("Could not process pet photo %s: %s", photo_url, ex)
+
+                if not vectors:
+                    return Response(
+                        {"error": "Could not download or process any valid pet photos."},
+                        status=status.HTTP_502_BAD_GATEWAY,
+                    )
+
+                # Centroid average and re-normalize across photos
+                final_vector = average_embeddings(vectors)
+
+                PetEmbedding.objects.update_or_create(
+                    pet=pet,
+                    defaults={
+                        "vector": final_vector,
+                        "model_version": current_version,
+                        "updated_at": timezone.now(),
+                    },
+                )
+                photos_analyzed = len(vectors)
+
+            # 2. If pet is currently missing, run reverse matching against recent sightings
+            matches_created = 0
+            matches_updated = 0
+            notifications_sent = 0
+
+            if pet.status == "missing":
+                summary: MatchSummary = match_pet_against_reports(pet)
+                matches_created = summary.matches_created
+                matches_updated = summary.matches_updated
+                notifications_sent = summary.notifications_sent
 
             return Response({
                 "status": "done",
                 "pet_id": str(pet.id),
-                "photos_analyzed": len(vectors),
+                "photos_analyzed": photos_analyzed,
+                "matches_created": matches_created,
+                "matches_updated": matches_updated,
+                "notifications_sent": notifications_sent,
             })
 
         except Exception as e:
             logger.exception("Error analyzing pet %s: %s", id, e)
             return Response(
-                {"error": "Pet analysis failed", "detail": str(e)},
+                {"error": "Pet analysis failed", "detail": "An internal error occurred during pet analysis."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -251,6 +299,10 @@ class MatchRespondView(APIView):
     POST /api/matches/{id}/respond/
     Body: {"decision": "confirm" | "reject"}
     Caller must be the report's reporter or the pet's owner.
+    - Confirm: match 'confirmed', pet 'safe' (missing_since and last_known_location cleared),
+      the pet's missing listing(s) 'found', notification to the other party.
+    - Reject: match 'rejected'.
+    - Rejects invalid transitions or double responses.
     """
 
     def post(self, request, id):
@@ -289,18 +341,19 @@ class MatchRespondView(APIView):
                 match.status = "confirmed"
                 match.save(update_fields=["status"])
 
-                # Pet is returned to safe and clears last known location
+                # Pet is returned to safe; clear missing_since and last_known_location
                 pet = match.pet
                 pet.status = "safe"
+                pet.missing_since = None
                 pet.last_known_location = None
-                pet.save(update_fields=["status", "last_known_location"])
+                pet.save(update_fields=["status", "missing_since", "last_known_location"])
 
                 # Update the sighting report to found
                 report = match.report
                 report.status = "found"
                 report.save(update_fields=["status"])
 
-                # Close any other open missing reports for this pet
+                # Close any other open missing listings for this pet
                 Report.objects.filter(pet=pet, status="missing").update(status="found")
 
                 # Notify the other party
@@ -311,11 +364,11 @@ class MatchRespondView(APIView):
                     recipient = pet.owner
                     msg = f"Great news! The sighting match for your pet {pet.name} was confirmed."
 
-                Notification.objects.create(
+                Notification.objects.get_or_create(
                     user=recipient,
-                    type="match_confirmed",
-                    message=msg,
                     related_match=match,
+                    type="match_confirmed",
+                    defaults={"message": msg},
                 )
 
             elif decision == "reject":

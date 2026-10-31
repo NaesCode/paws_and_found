@@ -4,10 +4,11 @@ import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_re
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
-
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
-import 'package:paws_and_found/features/feed/domain/entities/feed_post.dart';
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 // SHOWS THE GENERAL REPORTS (ALL) SO FAR THIS ALSO INCLUDES THE USER'S POST (GOTTA CHANGE MAYBE)
 
@@ -31,13 +32,50 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   @override
   void initState() {
     super.initState();
-    _reportsFuture = _repository.getGeneralReports();
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ??'';
+    _reportsFuture = _repository.getGeneralReports(currentUserId);
+  }
+
+  void _fetchGeneralReports(String filterValue) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    
+    setState(
+      () {
+      _selectedFilter = filterValue;
+       String dbFilterValue = filterValue;
+      if (filterValue.toLowerCase() == 'spotted') {
+        dbFilterValue = 'stray';
+      }
+      
+      switch (filterValue.toLowerCase()) {
+        case 'missing':
+          _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
+            break;
+        case 'found':
+          _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
+          break;
+        case 'spotted': //spotted ni siya kapoy na change sa db
+          _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: dbFilterValue);
+          break;
+        case 'oldest':
+          _reportsFuture = _repository.getGeneralReports(currentUserId).then((list) {
+            list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+            return list;
+          });
+          break;
+        case 'latest':
+        default:
+          _reportsFuture = _repository.getGeneralReports(currentUserId);
+          break;
+        }
+      }
+    );
   }
 
   BannerType _getBannerType(String status){
     switch(status.toLowerCase()){
       case 'missing': return BannerType.missing;
-      case 'spotted': return BannerType.spotted;
+      case 'stray': return BannerType.spotted;
       case 'found': return BannerType.found;
       default: return BannerType.missing;
     }
@@ -60,8 +98,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                     filterOptions: _generalFilters,
                     onFilterChanged: (newValue) {
                       setState(() {
-                        _selectedFilter = newValue;
-                        // TODO: Re-fetch or filter your general feed data matching newValue
+                        _fetchGeneralReports(newValue);
                       });
                     },
                   ),
@@ -71,7 +108,6 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             
             const SizedBox(height: 10), 
             
-            // TODO: change into dynamic data according to filters
             Expanded(
               child: FutureBuilder<List<FeedPost>>(
                 future: _reportsFuture,
@@ -115,6 +151,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           description: report.description,
                           formattedTime: report.formattedTime,
                           imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
+                          userImageUrl: report.userImageUrl,
+                          isFlagged: report.isFlagged,
                           button1Text: "Spotted",
                           button2Text: "Found",
                           onButton1Pressed: () {}, //TODO: need to put what should be shown

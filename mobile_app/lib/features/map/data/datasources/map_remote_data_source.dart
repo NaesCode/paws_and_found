@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/location_constants.dart';
 import '../../domain/entities/map_filter_type.dart';
 import '../models/map_report_model.dart';
 
@@ -21,18 +23,14 @@ abstract class MapRemoteDataSource {
 /// `nearby_reports`. If unreachable or empty, falls back gracefully to calibrated
 /// mock & session reports.
 class MapRemoteDataSourceImpl implements MapRemoteDataSource {
-  final SupabaseClient? _client;
+  final SupabaseClient? _customClient;
 
-  MapRemoteDataSourceImpl([SupabaseClient? client])
-      : _client = client ?? _safeGetSupabaseClient();
+  MapRemoteDataSourceImpl([SupabaseClient? client]) : _customClient = client;
 
-  static SupabaseClient? _safeGetSupabaseClient() {
-    try {
-      return Supabase.instance.client;
-    } catch (_) {
-      return null;
-    }
-  }
+  /// Always resolves to a live client. Using [Supabase.instance.client] directly
+  /// avoids the silent-null issue that occurred when capturing the client at
+  /// construction time before the session was fully established.
+  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
 
   @override
   Future<List<MapReportModel>> getNearbyReports({
@@ -44,33 +42,41 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }) async {
     List<MapReportModel> reports = [];
 
-    // Default to nationwide radius to ensure all recorded missing pets (Cebu, Manila, etc.) are fetched
-    final queryLat = lat ?? 14.5995;
-    final queryLng = lng ?? 120.9842;
+    // Localized to Cebu with nationwide fallback coverage
+    final queryLat = lat ?? LocationConstants.defaultLatitude;
+    final queryLng = lng ?? LocationConstants.defaultLongitude;
     final queryRadius = radiusMeters < 2000000 ? 2000000.0 : radiusMeters;
 
-    // Attempt live Supabase RPC query if client is ready
-    if (_client != null) {
-      try {
-        final response = await _client.rpc(
-          'nearby_reports',
-          params: {
-            'p_lat': queryLat,
-            'p_lng': queryLng,
-            'p_radius_m': queryRadius,
-            'p_animal_type': animalType,
-            'p_limit': 150,
-          },
-        );
+    // Attempt live Supabase RPC query
+    try {
+      debugPrint(
+        '[MapRemoteDataSourceImpl] Calling nearby_reports '
+        'lat=$queryLat lng=$queryLng radius=$queryRadius',
+      );
 
-        if (response is List && response.isNotEmpty) {
-          reports = response
-              .map((row) => MapReportModel.fromJson(row as Map<String, dynamic>))
-              .toList();
-        }
-      } catch (_) {
-        // Fall back gracefully on network or unauthenticated RPC failure
+      final response = await _client.rpc(
+        'nearby_reports',
+        params: {
+          'p_lat': queryLat,
+          'p_lng': queryLng,
+          'p_radius_m': queryRadius,
+          'p_animal_type': animalType,
+          'p_limit': 150,
+        },
+      );
+
+      debugPrint('[MapRemoteDataSourceImpl] RPC response type: ${response.runtimeType}');
+
+      if (response is List && response.isNotEmpty) {
+        reports = response
+            .map((row) => MapReportModel.fromJson(row as Map<String, dynamic>))
+            .toList();
+        debugPrint('[MapRemoteDataSourceImpl] Parsed ${reports.length} reports from RPC.');
+      } else {
+        debugPrint('[MapRemoteDataSourceImpl] RPC returned empty or null.');
       }
+    } catch (e) {
+      debugPrint('[MapRemoteDataSourceImpl] Supabase RPC error: $e');
     }
 
     // If no records from backend, use calibrated database baseline reports
@@ -96,6 +102,30 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
       // In the SDD: "For You" surfaces reports tailored to missing pets
       reports = reports.where((r) => r.status.toLowerCase() == 'missing').toList();
     }
+
+    // Strictly ensure only Cebu content is considered and rendered
+    reports = reports.where((r) {
+      final inCebuBounds = LocationConstants.isWithinCebu(r.latitude, r.longitude);
+      if (!inCebuBounds) return false;
+
+      final locLower = r.locationName.toLowerCase();
+      const nonCebuKeywords = [
+        'manila',
+        'quezon city',
+        'makati',
+        'davao',
+        'baguio',
+        'cavite',
+        'laguna',
+        'taguig',
+        'pasig',
+      ];
+      if (nonCebuKeywords.any((kw) => locLower.contains(kw))) {
+        return false;
+      }
+
+      return true;
+    }).toList();
 
     return reports;
   }

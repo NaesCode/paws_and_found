@@ -38,6 +38,7 @@ class Pet(models.Model):
     photo_urls = ArrayField(models.TextField(), default=list)
     last_known_location = gis_models.PointField(geography=True, srid=4326, null=True)
     status = models.TextField(default="safe")
+    missing_since = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:
@@ -55,11 +56,11 @@ class Report(models.Model):
     animal_type = models.TextField()
     description = models.TextField(default="")
     photo_url = models.TextField()
-    # Explicit db_column mapping to match the database schema
-    location = gis_models.PointField(geography=True, srid=4326, db_column="location_1")
-    status = models.TextField(default="stray", db_column="report_status")
-    location_text = models.TextField(null=True, blank=True, db_column="location")
-    pet_status = models.TextField(null=True, blank=True, db_column="pet_status")
+    location = gis_models.PointField(geography=True, srid=4326)
+    location_name = models.TextField(null=True, blank=True)
+    status = models.TextField(default="stray")
+    moderation_status = models.TextField(default="approved")
+    moderation_notes = models.TextField(null=True, blank=True)
     analysis_status = models.TextField(default="pending")
     created_at = models.DateTimeField(db_default=Now(), editable=False)
 
@@ -78,6 +79,7 @@ class Match(models.Model):
     similarity_score = models.FloatField()
     distance_km = models.FloatField()
     status = models.TextField(default="pending")
+    triggered_by = models.TextField(default="report")
     created_at = models.DateTimeField(db_default=Now(), editable=False)
 
     class Meta:
@@ -108,6 +110,7 @@ class Notification(models.Model):
 class PetEmbedding(models.Model):
     pet = models.OneToOneField(Pet, primary_key=True, on_delete=models.DO_NOTHING, db_constraint=False)
     vector = ArrayField(models.FloatField())
+    model_version = models.TextField(default="unversioned")
     updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:
@@ -118,6 +121,7 @@ class PetEmbedding(models.Model):
 class ReportEmbedding(models.Model):
     report = models.OneToOneField(Report, primary_key=True, on_delete=models.DO_NOTHING, db_constraint=False)
     vector = ArrayField(models.FloatField())
+    model_version = models.TextField(default="unversioned")
     updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:

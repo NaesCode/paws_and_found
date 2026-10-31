@@ -27,6 +27,9 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 
 ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(',')
 
+# Reverse proxy SSL header (essential when behind ngrok or HTTPS reverse proxy)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # Application definition
 
@@ -98,13 +101,62 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # Throttling: per-user and per-IP burst/sustained limits for AI endpoints.
+    # Values are intentionally generous for development; tighten before public launch.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/minute",
+        "user": "60/minute",
+        # AI-specific tighter throttle applied in views via throttle_classes override
+        "ai_analyze": os.environ.get("THROTTLE_AI_ANALYZE", "10/minute"),
+    },
 }
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "animal-photos")
-MATCH_SEARCH_RADIUS_M = int(os.environ.get("MATCH_SEARCH_RADIUS_M", "10000"))
-MATCH_MIN_SIMILARITY = float(os.environ.get("MATCH_MIN_SIMILARITY", "0.75"))
+
+# Matching & Embedding settings (Phase 4)
+EMBEDDING_DIM = 512
+EMBEDDING_MODEL_VERSION = os.environ.get("EMBEDDING_MODEL_VERSION", "resnet18-in1k-v1+ssdlite-crop-v1")
+MATCH_BASE_SIMILARITY = float(os.environ.get("MATCH_BASE_SIMILARITY", "0.80"))
+
+MATCH_DISTANCE_TIERS = [  # (max_distance_m, extra_similarity_required)
+    (10_000, 0.00),
+    (50_000, 0.05),
+    (150_000, 0.10),
+]
+
+MATCH_RADIUS_STEPS = [  # (min_days_missing, radius_m)
+    (0, 10_000),
+    (3, 50_000),
+    (7, 150_000),
+]
+
+MATCH_SIGHTING_PAD_HOURS = int(os.environ.get("MATCH_SIGHTING_PAD_HOURS", "24"))
+MATCH_MAX_NOTIFIED_PER_RUN = int(os.environ.get("MATCH_MAX_NOTIFIED_PER_RUN", "3"))
+
+TORCH_THREADS = int(os.environ.get("TORCH_THREADS", "4"))
+MAX_IMAGE_BYTES = int(os.environ.get("MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))
+AI_HORIZONTAL_FLIP_AVG = os.environ.get("AI_HORIZONTAL_FLIP_AVG", "false").lower() in ("true", "1")
+
+# Ngrok tunnel URL for physical-device demos when teammates need internet access.
+# Set via backend/.env: NGROK_URL=https://xxxxx.ngrok-free.app
+# Leave blank during normal local development.
+NGROK_URL = os.environ.get("NGROK_URL", "").rstrip("/")
+
+# Startup validation: largest radius must not exceed the last tier's max_distance_m
+_max_radius = max(r for _, r in MATCH_RADIUS_STEPS)
+_max_tier_dist = MATCH_DISTANCE_TIERS[-1][0]
+if _max_radius > _max_tier_dist:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        f"Matching config error: largest radius ({_max_radius}m) exceeds "
+        f"last tier max_distance ({_max_tier_dist}m)."
+    )
 
 CORS_ALLOW_ALL_ORIGINS = True  # fine for development; tighten before any public deployment
 
