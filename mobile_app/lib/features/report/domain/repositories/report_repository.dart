@@ -24,7 +24,8 @@ abstract class ReportRepository {
     required double lng,
     String status = 'stray',
     String? petId,
-    String? locationName
+    String? locationName,
+    String? linkedReportId,
   });
 
   /// Explicitly requests analysis from the Django orchestrator for a pending report.

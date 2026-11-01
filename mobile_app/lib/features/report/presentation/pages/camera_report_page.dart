@@ -10,6 +10,8 @@ import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/organisms/location_pin_picker_sheet.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../widgets/ai_match_scanner_card.dart';
 import '../widgets/camera_viewfinder_placeholder.dart';
 import '../widgets/create_report_form.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
@@ -232,6 +234,147 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
         );
       }
     }
+  }
+
+  Future<void> _handleViewAllCandidates() async {
+    final candidates = _controller.aiCandidates;
+    if (candidates.isEmpty) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: WireframeColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: WireframeColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, color: WireframeColors.primaryDark),
+                        const SizedBox(width: 8),
+                        Text(
+                          'AI Visual Matches (${candidates.length})',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: WireframeColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: candidates.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final candidate = candidates[index];
+                        final hasPic = candidate.photoUrl.isNotEmpty &&
+                            (candidate.photoUrl.startsWith('http://') || candidate.photoUrl.startsWith('https://'));
+                        final isSelected = _controller.selectedAiCandidate?.reportId == candidate.reportId;
+
+                        return ListTile(
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: hasPic
+                                  ? Image.network(
+                                      candidate.photoUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                                        AppAssets.petPlaceholder,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : Image.asset(AppAssets.petPlaceholder, fit: BoxFit.cover),
+                            ),
+                          ),
+                          title: Row(
+                            children: [
+                              Text(
+                                candidate.petName,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: candidate.isHighConfidence
+                                      ? const Color(0xFF33691E)
+                                      : WireframeColors.primaryDark,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${candidate.similarityPercent}% match',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Text(
+                            '${candidate.species}${candidate.distanceKm != null ? " • ${candidate.distanceKm!.toStringAsFixed(1)} km away" : ""}\nLast seen: ${candidate.lastSeenLocation ?? "Unknown location"}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: WireframeColors.textSecondary),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle, color: Color(0xFF33691E))
+                              : ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: WireframeColors.primaryDark,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.of(modalCtx).pop();
+                                    _controller.selectAiCandidate(candidate);
+                                  },
+                                  child: const Text('Link', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                ),
+                          onTap: () {
+                            Navigator.of(modalCtx).pop();
+                            _controller.selectAiCandidate(candidate);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _handlePickThread() async {
@@ -482,7 +625,18 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 onRetakeTap: _controller.clearPhoto,
               ),
 
-              if (_controller.linkedThreadId != null)
+              // AI Visual Pre-Match Scanner / Thread Link
+              if (_controller.selectedImageBytes != null)
+                AiMatchScannerCard(
+                  isScanning: _controller.isScanningAi,
+                  candidates: _controller.aiCandidates,
+                  selectedCandidate: _controller.selectedAiCandidate,
+                  onSelectCandidate: _controller.selectAiCandidate,
+                  onClearSelection: _controller.clearAiCandidate,
+                  onViewAllCandidates: _handleViewAllCandidates,
+                  onManualSearch: _handlePickThread,
+                )
+              else if (_controller.linkedThreadId != null)
                 Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 6),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -500,7 +654,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'LINKED TO PET THREAD: ${(_controller.linkedThreadPetName ?? "MISSING PET").toUpperCase()}',
+                              'LINKED TO PET REPORT: ${(_controller.linkedThreadPetName ?? "MISSING PET").toUpperCase()}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
@@ -509,7 +663,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                             ),
                             const SizedBox(height: 2),
                             const Text(
-                              'This sighting will be automatically embedded into the pet discussion thread.',
+                              'This sighting will be linked to the missing pet report and sightings dashboard.',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: WireframeColors.textSecondary,
@@ -521,7 +675,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                       IconButton(
                         icon: const Icon(Icons.close, size: 18, color: WireframeColors.textSecondary),
                         onPressed: _controller.clearThreadContext,
-                        tooltip: 'Unlink from thread',
+                        tooltip: 'Unlink from report',
                         visualDensity: VisualDensity.compact,
                       ),
                     ],
@@ -537,9 +691,9 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
-                    icon: const Icon(Icons.link_rounded, size: 18),
+                    icon: const Icon(Icons.search_rounded, size: 18),
                     label: const Text(
-                      'Link sighting to an existing Missing Pet thread (Optional)',
+                      'Link sighting to an existing Missing Pet report (Optional)',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                     onPressed: _handlePickThread,

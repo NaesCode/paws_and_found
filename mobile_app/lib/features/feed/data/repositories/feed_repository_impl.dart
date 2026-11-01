@@ -161,4 +161,52 @@ class FeedRepositoryImpl implements FeedRepository {
 
     return FeedComment.fromJson(inserted, profile: profile);
   }
+
+  @override
+  Future<List<FeedPost>> getLinkedSightings(String reportId) async {
+    try {
+      final List<Map<String, dynamic>> response = await _supabase
+          .from('reports')
+          .select('''
+            id,
+            reporter_id,
+            pet_id,
+            animal_type,
+            description,
+            photo_url,
+            location_name,
+            status,
+            analysis_status,
+            created_at,
+            profiles(name, profile_photo_url),
+            pets(name)
+          ''')
+          .eq('linked_report_id', reportId)
+          .order('created_at', ascending: false);
+
+      if (response.isNotEmpty) {
+        return response.map((json) => FeedPost.fromJson(json)).toList();
+      }
+    } catch (_) {}
+
+    // Fallback: Check comments containing embedded sighting links
+    try {
+      final comments = await getComments(reportId);
+      final sightingReportIds = comments
+          .map((c) => c.linkedReportId)
+          .whereType<String>()
+          .toSet();
+
+      if (sightingReportIds.isEmpty) return [];
+
+      final List<FeedPost> fallbackSightings = [];
+      for (final sId in sightingReportIds) {
+        final p = await getReportById(sId);
+        if (p != null) fallbackSightings.add(p);
+      }
+      return fallbackSightings;
+    } catch (_) {
+      return [];
+    }
+  }
 }

@@ -28,6 +28,7 @@ abstract class ReportRemoteDataSource {
     String status = 'stray',
     String? petId,
     String? locationName,
+    String? linkedReportId,
   });
 }
 
@@ -136,6 +137,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     String status = 'stray',
     String? petId,
     String? locationName,
+    String? linkedReportId,
   }) async {
     final client = _supabase;
     if (client == null) throw Exception('Supabase client is not available');
@@ -149,6 +151,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
       'p_status': status.toLowerCase(),
       if (petId != null) 'p_pet_id': petId,
         if (locationName != null) 'p_location_name': locationName,
+        if (linkedReportId != null) 'p_linked_report_id': linkedReportId,
       });
 
     if (response == null) throw Exception('create_report RPC returned null');

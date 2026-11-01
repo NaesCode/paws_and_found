@@ -7,4 +7,5 @@ abstract class FeedRepository {
   Future<FeedPost?> getReportById(String reportId);
   Future<List<FeedComment>> getComments(String reportId);
   Future<FeedComment> addComment(String reportId, String content, {String? parentId});
+  Future<List<FeedPost>> getLinkedSightings(String reportId);
 }
