@@ -87,7 +87,7 @@ class _MapPageState extends State<MapPage> {
         } else if (widget.initialCenter != null) {
           _fmapController.move(widget.initialCenter!, 16.0);
         }
-      } else if (widget.initialCenter != null) {
+      } else if (widget.initialCenter != null) { 
         _fmapController.move(widget.initialCenter!, 16.0);
       }
     });

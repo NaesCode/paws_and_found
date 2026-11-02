@@ -27,11 +27,16 @@ class FeedActionBtns extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
+            padding: EdgeInsets.zero,
           ),
           onPressed: onPressed, 
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          child: FittedBox( 
+            fit: BoxFit.scaleDown,
+            child: Text(
+              text,
+              maxLines: 1, 
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
           ),
         ),
       ),
