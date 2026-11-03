@@ -75,3 +75,8 @@
 //   }, timeout: const Timeout(Duration(seconds: 30)));
 // }
 
+
+import 'package:flutter_test/flutter_test.dart';
+void main() {
+  test('Live geocoding integration test pending refactor', () {}, skip: true);
+}

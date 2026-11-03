@@ -8,6 +8,13 @@ abstract class NotificationRepository {
   /// ordered newest-first.
   Future<List<AppNotification>> getNotifications();
 
+  /// Real-time stream of notifications for the authenticated user,
+  /// automatically updating when new records (e.g. AI matches) arrive.
+  Stream<List<AppNotification>> streamNotifications();
+
+  /// Real-time stream of the unread notification count for badges.
+  Stream<int> streamUnreadCount();
+
   /// Marks a single notification as read.
   Future<void> markRead(String notificationId);
 
@@ -17,4 +24,3 @@ abstract class NotificationRepository {
   /// Returns the current unread count (used for the badge).
   Future<int> getUnreadCount();
 }
-

@@ -18,5 +18,8 @@ abstract class AuthRepository {
 
   Future<bool> checkIsFirstTimeUser(String userId);
 
+  /// Validates admin status strictly from tamper-proof JWT app_metadata.
+  bool get isCurrentUserAdmin;
+
   User? get currentUser;
 }

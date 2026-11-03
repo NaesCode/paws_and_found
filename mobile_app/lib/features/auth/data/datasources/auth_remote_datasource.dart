@@ -18,6 +18,9 @@ abstract class AuthRemoteDataSource {
 
   Future<bool> checkIsFirstTimeUser(String userId);
 
+  /// Synchronous check from tamper-proof JWT app_metadata (Method 1).
+  bool get isCurrentUserAdmin;
+
   User? get currentUser;
 }
 
@@ -29,6 +32,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   User? get currentUser => _supabase.auth.currentUser;
+
+  @override
+  bool get isCurrentUserAdmin {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return false;
+    final metadata = user.appMetadata;
+    return metadata['is_admin'] == true ||
+        metadata['role'] == 'admin' ||
+        metadata['role'] == 'ADMIN';
+  }
 
   @override
   Future<AuthResponse> signInWithPassword({
