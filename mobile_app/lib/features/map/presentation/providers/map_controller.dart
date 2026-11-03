@@ -29,6 +29,20 @@ class MapController extends ChangeNotifier {
   String? _errorMessage;
   LatLng? _userLocation;
   bool _isFetchingLocation = false;
+  bool _disposed = false;
+
+  @override
+  void dispose(){
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
+  }
 
   // Default coordinate: Cebu City (10.3157, 123.8854) matching localized Cebu database records
   static const LatLng defaultCenter = LocationConstants.defaultLocation;

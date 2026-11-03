@@ -2,19 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
 
-void _showCommentsModal(BuildContext context){
+void showFeedCommentsModal(BuildContext context, {String? reportId, String? petName}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (modalContext){
-      return const FeedCommentsModal();
-    }
+    builder: (modalContext) {
+      return FeedCommentsModal(
+        reportId: reportId,
+        petName: petName,
+      );
+    },
   );
 }
 
 class FeedCardFooter extends StatelessWidget {
-  const FeedCardFooter({super.key});
+  final String? reportId;
+  final String? petName;
+
+  const FeedCardFooter({
+    super.key,
+    this.reportId,
+    this.petName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,57 +32,53 @@ class FeedCardFooter extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Container(
-            clipBehavior: Clip.antiAlias,
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 10.0),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: AppColors.darkCharcoal,
-                width: 1,
+          child: GestureDetector(
+            onTap: () => showFeedCommentsModal(context, reportId: reportId, petName: petName),
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 10.0),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.darkCharcoal,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(4),
               ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            // TODO: ibalhin sa lahi nga file like in atoms or such
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: RichText(
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis,
-                    text: const TextSpan(
-                      style: TextStyle(color: AppColors.darkCharcoal, fontSize: 14.0), 
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Row(
                       children: [
-                        TextSpan(
-                          // TODO: need to change the values from the databse (variable)
-                          text: '@citrue: ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: 'text sa tawo dayun if taas kay ellipses',
+                        Icon(Icons.forum_outlined, size: 14, color: AppColors.darkCharcoal),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'View community discussion & sightings',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.darkCharcoal,
+                              fontSize: 13.0,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 12.0),
-                GestureDetector(
-                  onTap: (){
-                    _showCommentsModal(context);
-                    
-                    debugPrint('"See more" clicked!');
-                  },
-                  child: const Text(
-                    'See More',
+                  const SizedBox(width: 8.0),
+                  Text(
+                    'Thread →',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.accentOrange,
-                      fontSize: 14.0,
-                    )
-                  )
-                )
-              ],
-            )
+                      fontSize: 13.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],

@@ -151,15 +151,33 @@ class AppRouter {
       GoRoute(
         path: '/camera',
         name: 'camera',
-        builder: (context, state) =>
-            const CameraReportPage(showBottomNavPlaceholder: true),
+        builder: (context, state) {
+          final threadId = state.uri.queryParameters['threadId'];
+          final petName = state.uri.queryParameters['petName'];
+          final status = state.uri.queryParameters['status'];
+          return CameraReportPage(
+            showBottomNavPlaceholder: true,
+            threadId: threadId,
+            threadPetName: petName,
+            defaultStatus: status,
+          );
+        },
       ),
 
       GoRoute(
         path: '/report',
         name: 'report',
-        builder: (context, state) =>
-            const CameraReportPage(showBottomNavPlaceholder: true),
+        builder: (context, state) {
+          final threadId = state.uri.queryParameters['threadId'];
+          final petName = state.uri.queryParameters['petName'];
+          final status = state.uri.queryParameters['status'];
+          return CameraReportPage(
+            showBottomNavPlaceholder: true,
+            threadId: threadId,
+            threadPetName: petName,
+            defaultStatus: status,
+          );
+        },
       ),
       GoRoute(
         path: '/admin',
