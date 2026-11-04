@@ -100,7 +100,8 @@ class CameraReportController extends ChangeNotifier {
   }
 
   void setStatus(String value) {
-    _status = value;
+    final lower = value.toLowerCase();
+    _status = (lower == 'found') ? 'Found' : 'Stray';
     notifyListeners();
   }
 
@@ -381,7 +382,8 @@ class CameraReportController extends ChangeNotifier {
         // Dispatches AI feature extraction & matching request to orchestrator
         // (Handled gracefully with fallback if orchestrator is not yet deployed)
         unawaited(_repository.requestReportAnalysis(reportId));
-      } catch (_) {
+      } catch (e, stack) {
+        debugPrint('[CameraReportController] createReport database error: $e\n$stack');
         // Fallback for development/wireframe mode
         final fallbackId = 'rep-${DateTime.now().millisecondsSinceEpoch}';
         _successReportId = fallbackId;

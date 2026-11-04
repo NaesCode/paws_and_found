@@ -1,11 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 
 /// Form organism for Animal Report Creation (SDD Screen 05).
 ///
 /// Fields:
 /// - Animal Type selector ("Canine", "Feline", "Other")
-/// - Status selector ("Stray", "Missing", "Found")
+/// - Status selector ("Stray", "Found")
 /// - Description text area
 /// - Date / Time readout
 /// - GPS / Map Pin coordinate field with interactive Animal Map Pinning
@@ -55,7 +55,6 @@ class CreateReportForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMissing = status.toLowerCase() == 'missing';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -90,7 +89,7 @@ class CreateReportForm extends StatelessWidget {
                 child: _buildDropdownField(
                   label: 'STATUS',
                   value: status,
-                  items: const ['Stray', 'Missing', 'Found'],
+                  items: const ['Stray', 'Found'],
                   onChanged: onStatusChanged,
                 ),
               ),
@@ -301,7 +300,7 @@ class CreateReportForm extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      isMissing ? 'Submit Missing Animal Report' : 'Submit Report',
+                      status.toLowerCase() == 'found' ? 'Submit Found Pet Report' : 'Submit Sighting Report',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -349,7 +348,7 @@ class CreateReportForm extends StatelessWidget {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: value,
+              value: items.firstWhere((item) => item.toLowerCase() == value.toLowerCase(), orElse: () => items.first),
               isExpanded: true,
               icon: const Icon(Icons.arrow_drop_down, color: WireframeColors.secondarySlate),
               style: const TextStyle(

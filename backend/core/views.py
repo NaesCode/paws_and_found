@@ -11,7 +11,11 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from .ai.features import average_embeddings, embed_image
-from .matching import MatchSummary, match_pet_against_reports, match_report_against_pets
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny
+from .matching import MatchSummary, cosine, match_pet_against_reports, match_report_against_pets
 from .models import Match, Notification, Pet, PetEmbedding, Profile, Report, ReportEmbedding
 from .serializers import MatchRespondSerializer
 
@@ -379,3 +383,146 @@ class MatchRespondView(APIView):
             "status": match.status,
             "match_id": str(match.id),
         })
+
+
+class MatchCandidatesView(APIView):
+    """
+    POST /api/ai/match-candidates/
+    Ephemeral visual search for real-time camera pre-matching (Google Lens-style).
+
+    Receives an unsubmitted image stream in-memory:
+    1. Extracts 512-d ResNet-18 visual feature embedding with SSDLite animal cropping.
+    2. Zero database or disk persistence for the uploaded photo (kept strictly in RAM).
+    3. Finds active missing pets/reports in Supabase and annotates PostGIS geographic distance.
+    4. Computes cosine similarity against existing precomputed pet/report embeddings.
+    5. Returns ranked list of candidate matches formatted for AiMatchCandidate in Flutter.
+    """
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [AllowAny]
+    throttle_classes = [AiAnalyzeThrottle]
+
+    def post(self, request):
+        image_file = request.FILES.get("image")
+        if not image_file:
+            return Response(
+                {"error": "No image file provided in multipart request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            image_bytes = image_file.read()
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to read image stream: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not image_bytes:
+            return Response(
+                {"error": "Uploaded image is empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 1. Extract 512-d visual embedding using ResNet-18 (in-memory, ephemeral)
+        try:
+            emb_result = embed_image(image_bytes, use_detector=True)
+            query_vector = emb_result.vector
+        except Exception as ex:
+            logger.warning("Ephemeral embed_image failed: %s", ex)
+            return Response(
+                {"error": f"AI visual feature extraction failed: {ex}"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        # 2. Parse GPS coordinates and animal type
+        lat_raw = request.data.get("lat")
+        lng_raw = request.data.get("lng")
+        point = None
+        if lat_raw is not None and lng_raw is not None:
+            try:
+                lat = float(lat_raw)
+                lng = float(lng_raw)
+                if -90.0 <= lat <= 90.0 and -180.0 <= lng <= 180.0:
+                    point = Point(lng, lat, srid=4326)
+            except (ValueError, TypeError):
+                point = None
+
+        animal_type = str(request.data.get("animal_type", "")).strip().lower()
+
+        # 3. Query active missing reports
+        missing_reports = (
+            Report.objects.filter(status="missing")
+            .select_related("pet", "pet__owner", "reporter")
+        )
+
+        if hasattr(Report, "moderation_status"):
+            missing_reports = missing_reports.exclude(moderation_status="flagged")
+
+        # Visual search scans all active missing reports regardless of form dropdown
+        # (True Google Lens behavior: visual features determine the match)
+
+        # Annotate distance if spotter's GPS is provided
+        if point is not None:
+            missing_reports = missing_reports.annotate(
+                distance=Distance("location", point)
+            )
+
+        candidates = []
+        for report in missing_reports[:30]:
+            pet = report.pet
+            pet_embedding = None
+            if pet:
+                pet_embedding = PetEmbedding.objects.filter(pet_id=pet.id).first()
+
+            report_embedding = None
+            if not pet_embedding:
+                report_embedding = ReportEmbedding.objects.filter(report_id=report.id).first()
+
+            target_vector = None
+            if pet_embedding and pet_embedding.vector:
+                target_vector = pet_embedding.vector
+            elif report_embedding and report_embedding.vector:
+                target_vector = report_embedding.vector
+
+            if target_vector:
+                score = cosine(query_vector, target_vector)
+            else:
+                is_same_species = (
+                    animal_type and report.animal_type and animal_type in report.animal_type.lower()
+                )
+                score = 0.72 if is_same_species else 0.55
+
+            distance_km = None
+            if point is not None and hasattr(report, "distance") and report.distance is not None:
+                try:
+                    distance_km = round(report.distance.km, 1)
+                except Exception:
+                    distance_km = None
+
+            pet_name = pet.name if (pet and pet.name) else (report.description[:20] if report.description else "Missing Pet")
+            species = pet.species if (pet and pet.species) else report.animal_type
+            photo_url = report.photo_url or (pet.photo_urls[0] if (pet and pet.photo_urls) else "")
+            owner_name = report.reporter.name if (report.reporter and report.reporter.name) else (pet.owner.name if (pet and pet.owner) else "Pet Owner")
+            missing_since = pet.missing_since if (pet and pet.missing_since) else report.created_at
+
+            candidates.append({
+                "pet_id": str(report.pet_id or report.id),
+                "report_id": str(report.id),
+                "pet_name": pet_name,
+                "species": species,
+                "photo_url": photo_url,
+                "similarity_score": round(score, 4),
+                "similarity_percent": int(round(score * 100)),
+                "distance_km": distance_km,
+                "last_seen_location": report.location_name or "Nearby Area",
+                "owner_name": owner_name,
+                "missing_since": missing_since.isoformat() if missing_since else None,
+            })
+
+        # Sort: Highest visual similarity score first, closest distance second
+        candidates.sort(
+            key=lambda c: (c["similarity_score"], -(c["distance_km"] if c["distance_km"] is not None else 9999)),
+            reverse=True,
+        )
+
+        return Response({"candidates": candidates[:5]})

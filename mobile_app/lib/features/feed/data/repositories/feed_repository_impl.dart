@@ -87,6 +87,7 @@ class FeedRepositoryImpl implements FeedRepository {
         location_name, 
         status, 
         analysis_status, 
+        moderation_status,
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
@@ -179,6 +180,7 @@ class FeedRepositoryImpl implements FeedRepository {
             location_name,
             status,
             analysis_status,
+            moderation_status,
             created_at,
             profiles(name, profile_photo_url),
             pets(name)
