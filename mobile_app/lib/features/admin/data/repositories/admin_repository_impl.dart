@@ -59,4 +59,19 @@ class AdminRepositoryImpl implements AdminRepository {
       message: message,
     );
   }
+
+  @override
+  Future<void> reviewFlaggedPost({
+    required String postId,
+    required String decision,
+    String? notes,
+    bool notifyUser = true,
+  }) {
+    return _remoteDataSource.reviewFlaggedPost(
+      postId: postId,
+      decision: decision,
+      notes: notes,
+      notifyUser: notifyUser,
+    );
+  }
 }

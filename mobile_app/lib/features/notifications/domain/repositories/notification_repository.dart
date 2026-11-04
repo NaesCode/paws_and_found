@@ -23,4 +23,11 @@ abstract class NotificationRepository {
 
   /// Returns the current unread count (used for the badge).
   Future<int> getUnreadCount();
+
+  /// Resolves and fetches the full post/sighting details associated with a notification.
+  ///
+  /// Returns a structured map containing post title, animal type, status, description,
+  /// photoUrl, coordinates, locationName, and moderation information.
+  Future<Map<String, dynamic>?> getPostDetailsForNotification(
+      AppNotification notification);
 }

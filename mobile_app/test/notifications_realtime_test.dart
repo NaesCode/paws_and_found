@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:paws_and_found/features/notifications/domain/entities/app_notification.dart';
 import 'package:paws_and_found/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
+import 'package:paws_and_found/features/map/presentation/providers/map_controller.dart';
 
 class MockNotificationRepository implements NotificationRepository {
   List<AppNotification> currentNotifications = [];
@@ -54,6 +56,7 @@ class MockNotificationRepository implements NotificationRepository {
           isRead: true,
           createdAt: n.createdAt,
           relatedMatchId: n.relatedMatchId,
+          relatedReportId: n.relatedReportId,
         );
       }
       return n;
@@ -72,8 +75,52 @@ class MockNotificationRepository implements NotificationRepository {
         isRead: true,
         createdAt: n.createdAt,
         relatedMatchId: n.relatedMatchId,
+        relatedReportId: n.relatedReportId,
       );
     }).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getPostDetailsForNotification(
+      AppNotification notification) async {
+    if (notification.message.contains('Mingay')) {
+      return {
+        'id': notification.relatedReportId ?? '#MINGAY-01',
+        'title': 'Mingay',
+        'animalType': 'Cat',
+        'status': 'missing',
+        'description': notification.message,
+        'photoUrl': '',
+        'locationName': 'Cebu City, Philippines',
+        'latitude': 10.3157,
+        'longitude': 123.8854,
+        'reporterName': 'Community Member',
+        'createdAt': notification.createdAt,
+        'moderationStatus': 'approved',
+        'moderationNotes': null,
+      };
+    }
+    return {
+      'id': notification.relatedReportId ??
+          notification.extractedPostId ??
+          '#TEST-POST-1',
+      'title': 'Husky Sighting',
+      'animalType': 'Dog',
+      'status': 'missing',
+      'description':
+          'Friendly Siberian Husky with blue eyes spotted near Lahug, Cebu City.',
+      'photoUrl': '',
+      'locationName': 'Lahug, Cebu City',
+      'latitude': 10.330,
+      'longitude': 123.905,
+      'reporterName': 'Maria Santos',
+      'createdAt': notification.createdAt,
+      'moderationStatus':
+          notification.type == 'warning' ? 'flagged' : 'approved',
+      'moderationNotes': notification.type == 'warning'
+          ? 'Admin requested clearer picture.'
+          : null,
+    };
   }
 
   void dispose() {
@@ -315,6 +362,189 @@ void main() {
       expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
       expect(find.byIcon(Icons.campaign_rounded), findsNWidgets(2));
+    });
+
+    testWidgets('Post-Related Notification is clickable and opens PostDetailsBottomSheet directly', (tester) async {
+      final postNotification = AppNotification(
+        id: 'post-notif-1',
+        userId: 'user-123',
+        message: '🚨 High-Confidence Match (95%): A pet strongly resembling Max was reported nearby (#A1B2)!',
+        type: 'match_found',
+        relatedReportId: 'rep-uuid-1111',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+
+      mockRepo.currentNotifications = [postNotification];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify 'View Post' indicator chip is visible
+      expect(find.text('View Post'), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+
+      // Tap on the notification tile
+      await tester.tap(find.textContaining('🚨 High-Confidence Match'));
+      await tester.pumpAndSettle();
+
+      // Verify PostDetailsBottomSheet opened
+      expect(find.text('Husky Sighting'), findsOneWidget);
+      expect(find.text('Category: Dog'), findsOneWidget);
+      expect(find.text('MISSING'), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+      expect(find.text('Reported by Maria Santos'), findsOneWidget);
+      expect(find.text('Lahug, Cebu City'), findsOneWidget);
+      expect(find.textContaining('10.330°, 123.905°'), findsOneWidget);
+      expect(find.text('Full Description'), findsOneWidget);
+      expect(find.textContaining('Friendly Siberian Husky with blue eyes'), findsOneWidget);
+      expect(find.text('View on Community Map'), findsOneWidget);
+
+      // Notification should be marked as read
+      expect(mockRepo.markReadCallCount, equals(1));
+    });
+
+    testWidgets('Tapping View on Map in PostDetailsBottomSheet triggers callback with reportId and coordinates', (tester) async {
+      String? tappedReportId;
+      double? tappedLat;
+      double? tappedLng;
+
+      final flaggedWarningNotification = AppNotification(
+        id: 'warn-notif-2',
+        userId: 'user-123',
+        message: 'Action Required: Sighting #042 was flagged by AI content moderation.',
+        type: 'warning',
+        relatedReportId: 'report-uuid-042',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+
+      mockRepo.currentNotifications = [flaggedWarningNotification];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+            onViewOnMap: (id, lat, lng) {
+              tappedReportId = id;
+              tappedLat = lat;
+              tappedLng = lng;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on notification
+      await tester.tap(find.textContaining('Action Required: Sighting #042'));
+      await tester.pumpAndSettle();
+
+      // Verify Moderator Feedback Banner is shown
+      expect(find.text('Moderator Feedback & Action Required'), findsOneWidget);
+      expect(find.text('Admin requested clearer picture.'), findsOneWidget);
+
+      // Ensure button is visible in scrollview and tap
+      await tester.ensureVisible(find.text('View on Community Map'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View on Community Map'));
+      await tester.pumpAndSettle();
+
+      // Bottom sheet dismissed and callback invoked with coordinates
+      expect(tappedReportId, equals('report-uuid-042'));
+      expect(tappedLat, equals(10.330));
+      expect(tappedLng, equals(123.905));
+    });
+
+
+    testWidgets('Mingay Cat notification displays actual pet title and clean placeholder (never Gollum meme)', (tester) async {
+      MapReportModel.clearDynamicReports();
+
+      final mingayNotification = AppNotification(
+        id: 'notif-mingay-0539',
+        userId: 'user-123',
+        message: 'Urgent Alert: Mingay (Cat) was reported missing in your community. Please keep an eye out!',
+        type: 'report_nearby',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+
+      mockRepo.currentNotifications = [mingayNotification];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on Mingay notification
+      await tester.tap(find.textContaining('Urgent Alert: Mingay (Cat)'));
+      await tester.pumpAndSettle();
+
+      // Verify title is "Mingay" and Category is "Cat" (NOT "Community Animal Sighting")
+      expect(find.text('Mingay'), findsOneWidget);
+      expect(find.text('Category: Cat'), findsOneWidget);
+      expect(find.text('MISSING'), findsOneWidget);
+
+      // Verify clean placeholder is rendered without Gollum meme image
+      expect(find.text('No Photo Available'), findsOneWidget);
+      expect(find.text('Cat Sighting Report'), findsOneWidget);
+      expect(find.byIcon(Icons.pets_rounded), findsWidgets);
+
+      // Tap View on Community Map
+      await tester.ensureVisible(find.text('View on Community Map'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View on Community Map'));
+      await tester.pumpAndSettle();
+
+      // Verify report was dynamically registered for Community Map canvas
+      expect(MapReportModel.dynamicReports, isNotEmpty);
+      final registered = MapReportModel.dynamicReports.first;
+      expect(registered.title, equals('Mingay'));
+      expect(registered.animalType, equals('Cat'));
+      expect(registered.status, equals('missing'));
+      expect(registered.pinLabel, equals('M'));
+      expect(registered.latitude, equals(10.3157));
+      expect(registered.longitude, equals(123.8854));
+    });
+
+    test('MapController registerAndSelectReport updates reports and selects pin', () {
+      final controller = MapController();
+      expect(controller.reports, isEmpty);
+
+      final dynamicPin = MapReportModel(
+        id: 'mingay-pin-1',
+        reporterId: 'user-1',
+        title: 'Mingay',
+        animalType: 'Cat',
+        description: 'Missing cat',
+        status: 'missing',
+        locationName: 'Cebu City',
+        latitude: 10.3157,
+        longitude: 123.8854,
+        normalizedX: 0.5,
+        normalizedY: 0.5,
+        tags: const ['Cat', 'MISSING'],
+        createdAt: DateTime(2026, 11, 4),
+      );
+
+      controller.registerAndSelectReport(dynamicPin);
+
+      expect(controller.reports.length, equals(1));
+      expect(controller.selectedReport?.id, equals('mingay-pin-1'));
+      expect(controller.selectedReport?.title, equals('Mingay'));
+      expect(controller.selectedReport?.pinLabel, equals('M'));
     });
   });
 }

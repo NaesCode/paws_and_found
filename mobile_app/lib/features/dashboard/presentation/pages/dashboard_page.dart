@@ -1,3 +1,4 @@
+import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
@@ -31,6 +32,9 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late int _currentIndex;
+
+  String? _selectedMapReportId;
+  LatLng? _selectedMapCenter;
 
   // Notification badge count — fetched once on mount and kept in sync via stream.
   int _unreadCount = 0;
@@ -89,7 +93,11 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _pageFor(int index) {
     switch (index) {
       case 0:
-        return const MapPage(showBottomNavPlaceholder: false);
+        return MapPage(
+          showBottomNavPlaceholder: false,
+          initialReportId: _selectedMapReportId,
+          initialCenter: _selectedMapCenter,
+        );
       case 1:
         return const FeedPage();
       case 2:
@@ -103,6 +111,16 @@ class _DashboardPageState extends State<DashboardPage> {
         return NotificationsPage(
           repository: NotificationRepositoryImpl(),
           isActiveTab: _currentIndex == 4,
+          showBottomNavPlaceholder: false,
+          onViewOnMap: (reportId, lat, lng) {
+            setState(() {
+              _selectedMapReportId = reportId;
+              if (lat != null && lng != null) {
+                _selectedMapCenter = LatLng(lat, lng);
+              }
+              _currentIndex = 0;
+            });
+          },
         );
       default:
         return const MapPage(showBottomNavPlaceholder: false);
