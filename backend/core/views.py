@@ -141,6 +141,17 @@ class ReportAnalyzeView(APIView):
                     report.analysis_status = "done"
                     report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
 
+                    # Notify author that their sighting was flagged for review
+                    report_short_id = str(report.id)[:6].upper()
+                    Notification.objects.create(
+                        user_id=report.reporter_id,
+                        type="warning",
+                        message=(
+                            f"Post Under Review: Sighting #{report_short_id} was flagged by AI as no clear animal was detected. "
+                            f"If this was a mistake, an admin will review it shortly."
+                        ),
+                    )
+
                 logger.warning("Report %s flagged by AI moderation (score: %.2f)", report.id, emb_result.detector_score)
 
                 return Response({
@@ -150,7 +161,7 @@ class ReportAnalyzeView(APIView):
                     "detector_score": emb_result.detector_score,
                     "matches_created": 0,
                     "matches_updated": 0,
-                    "notifications_sent": 0,
+                    "notifications_sent": 1,
                 })
 
             with transaction.atomic():
@@ -185,6 +196,12 @@ class ReportAnalyzeView(APIView):
             try:
                 report.analysis_status = "failed"
                 report.save(update_fields=["analysis_status"])
+
+                Notification.objects.create(
+                    user_id=report.reporter_id,
+                    type="report_update",
+                    message="Photo Processing Issue: We couldn't process the photo for your recent sighting. Please ensure you upload a clear JPEG or PNG image.",
+                )
             except Exception:
                 pass
             return Response(

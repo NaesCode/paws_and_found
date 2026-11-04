@@ -257,5 +257,64 @@ void main() {
       expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
       expect(find.byIcon(Icons.campaign_rounded), findsOneWidget);
     });
+
+    testWidgets('Pillars 2 & 4: Renders high-confidence match alerts, AI moderation warnings, and deletion confirmations',
+        (tester) async {
+      final pillar2And4Notifications = [
+        AppNotification(
+          id: 'p4-1',
+          userId: 'user-123',
+          message: '🚨 High-Confidence Match (92%): A pet strongly resembling Milo was reported nearby in Lahug (0.5 km away)!',
+          type: 'match_found',
+          isRead: false,
+          createdAt: DateTime.now(),
+        ),
+        AppNotification(
+          id: 'p2-1',
+          userId: 'user-123',
+          message: 'Post Under Review: Sighting #A1B2 was flagged by AI as no clear animal was detected. If this was a mistake, an admin will review it shortly.',
+          type: 'warning',
+          isRead: false,
+          createdAt: DateTime.now(),
+        ),
+        AppNotification(
+          id: 'p2-2',
+          userId: 'user-123',
+          message: 'Your sighting report has been successfully withdrawn.',
+          type: 'report_update',
+          isRead: true,
+          createdAt: DateTime.now(),
+        ),
+        AppNotification(
+          id: 'p4-2',
+          userId: 'user-123',
+          message: 'Pet Profile Removed: Banana has been removed from your account.',
+          type: 'report_update',
+          isRead: true,
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      mockRepo.currentNotifications = pillar2And4Notifications;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('🚨 High-Confidence Match (92%)'), findsOneWidget);
+      expect(find.textContaining('Post Under Review: Sighting #A1B2'), findsOneWidget);
+      expect(find.textContaining('Your sighting report has been successfully withdrawn'), findsOneWidget);
+      expect(find.textContaining('Pet Profile Removed: Banana has been removed'), findsOneWidget);
+
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.campaign_rounded), findsNWidgets(2));
+    });
   });
 }

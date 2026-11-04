@@ -209,13 +209,23 @@ def match_report_against_pets(report: Report) -> MatchSummary:
 
                 loc_context = f" in {report.location_name}" if getattr(report, "location_name", None) else ""
 
+                is_high_confidence = score >= 0.85
+                conf_pct = int(round(score * 100))
+
+                if is_high_confidence:
+                    owner_msg = f"🚨 High-Confidence Match ({conf_pct}%): A pet strongly resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)!"
+                    reporter_msg = f"🚨 High-Confidence Match ({conf_pct}%): Your {report.animal_type} sighting strongly matches missing pet {pet.name}{loc_context} ({dist_km_msg} km away)!"
+                else:
+                    owner_msg = f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
+                    reporter_msg = f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
+
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(
                     user=pet.owner,
                     related_match=match_obj,
                     type="match_found",
                     defaults={
-                        "message": f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away).",
+                        "message": owner_msg,
                     },
                 )
                 if owner_notif_created:
@@ -227,7 +237,7 @@ def match_report_against_pets(report: Report) -> MatchSummary:
                     related_match=match_obj,
                     type="verification_request",
                     defaults={
-                        "message": f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away).",
+                        "message": reporter_msg,
                     },
                 )
                 if reporter_notif_created:
@@ -348,13 +358,23 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
 
                 loc_context = f" in {report.location_name}" if getattr(report, "location_name", None) else ""
 
+                is_high_confidence = score >= 0.85
+                conf_pct = int(round(score * 100))
+
+                if is_high_confidence:
+                    owner_msg = f"🚨 High-Confidence Match ({conf_pct}%): A pet strongly resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)!"
+                    reporter_msg = f"🚨 High-Confidence Match ({conf_pct}%): Your {report.animal_type} sighting strongly matches missing pet {pet.name}{loc_context} ({dist_km_msg} km away)!"
+                else:
+                    owner_msg = f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
+                    reporter_msg = f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
+
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(
                     user=pet.owner,
                     related_match=match_obj,
                     type="match_found",
                     defaults={
-                        "message": f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away).",
+                        "message": owner_msg,
                     },
                 )
                 if owner_notif_created:
@@ -366,7 +386,7 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
                     related_match=match_obj,
                     type="verification_request",
                     defaults={
-                        "message": f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away).",
+                        "message": reporter_msg,
                     },
                 )
                 if reporter_notif_created:

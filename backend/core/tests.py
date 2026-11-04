@@ -377,12 +377,10 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(call_kwargs["type"], "report_update")
         self.assertIn("not Milo", call_kwargs["defaults"]["message"])
 
+    @patch("core.models.Notification.objects.create")
     @patch("core.views.match_report_against_pets")
     @patch("core.views.embed_image")
     @patch("core.models.ReportEmbedding.objects.update_or_create")
-    @patch("core.views._download_image")
-    @patch("core.models.Report.objects.get")
-    @patch("core.views.embed_image")
     @patch("core.views._download_image")
     @patch("core.models.Report.objects.get")
     def test_analyze_report_smart_moderation_flags_non_animal(
@@ -390,6 +388,9 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         mock_get_report,
         mock_download,
         mock_embed,
+        mock_emb_update,
+        mock_match,
+        mock_notif_create,
     ):
         from core.ai.features import EmbeddingResult
 
@@ -422,6 +423,12 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(mock_report.moderation_status, "flagged")
         self.assertIn("Flagged by AI", mock_report.moderation_notes)
         self.assertEqual(response.data["matches_created"], 0)
+        self.assertEqual(response.data["notifications_sent"], 1)
+        mock_notif_create.assert_called_once()
+        call_kwargs = mock_notif_create.call_args[1]
+        self.assertEqual(call_kwargs["user_id"], self.user_b_id)
+        self.assertEqual(call_kwargs["type"], "warning")
+        self.assertIn("Post Under Review", call_kwargs["message"])
 
     def test_analyze_report_workflow_and_idempotency(
         self,
