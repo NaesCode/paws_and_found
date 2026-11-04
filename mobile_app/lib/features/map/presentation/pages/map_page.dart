@@ -1,81 +1,285 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_map/flutter_map.dart' as fmap;
+
 import 'package:go_router/go_router.dart';
+
 import 'package:latlong2/latlong.dart';
+
 import '../../../../core/constants/location_constants.dart';
+
 import '../../../../core/services/location_service.dart';
+
 import '../../../../core/theme/wireframe_colors.dart';
+
 import '../../../../shared/atoms/current_location_button.dart';
+
 import '../../../../shared/organisms/custom_app_bar.dart';
+
 import '../../data/models/map_report_model.dart';
+
 import '../widgets/interactive_map_canvas.dart';
+
 import '../widgets/map_filter_bar.dart';
+
 import '../widgets/map_legend.dart';
+
 import '../widgets/map_pet_info_modal.dart';
+
 import '../widgets/map_report_card.dart';
+
 import '../widgets/map_screen_template.dart';
+
 import '../../domain/entities/map_filter_type.dart';
+
 import '../../domain/repositories/map_repository.dart';
+
 import '../providers/map_controller.dart';
 
+
+
 /// Community Animal Map screen (Interactive GIS Implementation).
+
 ///
+
 /// Implements SDD Section 6.1 (3) & Section 6.2 (03 - Community Map):
+
 /// - Real-world GIS Map Interface Canvas via `flutter_map`
+
 /// - Status-differentiated Map Markers ('M' Missing, 'S' Stray, 'F' Found)
+
 /// - Discovery Filter Sub-menu ("All", "For You", "Animal Type")
+
 /// - Floating Report Details Card for targeted animal sightings
+
 /// - Pin status legend
+
 /// - Finalized [CustomAppBar] navigation shell integration
+
 ///
+
 /// Adheres strictly to Atomic Design (using lib/shared/ components)
+
 /// and Clean Architecture (using MapController and MapRepository).
+
 class MapPage extends StatefulWidget {
+
   final MapRepository? repository;
+
   final LocationService? locationService;
+
   final bool showBottomNavPlaceholder;
+
   final String? initialReportId;
+
   final LatLng? initialCenter;
 
+
+
   const MapPage({
+
     super.key,
+
     this.repository,
+
     this.locationService,
+
     this.showBottomNavPlaceholder = true,
+
     this.initialReportId,
+
     this.initialCenter,
+
   });
 
+
+
   @override
+
   State<MapPage> createState() => _MapPageState();
+
 }
 
+
+
 class _MapPageState extends State<MapPage> {
+
   late final MapController _controller;
+
   late final fmap.MapController _fmapController;
 
+
+
+  void _safeMoveCamera(LatLng center, double zoom) {
+
+    try {
+
+      _fmapController.move(center, zoom);
+
+    } catch (_) {
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+
+        try {
+
+          _fmapController.move(center, zoom);
+
+        } catch (_) {}
+
+      });
+
+    }
+
+  }
+
+
+
+  void _syncAndSelectReport(String reportId, LatLng? center) {
+
+    final cleanId = reportId.replaceAll('#', '').toLowerCase();
+
+
+
+    // 1. Check in MapReportModel.dynamicReports
+
+    final dynMatch = MapReportModel.dynamicReports.where((r) {
+
+      final rId = r.id.toLowerCase();
+
+      return rId == cleanId ||
+
+          rId.startsWith(cleanId) ||
+
+          rId.endsWith(cleanId) ||
+
+          cleanId.startsWith(rId);
+
+    });
+
+
+
+    if (dynMatch.isNotEmpty) {
+
+      final report = dynMatch.first;
+
+      _controller.registerAndSelectReport(report);
+
+      _safeMoveCamera(LatLng(report.latitude, report.longitude), 16.5);
+
+      return;
+
+    }
+
+
+
+    // 2. Check in existing controller reports
+
+    _controller.selectReportById(cleanId);
+
+    final match = _controller.reports.where((r) {
+
+      final rId = r.id.toLowerCase();
+
+      return rId == cleanId ||
+
+          rId.startsWith(cleanId) ||
+
+          rId.endsWith(cleanId) ||
+
+          cleanId.startsWith(rId);
+
+    });
+
+
+
+    if (match.isNotEmpty) {
+
+      _safeMoveCamera(LatLng(match.first.latitude, match.first.longitude), 16.5);
+
+    } else if (center != null) {
+
+      _safeMoveCamera(center, 16.5);
+
+    }
+
+  }
+
+
+
   @override
+
+  void didUpdateWidget(covariant MapPage oldWidget) {
+
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.initialReportId != null &&
+
+        (widget.initialReportId != oldWidget.initialReportId ||
+
+            _controller.selectedReport?.id != widget.initialReportId)) {
+
+      _syncAndSelectReport(widget.initialReportId!, widget.initialCenter);
+
+    }
+
+  }
+
+
+
+  @override
+
   void initState() {
+
     super.initState();
+
     _fmapController = fmap.MapController();
+
     _controller = MapController(
+
       repository: widget.repository,
+
       locationService: widget.locationService,
+
     );
+
     _controller.addListener(_onControllerUpdate);
 
+
+
     // =========================================================================
+
     // TODO: TESTING ONLY - Temporary placeholder pin right at startup map center
+
     // so the user can immediately test the modal. NOTE: REMOVE AFTER TESTING.
+
     // =========================================================================
+
     _injectTestingPin(
+
       widget.initialCenter?.latitude ?? LocationConstants.defaultLatitude,
+
       widget.initialCenter?.longitude ?? LocationConstants.defaultLongitude,
+
     );
 
+
+
+    // Immediate sync for targeted report
+
+    if (widget.initialReportId != null) {
+
+      _syncAndSelectReport(widget.initialReportId!, widget.initialCenter);
+
+    }
+
+
+
     // 1. Immediately load reports
+
     _controller.loadReports().then((_) {
+
       if (!mounted) return;
+
       if (widget.initialReportId != null) {
         _controller.selectReportById(widget.initialReportId!);
         final match = _controller.reports.where((r) => r.id == widget.initialReportId);
@@ -90,309 +294,616 @@ class _MapPageState extends State<MapPage> {
       } else if (widget.initialCenter != null) { 
         _fmapController.move(widget.initialCenter!, 16.0);
       }
+
     });
 
+
+
     // 2. Fetch user's phone GPS location as the default position for each user
+
     if (widget.initialCenter == null && widget.initialReportId == null) {
+
       _controller.fetchUserLocation().then((loc) {
+
         if (!mounted) return;
+
         if (loc != null) {
+
           _fmapController.move(loc, 15.5);
+
           // TODO: TESTING ONLY - Relocate testing pin to user's physical GPS location
+
           _injectTestingPin(loc.latitude, loc.longitude);
+
           // Refresh nearby reports based on the user's localized phone position
+
           _controller.loadReports();
+
         }
+
       });
+
     }
+
   }
 
+
+
   // ===========================================================================
+
   // TODO: TESTING ONLY - Injects a placeholder pin right at the starting center
+
   // so the user can immediately test the modal on app startup.
+
   // NOTE: MUST BE REMOVED AFTER TESTING.
+
   // ===========================================================================
+
   void _injectTestingPin(double lat, double lng) {
+
     MapReportModel.addReport(
+
       MapReportModel(
+
         id: 'testing-placeholder-pin',
+
         petId: 'cc4df92c-64e9-4e9e-b37c-507ed997966f',
+
         reporterId: 'test-user',
+
         title: 'Thomas',
+
         animalType: 'Feline',
+
         description: 'TESTING PIN: Slipped out near the front gate. Gray with white spots and paws. Tap action buttons below to test modal interactions.',
+
         status: 'missing',
+
         locationName: 'Cebu City (Testing Pin)',
+
         latitude: lat,
+
         longitude: lng,
+
         normalizedX: 0.5,
+
         normalizedY: 0.5,
+
         distanceMeters: 25,
+
         createdAt: DateTime.now(),
+
         tags: const ['Feline', 'Gray & White', 'Test Pin'],
+
         photoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80',
+
       ),
+
     );
+
   }
+
+
 
   void _onControllerUpdate() {
+
     if (mounted) setState(() {});
+
   }
 
+
+
   @override
+
   void dispose() {
+
     _controller.removeListener(_onControllerUpdate);
+
     _controller.dispose();
+
     _fmapController.dispose();
+
     super.dispose();
+
   }
+
+
 
   Future<void> _handleRecenter() async {
+
     // 1. Immediately pan/move if location is already available
+
     if (_controller.userLocation != null) {
+
       _fmapController.move(_controller.userLocation!, 15.5);
+
     }
+
+
 
     // 2. Refresh/query latest GPS fix from device hardware
+
     final loc = await _controller.fetchUserLocation();
+
     if (!mounted) return;
 
+
+
     if (loc != null) {
+
       _fmapController.move(loc, 15.5);
+
     } else if (_controller.userLocation == null) {
+
       ScaffoldMessenger.of(context).showSnackBar(
+
         const SnackBar(
+
           content: Text('Unable to obtain current location. Please verify GPS permissions.'),
+
           duration: Duration(seconds: 2),
+
         ),
+
       );
+
     }
+
   }
+
+
 
   void _showSpeciesFilterDialog() {
+
     showModalBottomSheet<void>(
+
       context: context,
+
       backgroundColor: WireframeColors.surface,
+
       shape: const RoundedRectangleBorder(
+
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+
       ),
+
       builder: (ctx) {
+
         return SafeArea(
+
           child: Padding(
+
             padding: const EdgeInsets.symmetric(vertical: 16.0),
+
             child: Column(
+
               mainAxisSize: MainAxisSize.min,
+
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
+
                 const Padding(
+
                   padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+
                   child: Text(
+
                     'Filter by Animal Type',
+
                     style: TextStyle(
+
                       color: WireframeColors.textPrimary,
+
                       fontSize: 16,
+
                       fontWeight: FontWeight.w700,
+
                     ),
+
                   ),
+
                 ),
+
                 const Divider(color: WireframeColors.borderLight),
+
                 ListTile(
+
                   leading: const Icon(Icons.clear_all_rounded, color: WireframeColors.primaryDark),
+
                   title: const Text('All Animal Types'),
+
                   selected: _controller.selectedAnimalType == null,
+
                   onTap: () {
+
                     Navigator.of(ctx).pop();
+
                     _controller.setAnimalType(null);
+
                   },
+
                 ),
+
                 ListTile(
+
                   leading: const Icon(Icons.pets, color: WireframeColors.primaryDark),
+
                   title: const Text('Canine (Dogs)'),
+
                   selected: _controller.selectedAnimalType == 'Canine',
+
                   onTap: () {
+
                     Navigator.of(ctx).pop();
+
                     _controller.setAnimalType('Canine');
+
                   },
+
                 ),
+
                 ListTile(
+
                   leading: const Icon(Icons.pets, color: WireframeColors.secondarySlate),
+
                   title: const Text('Feline (Cats)'),
+
                   selected: _controller.selectedAnimalType == 'Feline',
+
                   onTap: () {
+
                     Navigator.of(ctx).pop();
+
                     _controller.setAnimalType('Feline');
+
                   },
+
                 ),
+
                 ListTile(
+
                   leading: const Icon(Icons.category_outlined, color: WireframeColors.textSecondary),
+
                   title: const Text('Other Animals'),
+
                   selected: _controller.selectedAnimalType == 'Other',
+
                   onTap: () {
+
                     Navigator.of(ctx).pop();
+
                     _controller.setAnimalType('Other');
+
                   },
+
                 ),
+
               ],
+
             ),
+
           ),
+
         );
+
       },
+
     );
+
   }
+
+
 
   @override
+
   Widget build(BuildContext context) {
+
     final selected = _controller.selectedReport;
 
+
+
     return MapScreenTemplate(
+
       // 1. Header: "Animal Map" + Re-center target button
+
       header: _buildHeader(),
 
+
+
       // 2. Filter Bar: "All", "For You", "Animal Type ▼"
+
       filterBar: MapFilterBar(
+
         selectedFilter: _controller.currentFilter == MapFilterType.all
+
             ? 'all'
+
             : 'for_you',
+
         selectedAnimalType: _controller.selectedAnimalType,
+
         onFilterSelected: (filter) {
+
           _controller.setFilter(
+
             filter == 'all' ? MapFilterType.all : MapFilterType.forYou,
+
           );
+
         },
+
         onAnimalTypePressed: _showSpeciesFilterDialog,
+
       ),
+
+
 
       // 3. Map Canvas: Real-world interactive GIS map with custom pin markers
+
       mapCanvas: InteractiveMapCanvas(
+
         center: widget.initialCenter ?? _controller.mapCenter,
+
         reports: _controller.reports,
+
         selectedReportId: selected?.id,
+
         userLocation: _controller.userLocation,
+
         mapController: _fmapController,
+
         onReportTap: (report) {
+
           _controller.selectReport(report);
+
           _fmapController.move(
+
             LatLng(report.latitude, report.longitude),
+
             _fmapController.camera.zoom,
+
           );
+
           MapPetInfoModal.show(
+
             context: context,
+
             report: report,
+
           );
+
         },
+
         onCanvasTap: _controller.clearSelection,
+
       ),
+
+
 
       // 4. Floating Report Detail Card
+
       reportCard: selected != null
+
           ? MapReportCard(
+
               title: selected.title,
+
               subtitle: selected.subtitle,
+
               status: selected.status,
+
               tags: selected.tags,
+
               photoUrl: selected.photoUrl,
+
               onTap: () {
+
                 MapPetInfoModal.show(
+
                   context: context,
+
                   report: selected,
+
                 );
+
               },
+
             )
+
           : null,
+
+
 
       // 5. Pin status legend at the bottom
+
       legend: const MapLegend(),
 
+
+
       // 6. Floating Action Button on Bottom Right: Takes user to their current location
+
       floatingActionButton: CurrentLocationButton(
+
         key: const Key('current_location_button'),
+
         onTap: _handleRecenter,
+
         isLoading: _controller.isFetchingLocation,
+
       ),
+
+
 
       // 6. Bottom navigation bar (CustomAppBar)
+
       bottomNavigationBar: widget.showBottomNavPlaceholder
+
           ? CustomAppBar(
+
               currentIndex: 0,
+
               onTabSelected: (index) {
+
                 switch (index) {
+
                   case 0:
+
                     // Already on Map
+
                     break;
+
                   case 1:
+
                     context.go('/feed');
+
                     break;
+
                   case 2:
+
                     context.go('/camera');
+
                     break;
+
                   case 3:
+
                     context.go('/profile');
+
                     break;
+
                   case 4:
+
                     context.go('/notifications');
+
                     break;
+
                 }
+
               },
+
             )
+
           : null,
+
     );
+
   }
+
+
 
   Widget _buildHeader() {
+
     return Padding(
+
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
+
       child: Row(
+
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
         children: [
+
           // Screen Title
+
           const Text(
+
             'Animal Map',
+
             style: TextStyle(
+
               color: WireframeColors.textPrimary,
+
               fontSize: 22,
+
               fontWeight: FontWeight.w800,
+
               letterSpacing: -0.2,
+
             ),
+
           ),
 
+
+
           // Re-center target button (circle inside rounded square)
+
           InkWell(
+
             onTap: _handleRecenter,
+
             borderRadius: BorderRadius.circular(10),
+
             child: Container(
+
               width: 38,
+
               height: 38,
+
               decoration: BoxDecoration(
+
                 color: WireframeColors.surface,
+
                 borderRadius: BorderRadius.circular(10),
+
                 border: Border.all(
+
                   color: WireframeColors.border,
+
                   width: 1.2,
+
                 ),
+
                 boxShadow: [
+
                   BoxShadow(
+
                     color: Colors.black.withValues(alpha: 0.04),
+
                     blurRadius: 3,
+
                     offset: const Offset(0, 1),
+
                   ),
+
                 ],
+
               ),
+
               alignment: Alignment.center,
+
               child: Container(
+
                 width: 14,
+
                 height: 14,
+
                 decoration: BoxDecoration(
+
                   shape: BoxShape.circle,
+
                   border: Border.all(
+
                     color: WireframeColors.secondarySlate,
+
                     width: 2.0,
+
                   ),
+
                 ),
+
               ),
+
             ),
+
           ),
+
         ],
+
       ),
+
     );
+
   }
+
 }
+

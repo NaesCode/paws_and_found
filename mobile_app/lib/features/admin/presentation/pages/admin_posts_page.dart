@@ -6,6 +6,7 @@ import '../../data/repositories/admin_repository_impl.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_bottom_nav_bar.dart';
 import '../widgets/admin_header.dart';
+import '../widgets/admin_moderation_pill.dart';
 import '../widgets/admin_post_status_pill.dart';
 
 /// Screen 10 — ADMIN · POSTS (Post Management)
@@ -82,6 +83,11 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     if (_selectedFilter == 'all') {
       return _allPosts;
     }
+    if (_selectedFilter == 'flagged') {
+      return _allPosts
+          .where((p) => p.isFlagged || p.isModerationFlagged)
+          .toList();
+    }
     return _allPosts
         .where((p) => p.status.toLowerCase() == _selectedFilter)
         .toList();
@@ -134,6 +140,18 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     _showSightingDetailsModal(post);
                   },
                 ),
+                if (post.isFlagged || post.isModerationFlagged)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.shield_outlined,
+                        color: Colors.deepOrange),
+                    title: const Text('Review AI Flag (Edit or Delete)'),
+                    subtitle: const Text('Decide whether to request edits, approve, or delete'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showReviewFlaggedPostModal(post);
+                    },
+                  ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.warning_amber_rounded, color: Colors.amber),
@@ -156,6 +174,313 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showReviewFlaggedPostModal(AdminPostItem post) {
+    final noteController = TextEditingController(
+      text: 'Please upload a clearer photo of the animal or update your description.',
+    );
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: WireframeColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 16.0,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.0,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: WireframeColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header with Shield / Flag badge
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.shield_outlined,
+                            color: Colors.deepOrange,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AI Moderation Review',
+                                style: TextStyle(
+                                  fontSize: 17.0,
+                                  fontWeight: FontWeight.w800,
+                                  color: WireframeColors.primaryDark,
+                                ),
+                              ),
+                              Text(
+                                'Post ${post.id} · ${post.title}',
+                                style: const TextStyle(
+                                  fontSize: 12.0,
+                                  color: WireframeColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AdminModerationPill(status: post.moderationStatus),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // AI Reason Box
+                    Container(
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFFCD34D)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.warning_amber_rounded,
+                                  size: 16, color: Color(0xFFB45309)),
+                              SizedBox(width: 6),
+                              Text(
+                                'Flagged Reason / Analysis:',
+                                style: TextStyle(
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            post.moderationNotes ??
+                                'Flagged by AI: Confidence score fell below acceptable threshold or animal was obscured.',
+                            style: const TextStyle(
+                              fontSize: 12.0,
+                              color: Color(0xFF78350F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Admin Guidance / Action notes
+                    const Text(
+                      'EDIT INSTRUCTIONS / NOTES FOR AUTHOR',
+                      style: TextStyle(
+                        fontSize: 11.0,
+                        fontWeight: FontWeight.w700,
+                        color: WireframeColors.textMuted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 3,
+                      style: const TextStyle(
+                        fontSize: 13.0,
+                        color: WireframeColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Enter instructions explaining what the author must edit...',
+                        hintStyle: const TextStyle(
+                          color: WireframeColors.textMuted,
+                          fontSize: 12.5,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: const BorderSide(color: WireframeColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: const BorderSide(color: WireframeColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: const BorderSide(
+                            color: WireframeColors.primaryDark,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.all(12.0),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Decision Action Buttons
+                    // 1. Request Edit from Author
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final notes = noteController.text.trim();
+                        if (notes.isEmpty) {
+                          _showActionFeedback('Action Required', 'Please enter instructions for the author.');
+                          return;
+                        }
+
+                        Navigator.pop(ctx);
+                        try {
+                          await _adminRepository.reviewFlaggedPost(
+                            postId: post.rawId,
+                            decision: 'request_edit',
+                            notes: notes,
+                            notifyUser: true,
+                          );
+                          if (mounted) {
+                            _showActionFeedback(
+                              'Edit Requested',
+                              'Notification sent to ${post.username}. Post marked for user revision.',
+                            );
+                            _loadPosts();
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to update moderation status: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.edit_note_rounded, size: 20),
+                      label: const Text(
+                        'Request Edit from Author',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // 2. Approve Post (Dismiss AI Flag)
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        try {
+                          await _adminRepository.reviewFlaggedPost(
+                            postId: post.rawId,
+                            decision: 'approved',
+                            notes: 'Approved by administrator.',
+                            notifyUser: false,
+                          );
+                          if (mounted) {
+                            _showActionFeedback(
+                              'Flag Dismissed',
+                              'Post #${post.id} approved and restored to good standing.',
+                            );
+                            _loadPosts();
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to approve post: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.check_circle_outline_rounded,
+                          color: Color(0xFF059669), size: 20),
+                      label: const Text(
+                        'Approve Post (Dismiss AI Flag)',
+                        style: TextStyle(
+                          color: Color(0xFF059669),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF10B981)),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // 3. Delete Post
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showDeleteConfirmationDialog(post);
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: Color(0xFFDC2626), size: 20),
+                      label: const Text(
+                        'Delete Post from Community',
+                        style: TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFEF4444)),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -956,30 +1281,61 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   ),
 
                   // Flagged banner if applicable
-                  if (post.isFlagged) ...[
+                  if (post.isFlagged || post.isModerationFlagged) ...[
                     const SizedBox(height: 14),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12.0, vertical: 10.0),
+                      padding: const EdgeInsets.all(12.0),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEF2F2),
-                        borderRadius: BorderRadius.circular(8.0),
-                        border: Border.all(color: const Color(0xFFFECACA)),
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFFCD34D)),
                       ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.flag_rounded,
-                              color: Colors.redAccent, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'This post was flagged for administrative review.',
-                              style: TextStyle(
-                                fontSize: 12.0,
-                                color: Color(0xFF991B1B),
-                                fontWeight: FontWeight.w600,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.flag_rounded,
+                                  color: Color(0xFFB45309), size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                'AI Content Moderation Flag',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF92400E),
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            post.moderationNotes ??
+                                'Flagged by AI: Low animal confidence score. An administrator must review whether this post should be edited or removed.',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF78350F),
                             ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFFB45309),
+                                    side: const BorderSide(color: Color(0xFFF59E0B)),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    _showReviewFlaggedPostModal(post);
+                                  },
+                                  child: const Text('Decide Action (Edit / Delete)',
+                                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1034,12 +1390,15 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               onLogout: widget.onLogout,
             ),
 
-            // 2. Filter Chips Bar (All, Missing, Stray, Found)
-            Padding(
+            // 2. Filter Chips Bar (All, Flagged, Missing, Stray, Found)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
               child: Row(
                 children: [
                   _buildFilterChip('All', 'all'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Flagged', 'flagged'),
                   const SizedBox(width: 8),
                   _buildFilterChip('Missing', 'missing'),
                   const SizedBox(width: 8),
@@ -1319,6 +1678,10 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           const SizedBox(width: 6),
                         ],
                         AdminPostStatusPill(status: post.status),
+                        if (post.isFlagged || post.isModerationFlagged) ...[
+                          const SizedBox(width: 6),
+                          AdminModerationPill(status: post.moderationStatus),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 3),

@@ -56,6 +56,8 @@ class AdminStaticData {
       dateFormatted: 'Sep 20',
       username: 'jake_r',
       isFlagged: true,
+      moderationStatus: 'flagged',
+      moderationNotes: 'Flagged by AI: Low animal confidence score (0.15). Pending administrative verification.',
     ),
     AdminPostItem(
       id: '#043',

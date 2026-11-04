@@ -145,6 +145,17 @@ class ReportAnalyzeView(APIView):
                     report.analysis_status = "done"
                     report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
 
+                    # Notify author that their sighting was flagged for review
+                    report_short_id = str(report.id)[:6].upper()
+                    Notification.objects.create(
+                        user_id=report.reporter_id,
+                        type="warning",
+                        message=(
+                            f"Post Under Review: Sighting #{report_short_id} was flagged by AI as no clear animal was detected. "
+                            f"If this was a mistake, an admin will review it shortly."
+                        ),
+                    )
+
                 logger.warning("Report %s flagged by AI moderation (score: %.2f)", report.id, emb_result.detector_score)
 
                 return Response({
@@ -154,7 +165,7 @@ class ReportAnalyzeView(APIView):
                     "detector_score": emb_result.detector_score,
                     "matches_created": 0,
                     "matches_updated": 0,
-                    "notifications_sent": 0,
+                    "notifications_sent": 1,
                 })
 
             with transaction.atomic():
@@ -189,6 +200,12 @@ class ReportAnalyzeView(APIView):
             try:
                 report.analysis_status = "failed"
                 report.save(update_fields=["analysis_status"])
+
+                Notification.objects.create(
+                    user_id=report.reporter_id,
+                    type="report_update",
+                    message="Photo Processing Issue: We couldn't process the photo for your recent sighting. Please ensure you upload a clear JPEG or PNG image.",
+                )
             except Exception:
                 pass
             return Response(
@@ -378,6 +395,24 @@ class MatchRespondView(APIView):
             elif decision == "reject":
                 match.status = "rejected"
                 match.save(update_fields=["status"])
+
+                pet = match.pet
+                report = match.report
+
+                # Notify the other party about the rejection
+                if caller_id == owner_id:
+                    recipient = report.reporter
+                    msg = f"Update on Sighting: The owner reviewed your sighting of the {report.animal_type} and concluded it was not {pet.name}. Thank you for your sharp eyes and support!"
+                else:
+                    recipient = pet.owner
+                    msg = f"Update on Match: The sighting reporter reviewed the match for {pet.name} and indicated it was not a match."
+
+                Notification.objects.get_or_create(
+                    user=recipient,
+                    related_match=match,
+                    type="report_update",
+                    defaults={"message": msg},
+                )
 
         return Response({
             "status": match.status,

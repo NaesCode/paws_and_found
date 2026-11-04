@@ -347,12 +347,40 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(mock_match.report.status, "found")
         mock_notif_get_or_create.assert_called_once()
 
+    @patch("core.models.Notification.objects.get_or_create")
+    @patch("core.models.Match.objects.select_related")
+    def test_respond_reject_workflow(self, mock_select_related, mock_notif_get_or_create):
+        mock_match = MagicMock()
+        mock_match.id = self.match_id
+        mock_match.status = "pending"
+        mock_match.report.reporter_id = self.user_b_id
+        mock_match.report.animal_type = "dog"
+        mock_match.pet.owner_id = self.user_a_id
+        mock_match.pet.name = "Milo"
+        mock_select_related.return_value.get.return_value = mock_match
+        mock_notif_get_or_create.return_value = (MagicMock(), True)
+
+        # Pet owner (User A) rejects the match
+        self._auth_as(self.user_a_id)
+        response = self.client.post(
+            f"/api/matches/{self.match_id}/respond/",
+            data={"decision": "reject"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "rejected")
+        self.assertEqual(mock_match.status, "rejected")
+        mock_notif_get_or_create.assert_called_once()
+        call_kwargs = mock_notif_get_or_create.call_args[1]
+        self.assertEqual(call_kwargs["user"], self.user_b_id)
+        self.assertEqual(call_kwargs["type"], "report_update")
+        self.assertIn("not Milo", call_kwargs["defaults"]["message"])
+
+    @patch("core.models.Notification.objects.create")
     @patch("core.views.match_report_against_pets")
     @patch("core.views.embed_image")
     @patch("core.models.ReportEmbedding.objects.update_or_create")
-    @patch("core.views._download_image")
-    @patch("core.models.Report.objects.get")
-    @patch("core.views.embed_image")
     @patch("core.views._download_image")
     @patch("core.models.Report.objects.get")
     def test_analyze_report_smart_moderation_flags_non_animal(
@@ -360,6 +388,9 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         mock_get_report,
         mock_download,
         mock_embed,
+        mock_emb_update,
+        mock_match,
+        mock_notif_create,
     ):
         from core.ai.features import EmbeddingResult
 
@@ -392,6 +423,12 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(mock_report.moderation_status, "flagged")
         self.assertIn("Flagged by AI", mock_report.moderation_notes)
         self.assertEqual(response.data["matches_created"], 0)
+        self.assertEqual(response.data["notifications_sent"], 1)
+        mock_notif_create.assert_called_once()
+        call_kwargs = mock_notif_create.call_args[1]
+        self.assertEqual(call_kwargs["user_id"], self.user_b_id)
+        self.assertEqual(call_kwargs["type"], "warning")
+        self.assertIn("Post Under Review", call_kwargs["message"])
 
     def test_analyze_report_workflow_and_idempotency(
         self,

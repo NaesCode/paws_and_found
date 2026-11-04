@@ -8,6 +8,8 @@ class AdminPostItem {
   final String dateFormatted; // e.g. 'Sep 20'
   final String username; // e.g. 'maria_s'
   final bool isFlagged;
+  final String moderationStatus; // 'approved', 'flagged', 'rejected'
+  final String? moderationNotes;
   final String? photoUrl;
   final String? description;
   final String? reporterId;
@@ -21,6 +23,8 @@ class AdminPostItem {
     required this.dateFormatted,
     required this.username,
     this.isFlagged = false,
+    this.moderationStatus = 'approved',
+    this.moderationNotes,
     this.photoUrl,
     this.description,
     this.reporterId,
@@ -29,6 +33,41 @@ class AdminPostItem {
   bool get isMissing => status.toLowerCase() == 'missing';
   bool get isStray => status.toLowerCase() == 'stray';
   bool get isFound => status.toLowerCase() == 'found';
+  bool get isModerationFlagged => moderationStatus.toLowerCase() == 'flagged';
+  bool get isModerationRejected => moderationStatus.toLowerCase() == 'rejected';
+  bool get isModerationApproved => moderationStatus.toLowerCase() == 'approved';
+
+  AdminPostItem copyWith({
+    String? id,
+    String? rawId,
+    String? title,
+    String? subtitle,
+    String? status,
+    String? dateFormatted,
+    String? username,
+    bool? isFlagged,
+    String? moderationStatus,
+    String? moderationNotes,
+    String? photoUrl,
+    String? description,
+    String? reporterId,
+  }) {
+    return AdminPostItem(
+      id: id ?? this.id,
+      rawId: rawId ?? this.rawId,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      status: status ?? this.status,
+      dateFormatted: dateFormatted ?? this.dateFormatted,
+      username: username ?? this.username,
+      isFlagged: isFlagged ?? this.isFlagged,
+      moderationStatus: moderationStatus ?? this.moderationStatus,
+      moderationNotes: moderationNotes ?? this.moderationNotes,
+      photoUrl: photoUrl ?? this.photoUrl,
+      description: description ?? this.description,
+      reporterId: reporterId ?? this.reporterId,
+    );
+  }
 
   factory AdminPostItem.fromJson(Map<String, dynamic> json) {
     final rawId = (json['id'] ?? '').toString();
@@ -130,9 +169,14 @@ class AdminPostItem {
       username = 'user_${repId.length >= 4 ? repId.substring(0, 4) : repId}';
     }
 
-    // Flagged state: check is_flagged, flagged, or analysis_status == 'failed'
-    final isFlagged = (json['is_flagged'] as bool?) ??
-        (json['flagged'] as bool?) ??
+    final moderationStatus =
+        (json['moderation_status'] as String?)?.toLowerCase().trim() ?? 'approved';
+    final moderationNotes = json['moderation_notes'] as String?;
+
+    // Flagged state: check moderation_status == 'flagged', is_flagged, flagged, or analysis_status == 'failed'
+    final isFlagged = moderationStatus == 'flagged' ||
+        ((json['is_flagged'] as bool?) ?? false) ||
+        ((json['flagged'] as bool?) ?? false) ||
         (json['analysis_status'] == 'failed');
 
     return AdminPostItem(
@@ -144,6 +188,8 @@ class AdminPostItem {
       dateFormatted: dateFormatted,
       username: username,
       isFlagged: isFlagged,
+      moderationStatus: moderationStatus,
+      moderationNotes: moderationNotes,
       photoUrl: json['photo_url'] as String?,
       description: description,
       reporterId: json['reporter_id'] as String?,

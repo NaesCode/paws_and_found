@@ -21,6 +21,12 @@ abstract class AdminRemoteDataSource {
     required String reason,
     String? message,
   });
+  Future<void> reviewFlaggedPost({
+    required String postId,
+    required String decision,
+    String? notes,
+    bool notifyUser = true,
+  });
 }
 
 class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
@@ -192,6 +198,38 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
           });
         } catch (_) {}
       }
+    }
+  }
+
+  @override
+  Future<void> reviewFlaggedPost({
+    required String postId,
+    required String decision,
+    String? notes,
+    bool notifyUser = true,
+  }) async {
+    try {
+      await _supabase.rpc('admin_review_flagged_post', params: {
+        'p_post_id': postId,
+        'p_decision': decision,
+        if (notes != null && notes.isNotEmpty) 'p_notes': notes,
+        'p_notify': notifyUser,
+      });
+    } catch (_) {
+      final statusMap = {
+        'approved': 'approved',
+        'request_edit': 'flagged',
+        'rejected': 'rejected',
+      };
+      try {
+        final updatePayload = <String, dynamic>{
+          'moderation_status': statusMap[decision] ?? decision,
+        };
+        if (notes != null) {
+          updatePayload['moderation_notes'] = notes;
+        }
+        await _supabase.from('reports').update(updatePayload).eq('id', postId);
+      } catch (_) {}
     }
   }
 }

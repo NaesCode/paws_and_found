@@ -1,3 +1,5 @@
+import 'package:go_router/go_router.dart';
+import '../../../../shared/organisms/custom_app_bar.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
@@ -5,19 +7,25 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 import '../../data/repositories/notification_repository_impl.dart';
 import '../../domain/entities/app_notification.dart';
 import '../../domain/repositories/notification_repository.dart';
+import '../widgets/post_details_bottom_sheet.dart';
 
 /// Displays the user's notification inbox.
 ///
 /// Loaded eagerly on first build and refreshable via pull-to-refresh.
-/// Each tap marks the tapped item as read; a "Mark all" button clears all.
+/// Each tap marks the tapped item as read and, for post-related notifications,
+/// immediately opens the post details view directly.
 class NotificationsPage extends StatefulWidget {
   final NotificationRepository? repository;
   final bool isActiveTab;
+  final bool showBottomNavPlaceholder;
+  final void Function(String reportId, double? lat, double? lng)? onViewOnMap;
 
   const NotificationsPage({
     super.key,
     this.repository,
     this.isActiveTab = true,
+    this.showBottomNavPlaceholder = false,
+    this.onViewOnMap,
   });
 
   @override
@@ -105,6 +113,21 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  Future<void> _handleNotificationTap(AppNotification n) async {
+    // 1. Mark as read
+    await _markRead(n);
+
+    // 2. If post-related, open post details directly
+    if (n.isPostRelated && mounted) {
+      PostDetailsBottomSheet.show(
+        context: context,
+        notification: n,
+        repository: _repo,
+        onViewOnMap: widget.onViewOnMap,
+      );
+    }
+  }
+
   Future<void> _markAllRead() async {
     await _repo.markAllRead();
     if (mounted) {
@@ -115,7 +138,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   /// Returns a copy of [n] with `isRead = true`.
-  /// Because AppNotification is immutable, we re-create it via the model.
   AppNotification _asRead(AppNotification n) {
     return AppNotification(
       id: n.id,
@@ -123,6 +145,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       type: n.type,
       message: n.message,
       relatedMatchId: n.relatedMatchId,
+      relatedReportId: n.relatedReportId,
       isRead: true,
       createdAt: n.createdAt,
     );
@@ -140,6 +163,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Notifications'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           if (unread > 0)
             TextButton(
@@ -152,6 +179,31 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ],
       ),
       body: _buildBody(),
+      bottomNavigationBar: widget.showBottomNavPlaceholder
+          ? CustomAppBar(
+              currentIndex: 4,
+              hasUnreadNotifications: unread > 0,
+              onTabSelected: (index) {
+                switch (index) {
+                  case 0:
+                    context.go('/map');
+                    break;
+                  case 1:
+                    context.go('/feed');
+                    break;
+                  case 2:
+                    context.go('/camera');
+                    break;
+                  case 3:
+                    context.go('/profile');
+                    break;
+                  case 4:
+                    // Already on notifications
+                    break;
+                }
+              },
+            )
+          : null,
     );
   }
 
@@ -225,7 +277,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           final n = _notifications[index];
           return _NotificationTile(
             notification: n,
-            onTap: () => _markRead(n),
+            onTap: () => _handleNotificationTap(n),
           );
         },
       ),
@@ -259,6 +311,10 @@ class _NotificationTile extends StatelessWidget {
         return Icons.block_rounded;
       case 'status_update':
         return Icons.verified_user_outlined;
+      case 'match_confirmed':
+        return Icons.celebration_rounded;
+      case 'report_update':
+        return Icons.campaign_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -280,6 +336,10 @@ class _NotificationTile extends StatelessWidget {
         return Colors.redAccent;
       case 'status_update':
         return Colors.blueAccent;
+      case 'match_confirmed':
+        return Colors.teal;
+      case 'report_update':
+        return Colors.indigoAccent;
       default:
         return AppColors.text3;
     }
@@ -310,7 +370,7 @@ class _NotificationTile extends StatelessWidget {
             ),
             const SizedBox(width: 14),
 
-            // Message + time
+            // Message + time + view post indicator
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,19 +384,61 @@ class _NotificationTile extends StatelessWidget {
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _timeAgo(notification.createdAt),
-                    style: const TextStyle(fontSize: 12, color: AppColors.text3),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        _timeAgo(notification.createdAt),
+                        style: const TextStyle(fontSize: 12, color: AppColors.text3),
+                      ),
+                      if (notification.isPostRelated) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.visibility_outlined,
+                                  size: 11.5, color: color),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                'View Post',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
 
+            // Action Chevron for post-related items
+            if (notification.isPostRelated)
+              Padding(
+                padding: const EdgeInsets.only(left: 6, top: 10),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: isUnread ? AppColors.darkCharcoal : AppColors.text3,
+                ),
+              ),
+
             // Unread dot
             if (isUnread)
               Padding(
-                padding: const EdgeInsets.only(top: 4, left: 8),
+                padding: const EdgeInsets.only(top: 4, left: 6),
                 child: Container(
                   width: 8,
                   height: 8,
@@ -361,4 +463,3 @@ class _NotificationTile extends StatelessWidget {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
-

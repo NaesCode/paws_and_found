@@ -9,7 +9,6 @@ import '../../features/admin/presentation/pages/admin_users_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
-import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
@@ -113,14 +112,14 @@ class AppRouter {
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => const DashboardPage(initialIndex: 3),
+        builder: (context, state) => const DashboardPage(initialIndex: 4),
       ),
 
-      // Standalone notifications route (for future push notification deep-links)
+      // Notifications tab route (keeps DashboardPage shell & persistent navigation bar active)
       GoRoute(
         path: '/notifications',
         name: 'notifications',
-        builder: (context, state) => const NotificationsPage(),
+        builder: (context, state) => const DashboardPage(initialIndex: 4),
       ),
 
       // Community Animal Map route with optional query parameters for targeted report pinning
