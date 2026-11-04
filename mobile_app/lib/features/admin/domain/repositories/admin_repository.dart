@@ -20,4 +20,10 @@ abstract class AdminRepository {
     required String reason,
     String? message,
   });
+  Future<void> reviewFlaggedPost({
+    required String postId,
+    required String decision, // 'approved', 'request_edit', 'rejected'
+    String? notes,
+    bool notifyUser = true,
+  });
 }

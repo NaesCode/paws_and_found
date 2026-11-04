@@ -7,6 +7,7 @@ import 'package:paws_and_found/features/admin/presentation/pages/admin_page.dart
 import 'package:paws_and_found/features/admin/presentation/pages/admin_posts_page.dart';
 import 'package:paws_and_found/features/admin/presentation/pages/admin_users_page.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_header.dart';
+import 'package:paws_and_found/features/admin/presentation/widgets/admin_moderation_pill.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_post_status_pill.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_user_status_pill.dart';
 
@@ -75,6 +76,24 @@ class FakeAdminRepository implements AdminRepository {
     warnedReason = reason;
     warnedMessage = message;
     warnedPostData = postData;
+  }
+
+  String? reviewedPostId;
+  String? reviewedDecision;
+  String? reviewedNotes;
+  bool? reviewedNotifyUser;
+
+  @override
+  Future<void> reviewFlaggedPost({
+    required String postId,
+    required String decision,
+    String? notes,
+    bool notifyUser = true,
+  }) async {
+    reviewedPostId = postId;
+    reviewedDecision = decision;
+    reviewedNotes = notes;
+    reviewedNotifyUser = notifyUser;
   }
 }
 
@@ -162,6 +181,27 @@ void main() {
       expect(find.text('Stray'), findsOneWidget);
       expect(find.text('Found'), findsOneWidget);
     });
+
+    testWidgets('AdminModerationPill renders Flagged, Approved, Rejected badges', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                AdminModerationPill(status: 'flagged'),
+                AdminModerationPill(status: 'approved'),
+                AdminModerationPill(status: 'rejected'),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('AI Flagged'), findsOneWidget);
+      expect(find.text('Approved'), findsOneWidget);
+      expect(find.text('Rejected'), findsOneWidget);
+    });
+
 
     testWidgets('Screen 09 — AdminUsersPage renders, searches, and handles actions', (tester) async {
       setMobileScreen(tester);
@@ -357,7 +397,8 @@ void main() {
       expect(find.text('Post #9B2A'), findsOneWidget);
       expect(find.text('Full Description'), findsOneWidget);
       expect(find.text('Friendly Siberian Husky with a blue collar.'), findsOneWidget);
-      expect(find.text('This post was flagged for administrative review.'), findsOneWidget);
+      expect(find.text('AI Content Moderation Flag'), findsOneWidget);
+      expect(find.text('Decide Action (Edit / Delete)'), findsOneWidget);
       expect(find.text('Close'), findsOneWidget);
 
       // Close modal
@@ -586,5 +627,68 @@ void main() {
       expect(find.text('#8C1D'), findsNothing);
       expect(find.text('Deleted Post: #8C1D'), findsOneWidget);
     });
+
+    testWidgets('Screen 10 — Review AI Flag modal allows Request Edit and updates post', (tester) async {
+      setMobileScreen(tester);
+
+      final fakeRepo = FakeAdminRepository(
+        posts: [
+          const AdminPostItem(
+            id: '#FLAG1',
+            rawId: 'flag-uuid-1234',
+            title: 'Golden Retriever',
+            subtitle: 'Dog',
+            status: 'missing',
+            dateFormatted: 'Nov 04',
+            username: 'alex_m',
+            reporterId: 'user-uuid-111',
+            isFlagged: true,
+            moderationStatus: 'flagged',
+            moderationNotes: 'Low animal detection confidence.',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminPostsPage(repository: fakeRepo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check Flagged pill is visible in table
+      expect(find.text('AI Flagged'), findsOneWidget);
+
+      // Check Flagged filter chip is present and works
+      expect(find.text('Flagged'), findsOneWidget);
+      await tester.tap(find.text('Flagged'));
+      await tester.pumpAndSettle();
+      expect(find.text('Golden Retriever'), findsOneWidget);
+
+      // Open action menu
+      await tester.tap(find.text('···').first);
+      await tester.pumpAndSettle();
+
+      // Review AI Flag option should be visible
+      expect(find.text('Review AI Flag (Edit or Delete)'), findsOneWidget);
+      await tester.tap(find.text('Review AI Flag (Edit or Delete)'));
+      await tester.pumpAndSettle();
+
+      // Review modal contents
+      expect(find.text('AI Moderation Review'), findsOneWidget);
+      expect(find.text('Low animal detection confidence.'), findsOneWidget);
+      expect(find.text('Request Edit from Author'), findsOneWidget);
+      expect(find.text('Approve Post (Dismiss AI Flag)'), findsOneWidget);
+
+      // Tap Request Edit from Author
+      await tester.tap(find.text('Request Edit from Author'));
+      await tester.pumpAndSettle();
+
+      expect(fakeRepo.reviewedPostId, equals('flag-uuid-1234'));
+      expect(fakeRepo.reviewedDecision, equals('request_edit'));
+      expect(fakeRepo.reviewedNotifyUser, isTrue);
+      expect(find.textContaining('Edit Requested'), findsOneWidget);
+    });
+
   });
 }

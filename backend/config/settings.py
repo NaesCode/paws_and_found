@@ -122,7 +122,7 @@ SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "animal-phot
 # Matching & Embedding settings (Phase 4)
 EMBEDDING_DIM = 512
 EMBEDDING_MODEL_VERSION = os.environ.get("EMBEDDING_MODEL_VERSION", "resnet18-in1k-v1+ssdlite-crop-v1")
-MATCH_BASE_SIMILARITY = float(os.environ.get("MATCH_BASE_SIMILARITY", "0.80"))
+MATCH_BASE_SIMILARITY = float(os.environ.get("MATCH_BASE_SIMILARITY", "0.78"))
 
 MATCH_DISTANCE_TIERS = [  # (max_distance_m, extra_similarity_required)
     (10_000, 0.00),

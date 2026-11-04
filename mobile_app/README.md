@@ -92,8 +92,8 @@ features/auth/
 *   **`auth/`**: Login, registration, and session state.
 *   **`dashboard/`**: The central routing hub and primary navigation shell.
 *   **`map/`**: Community map interface and location filtering.
-*   **`feed/`**: Chronological community activity feeds.
-*   **`report/`**: Camera capturing and submitting new animal sightings.
+*   **`feed/`**: Chronological community activity feeds, interactive comments modal, and dedicated Pet Owner Sightings Log dashboard.
+*   **`report/`**: Camera capturing with real-time in-camera AI visual pre-matching (Google Lens-style), automatic missing pet linking (`linked_report_id`), and submitting new animal sightings.
 *   **`recovery/`**: AI matching engine reviews and the secure handover process.
 *   **`profile/`**: User settings and historical post management.
 *   **`notifications/`**: Background alerts and message tracking.
@@ -119,4 +119,6 @@ For running the app locally or QA testing frontend flows without registering new
 ## Feature Guides & Testing
 
 *   **[Community Animal Map Testing Guide](MAP_TESTING_GUIDE.md)**: Comprehensive architectural overview, OpenStreetMap tile details, interactive QA checklist, and test commands for the interactive map subsystem.
+*   **[Thread Linking & Sightings Dashboard Guide](THREAD_LINKING_README.md)**: Architectural overview of in-camera real-time AI visual candidate scanning, `linked_report_id` database relationships, deep linking, and the dual-tab Sightings Log dashboard.
+*   **[Sightings Dashboard Proposal & Architecture Spec](SIGHTINGS_DASHBOARD_PROPOSAL.md)**: Product proposal and technical specification for connecting spotted animal reports to missing pet owners.
 

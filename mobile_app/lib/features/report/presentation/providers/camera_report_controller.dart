@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import '../../../../core/services/location_service.dart';
 import '../../../map/data/models/map_report_model.dart';
 import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
+import '../../../../core/services/ai_pre_match_service.dart';
+import '../../data/models/ai_match_candidate.dart';
 
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
@@ -21,6 +24,7 @@ class CameraReportController extends ChangeNotifier {
   final ReportRepository _repository;
   final LocationService _locationService;
   final GeocodingService _geocodingService;
+  final AiPreMatchService _preMatchService;
   final ImagePicker _picker = ImagePicker();
 
   GeocodingService get geocoderService => _geocodingService;
@@ -29,9 +33,11 @@ class CameraReportController extends ChangeNotifier {
     ReportRepository? repository,
     LocationService? locationService,
     GeocodingService? geocodingService,
+    AiPreMatchService? preMatchService,
   })  : _repository = repository ?? ReportRepositoryImpl(),
         _locationService = locationService ?? const GeolocatorLocationService(),
-        _geocodingService = geocodingService ?? GeocoderProService();
+        _geocodingService = geocodingService ?? GeocoderProService(),
+        _preMatchService = preMatchService ?? AiPreMatchServiceImpl();
 
   String _animalType = 'Canine';
   String _status = 'Stray';
@@ -48,8 +54,18 @@ class CameraReportController extends ChangeNotifier {
   String? _errorMessage;
   String? _successReportId;
   String? _geocodedAddress;
+  String? _linkedThreadId;
+  String? _linkedThreadPetName;
+  bool _isScanningAi = false;
+  List<AiMatchCandidate> _aiCandidates = [];
+  AiMatchCandidate? _selectedAiCandidate;
 
   // Getters
+  String? get linkedThreadId => _linkedThreadId;
+  String? get linkedThreadPetName => _linkedThreadPetName;
+  bool get isScanningAi => _isScanningAi;
+  List<AiMatchCandidate> get aiCandidates => _aiCandidates;
+  AiMatchCandidate? get selectedAiCandidate => _selectedAiCandidate;
   String get animalType => _animalType;
   String get status => _status;
   bool get isGpsAuto => _isGpsAuto;
@@ -84,8 +100,62 @@ class CameraReportController extends ChangeNotifier {
   }
 
   void setStatus(String value) {
-    _status = value;
+    final lower = value.toLowerCase();
+    _status = (lower == 'found') ? 'Found' : 'Stray';
     notifyListeners();
+  }
+
+  void setThreadContext({String? threadId, String? petName}) {
+    _linkedThreadId = threadId;
+    _linkedThreadPetName = petName;
+    notifyListeners();
+  }
+
+  void clearThreadContext() {
+    _linkedThreadId = null;
+    _linkedThreadPetName = null;
+    _selectedAiCandidate = null;
+    notifyListeners();
+  }
+
+  void selectAiCandidate(AiMatchCandidate candidate) {
+    _selectedAiCandidate = candidate;
+    _linkedThreadId = candidate.reportId;
+    _linkedThreadPetName = candidate.petName;
+    notifyListeners();
+  }
+
+  void clearAiCandidate() {
+    _selectedAiCandidate = null;
+    clearThreadContext();
+  }
+
+  Future<void> runAiPreMatchScan() async {
+    if (_selectedImageBytes == null || _selectedImageBytes!.isEmpty) {
+      _aiCandidates = [];
+      _selectedAiCandidate = null;
+      notifyListeners();
+      return;
+    }
+    _isScanningAi = true;
+    notifyListeners();
+    try {
+      final double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
+      final double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
+      final candidates = await _preMatchService.scanForCandidates(
+        imageBytes: _selectedImageBytes!,
+        lat: lat,
+        lng: lng,
+        animalType: _animalType,
+      );
+      _aiCandidates = candidates;
+    } catch (e) {
+      debugPrint('[CameraReportController] AI pre-match scan error: $e');
+      _aiCandidates = [];
+    } finally {
+      _isScanningAi = false;
+      notifyListeners();
+    }
   }
 
   void toggleGps() {
@@ -175,6 +245,7 @@ class CameraReportController extends ChangeNotifier {
         _selectedImagePath = file.path;
         _errorMessage = null;
         notifyListeners();
+        unawaited(runAiPreMatchScan());
       }
     } catch (_) {
       // In testing / simulator environments, generate a mock wireframe indicator
@@ -199,6 +270,7 @@ class CameraReportController extends ChangeNotifier {
         _selectedImagePath = file.path;
         _errorMessage = null;
         notifyListeners();
+        unawaited(runAiPreMatchScan());
       }
     } catch (_) {
       // Fallback for emulators without physical camera
@@ -213,11 +285,14 @@ class CameraReportController extends ChangeNotifier {
     _selectedImagePath = path;
     _errorMessage = null;
     notifyListeners();
+    unawaited(runAiPreMatchScan());
   }
 
   void clearPhoto() {
     _selectedImageBytes = null;
     _selectedImagePath = null;
+    _aiCandidates = [];
+    _selectedAiCandidate = null;
     notifyListeners();
   }
 
@@ -260,8 +335,29 @@ class CameraReportController extends ChangeNotifier {
           lng: lng,
           status: _status.toLowerCase(),
           locationName: _geocodedAddress,
+          linkedReportId: _linkedThreadId,
         );
         _successReportId = reportId;
+
+        if (_linkedThreadId != null) {
+          try {
+            final client = Supabase.instance.client;
+            final currentUserId = client.auth.currentUser?.id;
+            if (currentUserId != null) {
+              final petLabel = (_linkedThreadPetName != null && _linkedThreadPetName!.isNotEmpty)
+                  ? 'for ${_linkedThreadPetName!} '
+                  : '';
+              final locationLabel = _geocodedAddress ?? 'Reported Area';
+              await client.from('comments').insert({
+                'post_id': _linkedThreadId,
+                'user_id': currentUserId,
+                'content': '🐾 Sighting reported ${petLabel}at $locationLabel!\nhttps://pawsandfound.org/report/$reportId',
+              });
+            }
+          } catch (e) {
+            debugPrint('[CameraReportController] Failed to auto-link comment: $e');
+          }
+        }
 
         // Register in active map reports so it immediately appears on the Community Animal Map
         MapReportModel.addReport(
@@ -286,7 +382,8 @@ class CameraReportController extends ChangeNotifier {
         // Dispatches AI feature extraction & matching request to orchestrator
         // (Handled gracefully with fallback if orchestrator is not yet deployed)
         unawaited(_repository.requestReportAnalysis(reportId));
-      } catch (_) {
+      } catch (e, stack) {
+        debugPrint('[CameraReportController] createReport database error: $e\n$stack');
         // Fallback for development/wireframe mode
         final fallbackId = 'rep-${DateTime.now().millisecondsSinceEpoch}';
         _successReportId = fallbackId;

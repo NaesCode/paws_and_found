@@ -10,6 +10,7 @@ class AppNotificationModel extends AppNotification {
     required super.type,
     required super.message,
     super.relatedMatchId,
+    super.relatedReportId,
     required super.isRead,
     required super.createdAt,
   });
@@ -21,6 +22,10 @@ class AppNotificationModel extends AppNotification {
       type: (json['type'] ?? 'general') as String,
       message: (json['message'] ?? '') as String,
       relatedMatchId: json['related_match_id'] as String?,
+      relatedReportId: (json['related_report_id'] ??
+              json['related_post_id'] ??
+              json['report_id'] ??
+              json['post_id']) as String?,
       isRead: (json['is_read'] as bool?) ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
@@ -28,4 +33,3 @@ class AppNotificationModel extends AppNotification {
     );
   }
 }
-
