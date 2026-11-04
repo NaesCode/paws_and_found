@@ -259,6 +259,10 @@ class _NotificationTile extends StatelessWidget {
         return Icons.block_rounded;
       case 'status_update':
         return Icons.verified_user_outlined;
+      case 'match_confirmed':
+        return Icons.celebration_rounded;
+      case 'report_update':
+        return Icons.campaign_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -280,6 +284,10 @@ class _NotificationTile extends StatelessWidget {
         return Colors.redAccent;
       case 'status_update':
         return Colors.blueAccent;
+      case 'match_confirmed':
+        return Colors.teal;
+      case 'report_update':
+        return Colors.indigoAccent;
       default:
         return AppColors.text3;
     }

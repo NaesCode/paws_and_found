@@ -207,5 +207,55 @@ void main() {
 
       expect(mockRepo.markReadCallCount, equals(1));
     });
+
+    testWidgets('Pillar 1: Renders pet_safe, report_nearby, and report_update notification cards properly',
+        (tester) async {
+      final pillar1Notifications = [
+        AppNotification(
+          id: 'p1-1',
+          userId: 'user-123',
+          message: 'Wonderful news! Mochi is safely home and all active missing alerts have been closed.',
+          type: 'pet_safe',
+          isRead: false,
+          createdAt: DateTime.now(),
+        ),
+        AppNotification(
+          id: 'p1-2',
+          userId: 'user-123',
+          message: 'Urgent Alert: Luna (Dog) was reported missing in your community. Please keep an eye out!',
+          type: 'report_nearby',
+          isRead: false,
+          createdAt: DateTime.now(),
+        ),
+        AppNotification(
+          id: 'p1-3',
+          userId: 'user-123',
+          message: 'Search broadcast active: Mochi has been reported missing. Our AI is actively monitoring community sightings.',
+          type: 'report_update',
+          isRead: true,
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      mockRepo.currentNotifications = pillar1Notifications;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Wonderful news! Mochi is safely home'), findsOneWidget);
+      expect(find.textContaining('Urgent Alert: Luna (Dog) was reported missing'), findsOneWidget);
+      expect(find.textContaining('Search broadcast active: Mochi has been reported missing'), findsOneWidget);
+
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.campaign_rounded), findsOneWidget);
+    });
   });
 }
