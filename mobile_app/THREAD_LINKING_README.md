@@ -90,7 +90,7 @@ mobile_app/
     └── thread_linking_test.dart                  # Regex extraction & comment parsing test suite
 supabase/
 └── migrations/
-    ├── 20261031000000_thread_comments_schema.sql # Comments table RLS, indexes & realtime
+    ├── 20261031000003_thread_comments_schema.sql # Comments table RLS, indexes & realtime
     └── 20261101000000_linked_report_sightings.sql# linked_report_id column & updated create_report RPC
 ```
 
