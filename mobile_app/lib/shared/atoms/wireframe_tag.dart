@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
+import '../../core/theme/app_colors.dart';
 
 /// A subtle border pill tag atom for animal traits (e.g., "Male", "Adult", "Golden").
 ///
@@ -22,14 +22,14 @@ class WireframeTag extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: WireframeColors.surface,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: WireframeColors.border, width: 1.0),
+          border: Border.all(color: AppColors.border, width: 1.0),
         ),
         child: Text(
           label,
           style: const TextStyle(
-            color: WireframeColors.textSecondary,
+            color: AppColors.darkCharcoal,
             fontSize: 11.5,
             fontWeight: FontWeight.w500,
           ),

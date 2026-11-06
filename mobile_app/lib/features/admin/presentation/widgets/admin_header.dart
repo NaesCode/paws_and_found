@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
-/// Top bar header matching SDD Screens 09 & 10.
+/// Top bar header matching SDD Screens 09 & 10 with clinical veterinary branding.
 ///
 /// Features:
-/// - Dark rounded-square icon with bold 'A'
+/// - Forest Teal rounded-square icon with bold 'A'
 /// - Clear, unblocked title ("User Management" or "Post Management")
 /// - Direct Logout button triggering session sign out or custom onLogout callback.
 class AdminHeader extends StatelessWidget {
@@ -29,12 +29,12 @@ class AdminHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
-          // 1. Dark rounded-square icon with 'A'
+          // 1. Forest Teal rounded-square icon with 'A'
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: WireframeColors.primaryDark,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(8.0),
             ),
             alignment: Alignment.center,
@@ -50,12 +50,12 @@ class AdminHeader extends StatelessWidget {
           ),
           const SizedBox(width: 10),
 
-          // 2. Static Title (Fully visible, clean, no dropdown)
+          // 2. Static Title (Fully visible, clean, dark charcoal)
           Expanded(
             child: Text(
               title,
               style: const TextStyle(
-                color: WireframeColors.primaryDark,
+                color: AppColors.darkCharcoal,
                 fontWeight: FontWeight.w800,
                 fontSize: 18.0,
                 letterSpacing: -0.3,
@@ -84,7 +84,7 @@ class AdminHeader extends StatelessWidget {
               height: 32,
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               decoration: BoxDecoration(
-                color: WireframeColors.primaryDark,
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: const Row(

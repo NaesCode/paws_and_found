@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 /// An atom widget that paints the four L-shaped corner brackets
 /// around the camera viewfinder canvas.
@@ -16,7 +16,7 @@ class CameraViewfinderBrackets extends StatelessWidget {
     super.key,
     this.bracketLength = 26.0,
     this.strokeWidth = 2.5,
-    this.color = WireframeColors.primaryDark,
+    this.color = AppColors.primary,
     this.padding = const EdgeInsets.all(20.0),
   });
 

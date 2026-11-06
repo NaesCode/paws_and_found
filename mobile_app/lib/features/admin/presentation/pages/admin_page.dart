@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_bottom_nav_bar.dart';
 import 'admin_posts_page.dart';
@@ -65,7 +65,7 @@ class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,

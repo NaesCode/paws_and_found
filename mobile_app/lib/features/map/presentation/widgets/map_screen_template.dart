@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 /// A template defining the structural layout for the Community Animal Map screen.
 ///
@@ -36,7 +36,7 @@ class MapScreenTemplate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WireframeColors.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: bottomNavigationBar == null,
         child: Column(

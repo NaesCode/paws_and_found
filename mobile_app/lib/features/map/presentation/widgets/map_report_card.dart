@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
 import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
 
@@ -42,9 +42,9 @@ class MapReportCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16.0),
         padding: const EdgeInsets.all(14.0),
         decoration: BoxDecoration(
-          color: WireframeColors.surface,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: WireframeColors.borderLight, width: 1.2),
+          border: Border.all(color: AppColors.borderLight, width: 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -77,7 +77,7 @@ class MapReportCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: WireframeColors.textPrimary,
+                            color: AppColors.darkCharcoal,
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -95,7 +95,7 @@ class MapReportCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: WireframeColors.textSecondary,
+                      color: AppColors.textSecondary,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w400,
                     ),
@@ -123,9 +123,9 @@ class MapReportCard extends StatelessWidget {
       width: 76,
       height: 76,
       decoration: BoxDecoration(
-        color: WireframeColors.surfaceSecondary,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: WireframeColors.border, width: 1.0),
+        border: Border.all(color: AppColors.border, width: 1.0),
       ),
       child: photoUrl != null && photoUrl!.isNotEmpty
           ? ClipRRect(
@@ -145,7 +145,7 @@ class MapReportCard extends StatelessWidget {
       child: Icon(
         Icons.pets,
         size: 32,
-        color: WireframeColors.border,
+        color: AppColors.border,
       ),
     );
   }

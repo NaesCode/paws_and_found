@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 /// Form organism for Animal Report Creation (SDD Screen 05).
 ///
@@ -65,7 +65,7 @@ class CreateReportForm extends StatelessWidget {
           const Text(
             'CREATE REPORT',
             style: TextStyle(
-              color: WireframeColors.textSecondary,
+              color: AppColors.textSecondary,
               fontSize: 13.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
@@ -102,16 +102,16 @@ class CreateReportForm extends StatelessWidget {
           const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
-              color: WireframeColors.surface,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: WireframeColors.border, width: 1.0),
+              border: Border.all(color: AppColors.border, width: 1.0),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: TextField(
               controller: descriptionController,
               maxLines: 3,
               style: const TextStyle(
-                color: WireframeColors.textPrimary,
+                color: AppColors.darkCharcoal,
                 fontSize: 13.5,
               ),
               decoration: const InputDecoration(
@@ -122,7 +122,7 @@ class CreateReportForm extends StatelessWidget {
                 focusedBorder: InputBorder.none,
                 hintText: 'Enter appearance, collar, markings, or behavior details...',
                 hintStyle: TextStyle(
-                  color: WireframeColors.textMuted,
+                  color: AppColors.textMuted,
                   fontSize: 12.5,
                 ),
               ),
@@ -144,15 +144,15 @@ class CreateReportForm extends StatelessWidget {
                       height: 44,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: WireframeColors.surface,
+                        color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: WireframeColors.border, width: 1.0),
+                        border: Border.all(color: AppColors.border, width: 1.0),
                       ),
                       alignment: Alignment.centerLeft,
                       child: Text(
                         dateTimeString,
                         style: const TextStyle(
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w500,
                         ),
@@ -183,12 +183,12 @@ class CreateReportForm extends StatelessWidget {
                         height: 44,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
-                          color: WireframeColors.surface,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: pinnedLat != null
-                                ? WireframeColors.primaryDark
-                                : WireframeColors.border,
+                                ? AppColors.primary
+                                : AppColors.border,
                             width: 1.0,
                           ),
                         ),
@@ -201,8 +201,8 @@ class CreateReportForm extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: isGpsAuto
-                                      ? WireframeColors.primaryDark
-                                      : WireframeColors.border,
+                                      ? AppColors.primary
+                                      : AppColors.border,
                                   width: 2.0,
                                 ),
                               ),
@@ -213,7 +213,7 @@ class CreateReportForm extends StatelessWidget {
                                       height: 6,
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: WireframeColors.primaryDark,
+                                        color: AppColors.primary,
                                       ),
                                     )
                                   : null,
@@ -231,8 +231,8 @@ class CreateReportForm extends StatelessWidget {
                                         : (isGpsAuto ? 'Auto' : 'Pin on Map')),
                                 style: TextStyle(
                                   color: (pinnedLat != null || (deviceLat != null && isGpsAuto))
-                                      ? WireframeColors.primaryDark
-                                      : WireframeColors.textPrimary,
+                                      ? AppColors.primary
+                                      : AppColors.darkCharcoal,
                                   fontSize: 12.0,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -247,8 +247,8 @@ class CreateReportForm extends StatelessWidget {
                                   Icons.pin_drop_rounded,
                                   size: 19,
                                   color: pinnedLat != null
-                                      ? WireframeColors.primaryDark
-                                      : WireframeColors.secondarySlate,
+                                      ? AppColors.primary
+                                      : AppColors.text3,
                                 ),
                                 tooltip: 'Pin on Animal Map',
                                 onPressed: onPinOnMap,
@@ -262,7 +262,7 @@ class CreateReportForm extends StatelessWidget {
                       Padding(padding: const EdgeInsets.only(left: 4.0),
                       child: Text(
                         geocodeAddress!,
-                        style: const TextStyle(color: WireframeColors.textSecondary,
+                        style: const TextStyle(color: AppColors.textSecondary,
                         fontSize: 11.0,
                         fontStyle: FontStyle.italic,
                         ),
@@ -284,7 +284,7 @@ class CreateReportForm extends StatelessWidget {
             child: ElevatedButton(
               onPressed: isLoading ? null : onSubmit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: WireframeColors.primaryDark,
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -319,7 +319,7 @@ class CreateReportForm extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: WireframeColors.textSecondary,
+        color: AppColors.textSecondary,
         fontSize: 11,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.6,
@@ -342,17 +342,17 @@ class CreateReportForm extends StatelessWidget {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: WireframeColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: WireframeColors.border, width: 1.0),
+            border: Border.all(color: AppColors.border, width: 1.0),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: items.firstWhere((item) => item.toLowerCase() == value.toLowerCase(), orElse: () => items.first),
               isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down, color: WireframeColors.secondarySlate),
+              icon: const Icon(Icons.arrow_drop_down, color: AppColors.text3),
               style: const TextStyle(
-                color: WireframeColors.textPrimary,
+                color: AppColors.darkCharcoal,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),

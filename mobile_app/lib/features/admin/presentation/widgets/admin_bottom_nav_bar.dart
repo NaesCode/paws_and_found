@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Bottom Navigation Bar for Admin section allowing switching between
 /// User Management (Tab 0) and Post Management (Tab 1).
@@ -17,10 +17,10 @@ class AdminBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: WireframeColors.surface,
+        color: AppColors.surface,
         border: Border(
           top: BorderSide(
-            color: WireframeColors.border,
+            color: AppColors.border,
             width: 1.0,
           ),
         ),
@@ -46,7 +46,7 @@ class AdminBottomNavBar extends StatelessWidget {
               Container(
                 height: 24,
                 width: 1,
-                color: WireframeColors.divider,
+                color: AppColors.divider,
               ),
 
               // Tab 1: Post Management
@@ -75,7 +75,7 @@ class AdminBottomNavBar extends StatelessWidget {
   }) {
     final isSelected = currentIndex == index;
     final color =
-        isSelected ? WireframeColors.primaryDark : WireframeColors.textMuted;
+        isSelected ? AppColors.primary : AppColors.textMuted;
 
     return InkWell(
       key: key,
@@ -106,4 +106,3 @@ class AdminBottomNavBar extends StatelessWidget {
     );
   }
 }
-

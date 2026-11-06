@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
-import './map_pin_badge.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
+import '../../../../shared/atoms/map_pin_badge.dart';
 
 /// A map legend molecule showing pin status definitions.
 ///
@@ -48,7 +48,7 @@ class MapLegend extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            color: WireframeColors.textSecondary,
+            color: AppColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),

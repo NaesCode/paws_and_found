@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 import './camera_viewfinder_brackets.dart';
 
 /// A camera viewfinder placeholder molecule for the Animal Report Creation flow.
@@ -66,17 +66,17 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
               fit: BoxFit.cover,
             ),
 
-          // 3. Fallback wireframe placeholder (when camera not initialized / tests / emulators)
+          // 3. Fallback placeholder (when camera not initialized / tests / emulators)
           if (!hasImage && !showLiveCamera)
             Container(
-              color: WireframeColors.surfaceSecondary,
+              color: AppColors.surfaceMuted,
               child: Center(
                 child: GestureDetector(
                   onTap: onCaptureTap,
                   behavior: HitTestBehavior.opaque,
                   child: CustomPaint(
                     painter: _DashedRRectPainter(
-                      color: WireframeColors.secondarySlate,
+                      color: AppColors.text3,
                       strokeWidth: 2.0,
                       radius: 20.0,
                     ),
@@ -87,7 +87,7 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
                       child: const Icon(
                         Icons.camera_alt_outlined,
                         size: 40,
-                        color: WireframeColors.primaryDark,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -101,7 +101,7 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
               child: CameraViewfinderBrackets(
                 bracketLength: 28.0,
                 strokeWidth: 2.5,
-                color: showLiveCamera ? Colors.white.withValues(alpha: 0.85) : WireframeColors.primaryDark,
+                color: showLiveCamera ? Colors.white.withValues(alpha: 0.85) : AppColors.primary,
                 padding: const EdgeInsets.all(22.0),
               ),
             ),
@@ -138,13 +138,13 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: WireframeColors.primaryDark,
+                                  color: AppColors.primary,
                                 ),
                               ),
                             )
                           : const Icon(
                               Icons.camera_alt_rounded,
-                              color: WireframeColors.primaryDark,
+                              color: AppColors.primary,
                               size: 24,
                             ),
                     ),
@@ -162,10 +162,10 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: showLiveCamera ? Colors.black.withValues(alpha: 0.55) : WireframeColors.surface,
+                  color: showLiveCamera ? Colors.black.withValues(alpha: 0.55) : AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: showLiveCamera ? Colors.white.withValues(alpha: 0.4) : WireframeColors.border,
+                    color: showLiveCamera ? Colors.white.withValues(alpha: 0.4) : AppColors.border,
                     width: 1.2,
                   ),
                   boxShadow: [
@@ -182,13 +182,13 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
                     Icon(
                       Icons.photo_library_outlined,
                       size: 16,
-                      color: showLiveCamera ? Colors.white : WireframeColors.textPrimary,
+                      color: showLiveCamera ? Colors.white : AppColors.darkCharcoal,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'Gallery',
                       style: TextStyle(
-                        color: showLiveCamera ? Colors.white : WireframeColors.textPrimary,
+                        color: showLiveCamera ? Colors.white : AppColors.darkCharcoal,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -209,7 +209,7 @@ class CameraViewfinderPlaceholder extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(

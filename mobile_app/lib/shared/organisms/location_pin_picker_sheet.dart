@@ -4,7 +4,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
 import 'package:paws_and_found/shared/atoms/current_location_button.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/shared/atoms/map_pin_badge.dart';
@@ -266,7 +265,7 @@ class _LocationPinPickerSheetState extends State<LocationPinPickerSheet> {
             height: 280,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: WireframeColors.border, width: 1.2),
+              border: Border.all(color: AppColors.border, width: 1.2),
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(

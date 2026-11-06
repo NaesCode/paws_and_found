@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
-/// Animal post status pill badge matching SDD Screen 10.
+/// Animal post status pill badge matching SDD Screen 10 with clinical branding.
 ///
 /// Styles:
-/// - 'Missing': Dark slate solid background, bold white text.
-/// - 'Stray': Medium slate solid background, bold white text.
-/// - 'Found': White background, dark slate border, dark slate text.
+/// - 'Missing': Maroon alert background, bold white text.
+/// - 'Stray': Warm orange background, bold white text.
+/// - 'Found': Clean white background, Forest Teal border & text.
 class AdminPostStatusPill extends StatelessWidget {
   final String status;
 
@@ -27,19 +27,19 @@ class AdminPostStatusPill extends StatelessWidget {
     Border? border;
 
     if (isMissing) {
-      bgColor = WireframeColors.badgeMissingBg;
-      textColor = WireframeColors.badgeMissingText;
+      bgColor = AppColors.statusMissing;
+      textColor = Colors.white;
       border = null;
     } else if (isStray) {
-      bgColor = WireframeColors.badgeStrayBg;
-      textColor = WireframeColors.badgeStrayText;
+      bgColor = AppColors.statusStray;
+      textColor = Colors.white;
       border = null;
     } else if (isFound) {
-      bgColor = WireframeColors.badgeFoundBg;
-      textColor = WireframeColors.badgeFoundText;
-      border = Border.all(color: WireframeColors.badgeFoundBorder, width: 1.2);
+      bgColor = AppColors.surface;
+      textColor = AppColors.primary;
+      border = Border.all(color: AppColors.primary, width: 1.2);
     } else {
-      bgColor = WireframeColors.secondarySlate;
+      bgColor = AppColors.textSecondary;
       textColor = Colors.white;
       border = null;
     }
@@ -52,7 +52,9 @@ class AdminPostStatusPill extends StatelessWidget {
         border: border,
       ),
       child: Text(
-        status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase(),
+        status.isEmpty
+            ? ''
+            : status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase(),
         style: TextStyle(
           color: textColor,
           fontSize: 10.5,
@@ -63,4 +65,3 @@ class AdminPostStatusPill extends StatelessWidget {
     );
   }
 }
-

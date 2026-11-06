@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'app_typography.dart';
 
 /// Centralized Material 3 theme for Paws and Found.
 ///
@@ -50,6 +51,103 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
+    ),
+
+    // ── Card ─────────────────────────────────────────────────────────────
+    cardTheme: CardThemeData(
+      color: AppColors.surface,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border, width: 1.0),
+      ),
+    ),
+
+    // ── Form Inputs ──────────────────────────────────────────────────────
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.inputBackground,
+      hintStyle: const TextStyle(
+        fontFamily: 'Ek Mukta',
+        color: AppColors.inputHint,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w400,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: AppColors.inputBorder,
+          width: 1.0,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: AppColors.inputBorder,
+          width: 1.0,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: AppColors.inputBorderFocused,
+          width: 1.8,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.statusMissing, width: 1.2),
+      ),
+    ),
+
+    // ── Buttons ──────────────────────────────────────────────────────────
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        textStyle: AppTypography.buttonPrimary,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        textStyle: AppTypography.buttonOutlined,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+        side: const BorderSide(color: AppColors.primary, width: 1.2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        textStyle: const TextStyle(
+          fontFamily: 'Nunito Sans',
+          fontWeight: FontWeight.w600,
+          fontSize: 13.5,
+        ),
+      ),
+    ),
+
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      elevation: 2,
+    ),
+
+    // ── Divider ──────────────────────────────────────────────────────────
+    dividerTheme: const DividerThemeData(
+      color: AppColors.divider,
+      thickness: 1.0,
+      space: 1.0,
     ),
   );
 }

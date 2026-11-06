@@ -10,7 +10,7 @@ import '../../../../core/constants/location_constants.dart';
 
 import '../../../../core/services/location_service.dart';
 
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 import '../../../../shared/atoms/current_location_button.dart';
 
@@ -459,124 +459,65 @@ class _MapPageState extends State<MapPage> {
 
       context: context,
 
-      backgroundColor: WireframeColors.surface,
-
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-
       ),
-
       builder: (ctx) {
-
         return SafeArea(
-
           child: Padding(
-
             padding: const EdgeInsets.symmetric(vertical: 16.0),
-
             child: Column(
-
               mainAxisSize: MainAxisSize.min,
-
               crossAxisAlignment: CrossAxisAlignment.start,
-
               children: [
-
                 const Padding(
-
                   padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-
                   child: Text(
-
                     'Filter by Animal Type',
-
                     style: TextStyle(
-
-                      color: WireframeColors.textPrimary,
-
+                      color: AppColors.darkCharcoal,
                       fontSize: 16,
-
                       fontWeight: FontWeight.w700,
-
                     ),
-
                   ),
-
                 ),
-
-                const Divider(color: WireframeColors.borderLight),
-
+                const Divider(color: AppColors.borderLight),
                 ListTile(
-
-                  leading: const Icon(Icons.clear_all_rounded, color: WireframeColors.primaryDark),
-
+                  leading: const Icon(Icons.clear_all_rounded, color: AppColors.primary),
                   title: const Text('All Animal Types'),
-
                   selected: _controller.selectedAnimalType == null,
-
                   onTap: () {
-
                     Navigator.of(ctx).pop();
-
                     _controller.setAnimalType(null);
-
                   },
-
                 ),
-
                 ListTile(
-
-                  leading: const Icon(Icons.pets, color: WireframeColors.primaryDark),
-
+                  leading: const Icon(Icons.pets, color: AppColors.primary),
                   title: const Text('Canine (Dogs)'),
-
                   selected: _controller.selectedAnimalType == 'Canine',
-
                   onTap: () {
-
                     Navigator.of(ctx).pop();
-
                     _controller.setAnimalType('Canine');
-
                   },
-
                 ),
-
                 ListTile(
-
-                  leading: const Icon(Icons.pets, color: WireframeColors.secondarySlate),
-
+                  leading: const Icon(Icons.pets, color: AppColors.text3),
                   title: const Text('Feline (Cats)'),
-
                   selected: _controller.selectedAnimalType == 'Feline',
-
                   onTap: () {
-
                     Navigator.of(ctx).pop();
-
                     _controller.setAnimalType('Feline');
-
                   },
-
                 ),
-
                 ListTile(
-
-                  leading: const Icon(Icons.category_outlined, color: WireframeColors.textSecondary),
-
+                  leading: const Icon(Icons.category_outlined, color: AppColors.textSecondary),
                   title: const Text('Other Animals'),
-
                   selected: _controller.selectedAnimalType == 'Other',
-
                   onTap: () {
-
                     Navigator.of(ctx).pop();
-
                     _controller.setAnimalType('Other');
-
                   },
-
                 ),
 
               ],
@@ -806,95 +747,50 @@ class _MapPageState extends State<MapPage> {
           // Screen Title
 
           const Text(
-
             'Animal Map',
-
             style: TextStyle(
-
-              color: WireframeColors.textPrimary,
-
+              color: AppColors.darkCharcoal,
               fontSize: 22,
-
               fontWeight: FontWeight.w800,
-
               letterSpacing: -0.2,
-
             ),
-
           ),
 
-
-
           // Re-center target button (circle inside rounded square)
-
           InkWell(
-
             onTap: _handleRecenter,
-
             borderRadius: BorderRadius.circular(10),
-
             child: Container(
-
               width: 38,
-
               height: 38,
-
               decoration: BoxDecoration(
-
-                color: WireframeColors.surface,
-
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
-
                 border: Border.all(
-
-                  color: WireframeColors.border,
-
+                  color: AppColors.border,
                   width: 1.2,
-
                 ),
-
                 boxShadow: [
-
                   BoxShadow(
-
                     color: Colors.black.withValues(alpha: 0.04),
-
                     blurRadius: 3,
-
                     offset: const Offset(0, 1),
-
                   ),
-
                 ],
-
               ),
-
               alignment: Alignment.center,
-
               child: Container(
-
                 width: 14,
-
                 height: 14,
-
                 decoration: BoxDecoration(
-
                   shape: BoxShape.circle,
-
                   border: Border.all(
-
-                    color: WireframeColors.secondarySlate,
-
+                    color: AppColors.text3,
                     width: 2.0,
-
                   ),
-
                 ),
-
               ),
-
             ),
-
           ),
 
         ],
