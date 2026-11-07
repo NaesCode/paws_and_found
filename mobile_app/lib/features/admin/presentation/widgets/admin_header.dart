@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
 
 /// Top bar header matching SDD Screens 09 & 10.
 ///
@@ -73,7 +73,7 @@ class AdminHeader extends StatelessWidget {
               if (onLogout != null) {
                 onLogout!();
               } else {
-                await Supabase.instance.client.auth.signOut();
+                await AuthRepositoryImpl().signOut();
                 if (context.mounted) {
                   context.go('/login');
                 }

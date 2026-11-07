@@ -7,6 +7,7 @@ class PawButton extends StatelessWidget {
   final Color textColor;
   final Color? borderColor;
   final IconData? icon;
+  final Widget? leading;
   final bool isLoading;
 
   const PawButton({
@@ -17,6 +18,7 @@ class PawButton extends StatelessWidget {
     required this.textColor,
     this.borderColor,
     this.icon,
+    this.leading,
     this.isLoading = false,
   });
 
@@ -48,7 +50,10 @@ class PawButton extends StatelessWidget {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (icon != null) ...[
+                if (leading != null) ...[
+                  leading!,
+                  const SizedBox(width: 10),
+                ] else if (icon != null) ...[
                   Icon(icon, size: 24, color: textColor),
                   const SizedBox(width: 8),
                 ],

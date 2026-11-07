@@ -79,9 +79,9 @@ void main() {
       expect(find.text('Spotted near park'), findsOneWidget);
       expect(find.text('10/17/26 04:00'), findsOneWidget);
       expect(find.text('Auto'), findsOneWidget);
-      expect(find.text('Submit Report'), findsOneWidget);
+      expect(find.text('Submit Sighting Report'), findsOneWidget);
 
-      await tester.tap(find.text('Submit Report'));
+      await tester.tap(find.text('Submit Sighting Report'));
       expect(submitted, isTrue);
     });
 
@@ -114,14 +114,14 @@ void main() {
 
       // Form
       expect(find.text('CREATE REPORT'), findsOneWidget);
-      expect(find.text('Submit Report'), findsOneWidget);
+      expect(find.text('Submit Sighting Report'), findsOneWidget);
 
       // Bottom bar
       expect(find.byType(CustomAppBar), findsOneWidget);
 
       // Submit report and check confirmation dialog
-      await tester.ensureVisible(find.text('Submit Report'));
-      await tester.tap(find.text('Submit Report'));
+      await tester.ensureVisible(find.text('Submit Sighting Report'));
+      await tester.tap(find.text('Submit Sighting Report'));
       await tester.pumpAndSettle();
 
       expect(find.text('Report Submitted'), findsOneWidget);

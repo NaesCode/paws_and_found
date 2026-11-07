@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Paws and Found (Android Phone Direct)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "15a177c6",
+      "cwd": "mobile_app",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define",
+        "GOOGLE_WEB_CLIENT_ID=467320972940-idmruqnpvd1fvuv1h7l24oqpvjcn56qb.apps.googleusercontent.com",
+        "--dart-define",
+        "GOOGLE_IOS_CLIENT_ID=467320972940-c5ac1g2r9kpplk5ddtfhggs2eofvjnd7.apps.googleusercontent.com"
+      ]
+    },
+    {
+      "name": "Paws and Found (Active Device)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "mobile_app",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define",
+        "GOOGLE_WEB_CLIENT_ID=467320972940-idmruqnpvd1fvuv1h7l24oqpvjcn56qb.apps.googleusercontent.com",
+        "--dart-define",
+        "GOOGLE_IOS_CLIENT_ID=467320972940-c5ac1g2r9kpplk5ddtfhggs2eofvjnd7.apps.googleusercontent.com"
+      ]
+    }
+  ]
+}
