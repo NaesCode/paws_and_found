@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
 
 /// Pinned top header for the Profile screen.
 ///
@@ -40,7 +41,7 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
             } else if (value == 'edit') {
               onEditPressed?.call();
             } else if (value == 'logout') {
-              await Supabase.instance.client.auth.signOut();
+              await AuthRepositoryImpl().signOut();
               if (context.mounted) {
                 context.go('/login');
               }

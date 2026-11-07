@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class PawTextField extends StatelessWidget {
   final String hintText;
@@ -11,6 +12,10 @@ class PawTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final bool enabled;
   final int maxLines;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextAlign textAlign;
+  final Widget? suffixIcon;
 
   const PawTextField({
     super.key,
@@ -24,6 +29,10 @@ class PawTextField extends StatelessWidget {
     this.onSubmitted,
     this.enabled = true,
     this.maxLines = 1,
+    this.maxLength,
+    this.inputFormatters,
+    this.textAlign = TextAlign.start,
+    this.suffixIcon,
   });
 
   @override
@@ -37,10 +46,15 @@ class PawTextField extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       enabled: enabled,
+      maxLength: maxLength,
+      inputFormatters: inputFormatters,
+      textAlign: textAlign,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
         errorText: errorText,
+        counterText: '', // hide the maxLength counter
+        suffixIcon: suffixIcon,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

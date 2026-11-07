@@ -116,7 +116,44 @@ For running the app locally or QA testing frontend flows without registering new
 
 ---
 
-## Feature Guides & Testing
+## 5. Google Sign-In Setup & Team Workflow (Android)
+
+Paws and Found uses native on-device Google Sign-In (`google_sign_in` 7.x) paired with `supabase.auth.signInWithIdToken()`.
+
+### Package Name
+The app package name (`applicationId`) is:
+```text
+com.swacnaswac.pawsandfound
+```
+
+### Getting Your Debug SHA-1 Fingerprint
+Each developer machine signs debug builds with a unique local keystore. To register your machine in Google Cloud Console:
+
+1. In PowerShell:
+   ```powershell
+   cd mobile_app\android
+   $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+   .\gradlew.bat signingReport
+   ```
+   *(Or inspect your local debug keystore via keytool:)*
+   ```powershell
+   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+   ```
+2. Locate the **Variant: debug** section and copy the `SHA1` fingerprint (e.g., `AA:BB:CC:...`).
+3. In Google Cloud Console (**APIs & Services → Credentials**), create an **Android OAuth Client ID**:
+   - **Package Name:** `com.swacnaswac.pawsandfound`
+   - **SHA-1 Fingerprint:** Paste your debug SHA-1.
+   - **Client Name:** e.g. `paws-android-debug-<yourname>`.
+
+### Running with Google Web Client ID
+Provide the public Web Client ID via `--dart-define`:
+```powershell
+flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+```
+
+> [!NOTE]
+> Every teammate machine and demo build laptop signing debug APKs requires its own registered Android OAuth credential in Google Cloud Console with its machine's SHA-1.
+
 
 *   **[Community Animal Map Testing Guide](MAP_TESTING_GUIDE.md)**: Comprehensive architectural overview, OpenStreetMap tile details, interactive QA checklist, and test commands for the interactive map subsystem.
 *   **[Thread Linking & Sightings Dashboard Guide](THREAD_LINKING_README.md)**: Architectural overview of in-camera real-time AI visual candidate scanning, `linked_report_id` database relationships, deep linking, and the dual-tab Sightings Log dashboard.
