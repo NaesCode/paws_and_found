@@ -10,6 +10,7 @@
 
 -- 1. Add moderation columns to public.reports
 alter table public.reports
+  add column if not exists location_name text,
   add column if not exists moderation_status text not null default 'approved'
     check (moderation_status in ('approved', 'flagged', 'rejected')),
   add column if not exists moderation_notes text;

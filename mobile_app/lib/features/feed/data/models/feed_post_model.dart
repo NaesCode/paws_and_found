@@ -47,10 +47,14 @@ class FeedPost {
     // UI display getters matching your ReportCardItem requirements
     // String get petName => petId ?? "Unknown Pet";
     final petMap = json['pets'] as Map<String, dynamic>?;
-    final parsedPetName = (petMap?['name'] as String? ?? '').isNotEmpty 
-        ? petMap!['name'] as String 
-        : "Unknown Pet";
     
+    final registeredPetName = (petMap?['name'] as String? ?? '').trim();
+    final sightingAnimalName = (json['animal_name'] as String? ?? '').trim();
+
+    final String parsedPetName = registeredPetName.isNotEmpty
+        ? registeredPetName
+        : (sightingAnimalName.isNotEmpty ? sightingAnimalName : "Unknown Pet");
+  
     final profileMap = json['profiles'] as Map<String, dynamic>?;
     
     final parsedName = profileMap?['name'] as String? ?? '';

@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
+import 'dart:typed_data';
+import 'package:uuid/uuid.dart';
 
 //fetching data both personal and general with each filters na
 
@@ -17,6 +19,7 @@ class FeedRepositoryImpl implements FeedRepository {
         reporter_id,
         pet_id,
         animal_type,
+        animal_name,
         description,
         photo_url,
         location_name,
@@ -52,6 +55,7 @@ class FeedRepositoryImpl implements FeedRepository {
         photo_url, 
         location_name, 
         status, 
+        animal_name,
         analysis_status, 
         moderation_status, 
         created_at,
@@ -86,6 +90,7 @@ class FeedRepositoryImpl implements FeedRepository {
         photo_url, 
         location_name, 
         status, 
+        animal_name,
         analysis_status, 
         moderation_status,
         created_at,
@@ -183,7 +188,8 @@ class FeedRepositoryImpl implements FeedRepository {
             moderation_status,
             created_at,
             profiles(name, profile_photo_url),
-            pets(name)
+            pets(name),
+            animal_name
           ''')
           .eq('linked_report_id', reportId)
           .order('created_at', ascending: false);
@@ -239,4 +245,68 @@ class FeedRepositoryImpl implements FeedRepository {
       }
     }
   }
+
+  @override
+  Future<String> uploadReportPhoto(
+    Uint8List bytes, {
+    String extension = 'jpg',
+  }) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) throw Exception('User is not authenticated');
+    const uuid = Uuid();
+    final path = '$uid/${uuid.v4()}.$extension';
+
+    await _supabase.storage.from('animal-photos').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: 'image/$extension',
+        upsert: false,
+      ),
+    );
+    return _supabase.storage.from('animal-photos').getPublicUrl(path);
+  }
+
+  @override
+  Future<void> updateReport(
+    String reportId, {
+    String? description,
+    String? locationName,
+    String? status,
+    String? animalType,
+    String? photoUrl,
+    String? petId,
+    String? petName,
+    double? lat,
+    double? lng,
+    String? specie,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (description != null) updates['description'] = description.trim();
+      if (locationName != null) updates['location_name'] = locationName.trim();
+      if (status != null) updates['status'] = status.toLowerCase();
+      if (animalType != null) updates['animal_type'] = animalType.trim();
+      if (photoUrl != null && photoUrl.isNotEmpty) updates['photo_url'] = photoUrl;
+
+      if (petId == null && specie != null && specie.isNotEmpty) {
+        updates['animal_type'] = specie.trim();
+      }
+
+      if (petId == null && petName != null && petName.trim().isNotEmpty) {
+        updates['animal_name'] = petName.trim();
+      }
+
+      if (lat != null && lng != null) {
+        updates['location'] = 'POINT($lng $lat)';
+      }
+
+      if (updates.isNotEmpty) {
+        await _supabase.from('reports').update(updates).eq('id', reportId);
+      }
+    } catch (e) {
+      throw Exception('Failed to update report: $e');
+    }
+  }
 }
+
