@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-import 'package:paws_and_found/core/theme/app_typography.dart';
 
 class PawLoadingIndicator extends StatefulWidget {
   final double size;

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/wireframe_status_badge.dart';
 import '../../../../shared/atoms/wireframe_tag.dart';
 import '../../domain/entities/map_report_entity.dart';
@@ -51,15 +54,54 @@ class MapPetInfoModal extends StatelessWidget {
     );
   }
 
-  void _handlePlaceholderAction(BuildContext context, String actionName, VoidCallback? callback) {
-    if (callback != null) {
-      callback();
-    } else {
+  void _handleReportSighting(BuildContext context) {
+    if (onReportSighting != null) {
+      onReportSighting!();
+      return;
+    }
+    Navigator.of(context).pop();
+    final statusParam = report.status.toLowerCase() == 'missing' ? 'stray' : report.status.toLowerCase();
+    context.push(
+      '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.title)}&status=$statusParam',
+    );
+  }
+
+  void _handleContact(BuildContext context) {
+    if (onContact != null) {
+      onContact!();
+      return;
+    }
+    Navigator.of(context).pop();
+    showFeedCommentsModal(
+      context,
+      reportId: report.id,
+      petName: report.title,
+    );
+  }
+
+  Future<void> _handleShare(BuildContext context) async {
+    if (onShare != null) {
+      onShare!();
+      return;
+    }
+    final locationLine = report.locationName.isNotEmpty
+        ? report.locationName
+        : '${report.latitude.toStringAsFixed(4)}° N, ${report.longitude.toStringAsFixed(4)}° E';
+    final shareText = '''
+🐾 [${report.status.toUpperCase()}] ${report.title}
+Species: ${report.animalType}
+Location: $locationLine (${report.latitude.toStringAsFixed(4)}°, ${report.longitude.toStringAsFixed(4)}°)
+Details: ${report.description.isNotEmpty ? report.description : 'No additional details.'}
+Reported on Paws and Found: ${report.formattedTimeAgo}
+'''.trim();
+
+    await Clipboard.setData(ClipboardData(text: shareText));
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$actionName placeholder tapped'),
+        const SnackBar(
+          content: Text('Report details copied to clipboard!'),
           backgroundColor: AppColors.primary,
-          duration: const Duration(seconds: 1),
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -392,10 +434,10 @@ class MapPetInfoModal extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Primary Action: "I Spotted This Pet" / "Report Sighting"
+        // Primary Action: "I Spotted This Animal"
         ElevatedButton.icon(
           key: const Key('modal_action_spotted_button'),
-          onPressed: () => _handlePlaceholderAction(context, 'Report Sighting', onReportSighting),
+          onPressed: () => _handleReportSighting(context),
           icon: const Icon(Icons.camera_alt_outlined, size: 18, color: Colors.white),
           label: const Text(
             'I Spotted This Animal',
@@ -422,7 +464,7 @@ class MapPetInfoModal extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 key: const Key('modal_action_contact_button'),
-                onPressed: () => _handlePlaceholderAction(context, 'Contact', onContact),
+                onPressed: () => _handleContact(context),
                 icon: const Icon(
                   Icons.chat_bubble_outline_rounded,
                   size: 16,
@@ -449,7 +491,7 @@ class MapPetInfoModal extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 key: const Key('modal_action_share_button'),
-                onPressed: () => _handlePlaceholderAction(context, 'Share', onShare),
+                onPressed: () => _handleShare(context),
                 icon: const Icon(
                   Icons.share_outlined,
                   size: 16,

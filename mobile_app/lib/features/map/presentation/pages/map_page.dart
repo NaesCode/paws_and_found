@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:latlong2/latlong.dart';
 
-import '../../../../core/constants/location_constants.dart';
-
 import '../../../../core/services/location_service.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -244,32 +242,9 @@ class _MapPageState extends State<MapPage> {
 
     _controller.addListener(_onControllerUpdate);
 
-
-
-    // =========================================================================
-
-    // TODO: TESTING ONLY - Temporary placeholder pin right at startup map center
-
-    // so the user can immediately test the modal. NOTE: REMOVE AFTER TESTING.
-
-    // =========================================================================
-
-    _injectTestingPin(
-
-      widget.initialCenter?.latitude ?? LocationConstants.defaultLatitude,
-
-      widget.initialCenter?.longitude ?? LocationConstants.defaultLongitude,
-
-    );
-
-
-
     // Immediate sync for targeted report
-
     if (widget.initialReportId != null) {
-
       _syncAndSelectReport(widget.initialReportId!, widget.initialCenter);
-
     }
 
 
@@ -308,82 +283,13 @@ class _MapPageState extends State<MapPage> {
         if (!mounted) return;
 
         if (loc != null) {
-
           _fmapController.move(loc, 15.5);
-
-          // TODO: TESTING ONLY - Relocate testing pin to user's physical GPS location
-
-          _injectTestingPin(loc.latitude, loc.longitude);
-
           // Refresh nearby reports based on the user's localized phone position
-
           _controller.loadReports();
-
         }
-
       });
-
     }
-
   }
-
-
-
-  // ===========================================================================
-
-  // TODO: TESTING ONLY - Injects a placeholder pin right at the starting center
-
-  // so the user can immediately test the modal on app startup.
-
-  // NOTE: MUST BE REMOVED AFTER TESTING.
-
-  // ===========================================================================
-
-  void _injectTestingPin(double lat, double lng) {
-
-    MapReportModel.addReport(
-
-      MapReportModel(
-
-        id: 'testing-placeholder-pin',
-
-        petId: 'cc4df92c-64e9-4e9e-b37c-507ed997966f',
-
-        reporterId: 'test-user',
-
-        title: 'Thomas',
-
-        animalType: 'Feline',
-
-        description: 'TESTING PIN: Slipped out near the front gate. Gray with white spots and paws. Tap action buttons below to test modal interactions.',
-
-        status: 'missing',
-
-        locationName: 'Cebu City (Testing Pin)',
-
-        latitude: lat,
-
-        longitude: lng,
-
-        normalizedX: 0.5,
-
-        normalizedY: 0.5,
-
-        distanceMeters: 25,
-
-        createdAt: DateTime.now(),
-
-        tags: const ['Feline', 'Gray & White', 'Test Pin'],
-
-        photoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80',
-
-      ),
-
-    );
-
-  }
-
-
 
   void _onControllerUpdate() {
 
