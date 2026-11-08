@@ -7,7 +7,13 @@ import 'package:paws_and_found/features/feed/presentation/pages/personal_reports
 import 'package:go_router/go_router.dart';
 
 class FeedPage extends StatefulWidget {
-  const FeedPage({super.key});
+  final Widget? generalReportsView;
+  final Widget? personalReportsView;
+  const FeedPage({
+    super.key,
+    this.generalReportsView,
+    this.personalReportsView,
+    });
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -72,8 +78,8 @@ class _FeedPageState extends State<FeedPage> {
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrollNotification,
                   child: _isGeneralSelected
-                      ? const GeneralReportsPage()
-                      : const PersonalReportsPage(),
+                      ? (widget.generalReportsView ?? const GeneralReportsPage())
+                      : (widget.personalReportsView ?? const PersonalReportsPage()),
                 ),
               ),
             ],
