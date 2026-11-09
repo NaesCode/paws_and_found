@@ -287,8 +287,7 @@ class FeedRepositoryImpl implements FeedRepository {
       if (locationName != null) updates['location_name'] = locationName.trim();
       if (status != null) updates['status'] = status.toLowerCase();
       if (animalType != null) updates['animal_type'] = animalType.trim();
-      if (photoUrl != null && photoUrl.isNotEmpty) updates['photo_url'] = photoUrl;
-
+      
       if (petId == null && specie != null && specie.isNotEmpty) {
         updates['animal_type'] = specie.trim();
       }
@@ -299,6 +298,38 @@ class FeedRepositoryImpl implements FeedRepository {
 
       if (lat != null && lng != null) {
         updates['location'] = 'POINT($lng $lat)';
+      }
+
+      // delete-before-upload logic ni siya
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        updates['photo_url'] = photoUrl;
+
+        // Fetch the current report from the database to see if a photo already exists
+        final currentReport = await getReportById(reportId);
+        
+        if (currentReport != null && currentReport.imageUrl.isNotEmpty) {
+          final oldUrl = currentReport.imageUrl;
+
+          // Only delete if the image actually changed
+          if (oldUrl != photoUrl) {
+            try {
+              // Extract the relative storage path out of the full Public URL
+              final String storageUrlMatchToken = '/storage/v1/object/public/animal-photos/';
+              
+              if (oldUrl.contains(storageUrlMatchToken)) {
+                final relativePath = oldUrl.split(storageUrlMatchToken).last;
+                
+                // Delete the old photo from the bucket immediately
+                await _supabase.storage
+                  .from('animal-photos')
+                  .remove([relativePath]);
+              }
+            } catch (storageError) {
+              // Log the error but don't crash the application; let the DB update proceed
+              print('Failed to delete orphaned storage file: $storageError');
+            }
+          }
+        }
       }
 
       if (updates.isNotEmpty) {
