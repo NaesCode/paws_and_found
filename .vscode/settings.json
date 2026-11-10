@@ -1,5 +1,6 @@
 {
-  "dart.projectSearchPaths": [
-    "mobile_app"
-  ]
+  "dart.projectSearchPaths": ["mobile_app"],
+  "editor.formatOnSave": false,
+  "editor.fontFamily": "JetBrains Mono",
+  "files.autoSave": "onFocusChange"
 }

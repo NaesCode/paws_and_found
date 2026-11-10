@@ -5,6 +5,7 @@ import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasources/profile_remote_datasource.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
@@ -34,8 +35,38 @@ class ProfileRepositoryImpl implements ProfileRepository {
     if (phoneNumber != null) fields['phone_number'] = phoneNumber;
     if (address != null) fields['address'] = address;
     if (bio != null) fields['bio'] = bio;
-    if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
 
+    if (profilePhotoURL != null) {
+      fields['profile_photo_url'] = profilePhotoURL;
+      try {
+        // Fetch the user's current profile data to check for an existing photo
+        final currentProfile = await remoteDataSource.getProfile();
+        final String? oldUrl = currentProfile.profilePhotoURL;
+
+        // Only run deletion if a photo existed and it is actually changing
+        if (oldUrl != null && oldUrl.isNotEmpty && oldUrl != profilePhotoURL) {
+          // Token matches the 'user-profile-photo' storage path structure
+          final String storageUrlMatchToken = '/storage/v1/object/public/user-profile-photo/';
+
+          if (oldUrl.contains(storageUrlMatchToken)) {
+            final relativePath = oldUrl.split(storageUrlMatchToken).last;
+
+            final supabase = Supabase.instance.client;
+
+            // Security Check: Enforce that users can only delete out of their own folder
+            if (relativePath.startsWith('${currentProfile.userID}/')) {
+              await supabase.storage
+                  .from('user-profile-photo')
+                  .remove([relativePath]);
+              debugPrint('[ProfileRepositoryImpl] Cleaned up old profile photo: $relativePath');
+            }
+          }
+        }
+      } catch (storageError) {
+        debugPrint('[ProfileRepositoryImpl] Profile photo storage cleanup deferred: $storageError');
+      }
+    }
+    // if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
     return await remoteDataSource.updateProfile(fields);
   }
 
