@@ -271,6 +271,10 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       final detachedAuth = SupabaseClient(
         ApiConstants.supabaseUrl,
         ApiConstants.supabaseAnonKey,
+        authOptions: const AuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+          autoRefreshToken: false,
+        ),
       );
 
       final authResponse = await detachedAuth.auth.signUp(
@@ -286,6 +290,9 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       if (authResponse.user != null) {
         newUserId = authResponse.user!.id;
       }
+    } on AuthException catch (e) {
+      debugPrint('[AdminRemoteDataSource] Detached signUp AuthException: ${e.message}');
+      throw Exception(e.message);
     } catch (e) {
       debugPrint('[AdminRemoteDataSource] Detached signUp note/error: $e');
       rethrow;
