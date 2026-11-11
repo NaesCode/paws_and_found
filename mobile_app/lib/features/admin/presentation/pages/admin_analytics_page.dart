@@ -151,17 +151,53 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         );
       });
     } else {
-      // Month view: 4 weeks
-      return [
-        const BarChartGroup(label: 'Wk 1', value: 2),
-        const BarChartGroup(label: 'Wk 2', value: 3),
-        const BarChartGroup(label: 'Wk 3', value: 1),
-        BarChartGroup(
-          label: 'Wk 4',
-          value: _newUsersInSelectedTimeframe.length,
-          isHighlight: true,
-        ),
-      ];
+      // Month view: Weeks 1 to 4 of the current month
+      // Calculate which week of the current month today falls into (1-based: days 1-7 = Wk 1, 8-14 = Wk 2, etc.)
+      final currentWeekOfMonth = ((now.day - 1) ~/ 7) + 1; // e.g. Nov 11 -> Week 2
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final nextMonthStart = (now.month < 12)
+          ? DateTime(now.year, now.month + 1, 1)
+          : DateTime(now.year + 1, 1, 1);
+
+      // Bucket real user registrations by week of the current month
+      final weekCounts = [0, 0, 0, 0];
+      for (final u in _users) {
+        if (u.createdAt != null &&
+            !u.createdAt!.isBefore(currentMonthStart) &&
+            u.createdAt!.isBefore(nextMonthStart)) {
+          final weekIndex = ((u.createdAt!.day - 1) ~/ 7).clamp(0, 3);
+          weekCounts[weekIndex]++;
+        }
+      }
+
+      final hasRealData = weekCounts.any((c) => c > 0);
+      final totalThisMonth = _newUsersInSelectedTimeframe.length;
+
+      return List.generate(4, (i) {
+        final weekNum = i + 1;
+        final isCurrentWeek = weekNum == currentWeekOfMonth.clamp(1, 4);
+        final isFutureWeek = weekNum > currentWeekOfMonth;
+
+        int value = 0;
+        if (hasRealData) {
+          value = weekCounts[i];
+        } else {
+          // Dynamic mock fallback based on actual current week
+          if (isCurrentWeek) {
+            value = totalThisMonth > 0 ? totalThisMonth : 2;
+          } else if (!isFutureWeek) {
+            value = 1; // Prior week in this current month
+          } else {
+            value = 0; // Future weeks in this month haven't occurred yet
+          }
+        }
+
+        return BarChartGroup(
+          label: 'Wk $weekNum',
+          value: value,
+          isHighlight: isCurrentWeek,
+        );
+      });
     }
   }
 
@@ -494,48 +530,48 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with Timeframe Switcher
+          // Header: Title with Icon
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.people_alt_rounded,
-                      size: 20, color: WireframeColors.primaryDark),
-                  SizedBox(width: 8),
-                  Text(
-                    'User Growth & Velocity',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                      color: WireframeColors.primaryDark,
-                    ),
+            children: const [
+              Icon(Icons.people_alt_rounded,
+                  size: 20, color: WireframeColors.primaryDark),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'User Growth & Velocity',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: WireframeColors.primaryDark,
                   ),
-                ],
-              ),
-
-              // Timeframe Toggle: Week vs Month
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                padding: const EdgeInsets.all(2.0),
-                child: Row(
-                  children: [
-                    _buildTimeframePill('week', 'This Week'),
-                    _buildTimeframePill('month', 'This Month'),
-                  ],
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'Visualization of registered members and new signups',
             style: TextStyle(
               fontSize: 12.0,
               color: WireframeColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Timeframe Toggle Row: This Week vs This Month (Responsive full-width segmented control)
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(9.0),
+              border: Border.all(color: WireframeColors.border),
+            ),
+            padding: const EdgeInsets.all(3.0),
+            child: Row(
+              children: [
+                Expanded(child: _buildTimeframePill('week', 'This Week')),
+                Expanded(child: _buildTimeframePill('month', 'This Month')),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -641,14 +677,15 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       onTap: () => setState(() => _userTimeframe = key),
       borderRadius: BorderRadius.circular(6.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(6.0),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),
@@ -658,12 +695,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11.0,
+            fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
                 ? WireframeColors.primaryDark
                 : WireframeColors.textMuted,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
@@ -738,12 +777,15 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               Icon(Icons.article_rounded,
                   size: 20, color: WireframeColors.primaryDark),
               SizedBox(width: 8),
-              Text(
-                'Post Status Breakdown',
-                style: TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
-                  color: WireframeColors.primaryDark,
+              Expanded(
+                child: Text(
+                  'Post Status Breakdown',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: WireframeColors.primaryDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
