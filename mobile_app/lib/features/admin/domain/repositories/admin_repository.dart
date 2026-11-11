@@ -26,4 +26,12 @@ abstract class AdminRepository {
     String? notes,
     bool notifyUser = true,
   });
+  Future<AdminUserItem> createUser({
+    required String name,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String role = 'User',
+    String status = 'Active',
+  });
 }

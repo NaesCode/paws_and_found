@@ -59,6 +59,24 @@ class AdminBottomNavBar extends StatelessWidget {
                   inactiveIcon: Icons.article_outlined,
                 ),
               ),
+
+              // Vertical divider between tabs
+              Container(
+                height: 24,
+                width: 1,
+                color: WireframeColors.divider,
+              ),
+
+              // Tab 2: Analytics
+              Expanded(
+                child: _buildNavItem(
+                  key: const Key('admin_nav_analytics'),
+                  index: 2,
+                  label: 'Analytics',
+                  activeIcon: Icons.insights_rounded,
+                  inactiveIcon: Icons.insights_outlined,
+                ),
+              ),
             ],
           ),
         ),

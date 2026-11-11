@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../models/admin_post_item.dart';
 import '../models/admin_user_item.dart';
 
@@ -27,13 +29,30 @@ abstract class AdminRemoteDataSource {
     String? notes,
     bool notifyUser = true,
   });
+  Future<AdminUserItem> createUser({
+    required String name,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String role = 'User',
+    String status = 'Active',
+  });
 }
 
 class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
-  final SupabaseClient _supabase;
+  final SupabaseClient? _explicitClient;
 
   AdminRemoteDataSourceImpl({SupabaseClient? client})
-      : _supabase = client ?? Supabase.instance.client;
+      : _explicitClient = client;
+
+  SupabaseClient get _supabase {
+    if (_explicitClient != null) return _explicitClient;
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      throw Exception('Supabase is not initialized');
+    }
+  }
 
   @override
   Future<List<AdminUserItem>> fetchUsers() async {
@@ -54,7 +73,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       final response = await _supabase
           .from('reports')
           .select(
-              '*, profiles:reporter_id(name, email), pets:pet_id(name, species, breed)')
+              '*, profiles:reporter_id(name, email, profile_photo_url), pets:pet_id(name, species, breed)')
           .order('created_at', ascending: false);
 
       final List<dynamic> data = response as List<dynamic>;
@@ -231,5 +250,75 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         await _supabase.from('reports').update(updatePayload).eq('id', postId);
       } catch (_) {}
     }
+  }
+
+  @override
+  Future<AdminUserItem> createUser({
+    required String name,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String role = 'User',
+    String status = 'Active',
+  }) async {
+    final cleanEmail = email.trim();
+    final cleanName = name.trim();
+    final cleanPhone = phoneNumber?.trim() ?? '';
+
+    String newUserId = '';
+
+    try {
+      final detachedAuth = SupabaseClient(
+        ApiConstants.supabaseUrl,
+        ApiConstants.supabaseAnonKey,
+      );
+
+      final authResponse = await detachedAuth.auth.signUp(
+        email: cleanEmail,
+        password: password,
+        data: {
+          'name': cleanName,
+          'full_name': cleanName,
+          if (cleanPhone.isNotEmpty) 'phone_number': cleanPhone,
+        },
+      );
+
+      if (authResponse.user != null) {
+        newUserId = authResponse.user!.id;
+      }
+    } catch (e) {
+      debugPrint('[AdminRemoteDataSource] Detached signUp note/error: $e');
+      rethrow;
+    }
+
+    if (newUserId.isEmpty) {
+      newUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    // 2. Ensure initial status and phone number are persisted in profiles
+    try {
+      if (status != 'Active') {
+        await updateUserStatus(userId: newUserId, status: status);
+      }
+      if (cleanPhone.isNotEmpty) {
+        await _supabase.from('profiles').update({
+          'phone_number': cleanPhone,
+        }).eq('id', newUserId);
+      }
+    } catch (_) {}
+
+    return AdminUserItem(
+      id: newUserId,
+      name: cleanName,
+      emailMasked:
+          cleanEmail.isNotEmpty ? '${cleanEmail[0].toLowerCase()}..' : '--',
+      fullEmail: cleanEmail,
+      phoneNumber: cleanPhone,
+      reputation: 0,
+      status: status,
+      role: role,
+      canPostReports: status != 'Suspended',
+      canClaimAnimals: status != 'Suspended',
+    );
   }
 }

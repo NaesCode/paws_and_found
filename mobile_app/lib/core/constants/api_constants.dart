@@ -13,6 +13,10 @@ class ApiConstants {
   static const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
   static const String googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 
+  static const String supabaseUrl = 'https://pbbrnlytulbaylsbpagx.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiYnJubHl0dWxiYXlsc2JwYWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjg0NTgsImV4cCI6MjEwNTY0NDQ1OH0.9m6TPNn04dAk12vCAP8aRngOuQ4lw2vySWM8XbHZtHA';
+
   static String? _resolvedBaseUrl;
 
   /// Returns the active base URL for the Django orchestrator backend.
