@@ -12,14 +12,24 @@ Future<void> main() async {
     publishableKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiYnJubHl0dWxiYXlsc2JwYWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjg0NTgsImV4cCI6MjEwNTY0NDQ1OH0.9m6TPNn04dAk12vCAP8aRngOuQ4lw2vySWM8XbHZtHA',
   );
 
-  // Background retry sweep for pending AI analyses
+  // Background retry sweep for pending AI analyses.
+  // Runs once on startup if already signed in, or on a fresh sign-in event.
+  // A boolean guard prevents double-sweeping: when the app launches with an
+  // existing session, currentSession is non-null so we sweep immediately and
+  // set the flag — the auth listener then skips the redundant startup event.
   final retryService = AnalysisRetryService();
-  if (Supabase.instance.client.auth.currentSession != null) {
+  bool initialSweepDone = Supabase.instance.client.auth.currentSession != null;
+  if (initialSweepDone) {
     unawaited(retryService.sweepPendingAnalyses());
   }
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.session != null) {
-      unawaited(retryService.sweepPendingAnalyses());
+      if (!initialSweepDone) {
+        // First sign-in after cold start with no previous session
+        initialSweepDone = true;
+        unawaited(retryService.sweepPendingAnalyses());
+      }
+      // If initialSweepDone is already true, the startup sweep already ran — skip.
     }
   });
 

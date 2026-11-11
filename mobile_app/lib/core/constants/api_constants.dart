@@ -10,8 +10,14 @@ class ApiConstants {
 
   static const String djangoBaseUrl = String.fromEnvironment('DJANGO_BASE_URL');
   static const String ngrokUrl = String.fromEnvironment('NGROK_URL');
-  static const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
-  static const String googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: '467320972940-idmruqnpvd1fvuv1h7l24oqpvjcn56qb.apps.googleusercontent.com',
+  );
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
+    defaultValue: '467320972940-c5ac1g2r9kpplk5ddtfhggs2eofvjnd7.apps.googleusercontent.com',
+  );
 
   static String? _resolvedBaseUrl;
 

@@ -137,7 +137,14 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         // Skip flagged content
         if (row['moderation_status'] == 'flagged') continue;
 
-        final petName = row['pet_name'] as String? ?? 'Missing Pet';
+        final rawPetName = (row['pet_name'] as String? ?? '').trim();
+        final rawAnimalName = (row['animal_name'] as String? ?? '').trim();
+        final petName = rawPetName.isNotEmpty &&
+                rawPetName.toLowerCase() != 'unnamed pet' &&
+                rawPetName.toLowerCase() != 'unknown pet'
+            ? rawPetName
+            : (rawAnimalName.isNotEmpty ? rawAnimalName : 'Missing Pet');
+
         final species = row['animal_type'] as String? ?? animalType;
         final isSameSpecies = species.toLowerCase() == animalType.toLowerCase();
 

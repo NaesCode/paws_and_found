@@ -19,6 +19,15 @@ abstract class ProfileRemoteDataSource {
     String? description,
     List<String> photoUrls = const [],
   });
+  Future<PetModel> updatePet(
+    String petId, {
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  });
   Future<void> deletePet(String petId, {String? reason, String? details});
   Future<void> reportPetMissing(
     String petId, {
@@ -145,6 +154,60 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final data = await supabase
         .from('pets')
         .insert(insertPayload)
+        .select()
+        .single();
+
+    return PetModel.fromJson(data);
+  }
+
+  @override
+  Future<PetModel> updatePet(
+    String petId, {
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  }) async {
+    final uid = _currentUserId;
+    if (uid == null) {
+      throw Exception('User is not authenticated');
+    }
+
+    if (petId.startsWith('mock-')) {
+      final index = _mockPets.indexWhere((p) => p.petID == petId);
+      if (index != -1) {
+        final existing = _mockPets[index];
+        final updated = PetModel(
+          petID: existing.petID,
+          name: name ?? existing.name,
+          species: species ?? existing.species,
+          breed: breed ?? existing.breed,
+          description: description ?? existing.description,
+          photoURLs: photoUrls ?? existing.photoURLs,
+          status: existing.status,
+        );
+        _mockPets[index] = updated;
+        return updated;
+      }
+      throw Exception('Mock pet not found');
+    }
+
+    final updatePayload = <String, dynamic>{
+      if (name != null) 'name': name.trim(),
+      if (species != null) 'species': species.trim(),
+      if (breed != null) 'breed': breed.trim(),
+      if (color != null) 'color': color.trim(),
+      if (description != null) 'description': description.trim(),
+      if (photoUrls != null) 'photo_urls': photoUrls,
+    };
+
+    final data = await supabase
+        .from('pets')
+        .update(updatePayload)
+        .eq('id', petId)
+        .eq('owner_id', uid)
         .select()
         .single();
 

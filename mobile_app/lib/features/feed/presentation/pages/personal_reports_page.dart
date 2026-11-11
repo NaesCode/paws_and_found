@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -163,23 +164,41 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                   
                   final reports = snapshot.data ?? [];
                   if (reports.isEmpty) {
-                    return const Center(child: Text('No Reports Found'));
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () async {
+                        _fetchPersonalReports(_selectedFilter);
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 120),
+                          Center(child: Text('No Reports Found')),
+                        ],
+                      ),
+                    );
                   }
 
-                  return TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, opacityValue, child) {
-                      return Opacity(
-                        opacity: opacityValue,
-                        child: child,
-                      );
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () async {
+                      _fetchPersonalReports(_selectedFilter);
                     },
-                    child: ListView.separated(
-                      itemCount: reports.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 15),
-                      itemBuilder: (context, index) {
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, opacityValue, child) {
+                        return Opacity(
+                          opacity: opacityValue,
+                          child: child,
+                        );
+                      },
+                      child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: reports.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 15),
+                        itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
@@ -203,10 +222,11 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
                           onButton1Pressed: () {
-                            if(!isMissing){
+                            if (!isMissing) {
                               _handleEditReport(report);
-                            } else{
-                              //
+                            } else {
+                              // Navigate to Community Map and focus the pin for this report
+                              context.push('/map?reportId=${report.id}');
                             }
                           },
                           onButton2Pressed: () {
@@ -222,7 +242,8 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         );
                       },
                     ),
-                  );
+                  ),
+                );
                 },
               ),
             ),

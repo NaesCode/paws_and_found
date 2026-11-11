@@ -149,10 +149,10 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
       'p_lat': lat,
       'p_lng': lng,
       'p_status': status.toLowerCase(),
-      if (petId != null) 'p_pet_id': petId,
-        if (locationName != null) 'p_location_name': locationName,
-        if (linkedReportId != null) 'p_linked_report_id': linkedReportId,
-      });
+      'p_pet_id': petId,
+      'p_location_name': locationName,
+      'p_linked_report_id': linkedReportId,
+    });
 
     if (response == null) throw Exception('create_report RPC returned null');
     return response as String;

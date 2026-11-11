@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/core/theme/app_typography.dart';
 import 'package:paws_and_found/shared/atoms/paw_button.dart';
 import 'package:paws_and_found/shared/atoms/paw_text_field.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -177,11 +178,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
             children: [
               const Text(
                 'Change Report Photo',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkCharcoal,
-                ),
+                style: AppTypography.userName,
               ),
               const SizedBox(height: 12),
               ListTile(
@@ -270,9 +267,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
         if (label.isNotEmpty) ...[
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+            style: AppTypography.petName.copyWith(
               color: AppColors.darkCharcoal,
             ),
           ),
@@ -300,9 +295,8 @@ class _EditReportSheetState extends State<EditReportSheet> {
                 Icons.arrow_drop_down,
                 color: enabled ? AppColors.darkCharcoal : AppColors.text3,
               ),
-              style: TextStyle(
+              style: AppTypography.bodyMedium.copyWith(
                 color: enabled ? AppColors.darkCharcoal : AppColors.text3,
-                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
               items: items.map((item) {
@@ -362,17 +356,12 @@ class _EditReportSheetState extends State<EditReportSheet> {
                   children: [
                     const Text(
                       'Edit Report',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                      style: AppTypography.profileTitle,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Editing: ${widget.report.petName} ($_selectedSpecies)',
-                      style: TextStyle(
-                        fontSize: 12.5,
+                      style: AppTypography.detailText.copyWith(
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
                     ),
@@ -399,7 +388,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                   children: [
                     const Text(
                       'Report Photo',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      style: AppTypography.petName,
                     ),
                     const SizedBox(height: 8),
 
@@ -459,10 +448,9 @@ class _EditReportSheetState extends State<EditReportSheet> {
                                     const SizedBox(width: 6),
                                     Text(
                                       _newImageBytes != null ? 'Replace Photo' : 'Change Photo',
-                                      style: const TextStyle(
+                                      style: AppTypography.pillText.copyWith(
                                         color: Colors.white,
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ],
@@ -493,7 +481,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
 
                     /*const Text(
                       'Status',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      style: AppTypography.petName,
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -505,7 +493,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                             label: Text(status.toUpperCase()),
                             selected: isSelected,
                             selectedColor: AppColors.primary,
-                            labelStyle: TextStyle(
+                            labelStyle: AppTypography.pillText.copyWith(
                               color: isSelected ? Colors.white : AppColors.darkCharcoal,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
@@ -523,15 +511,15 @@ class _EditReportSheetState extends State<EditReportSheet> {
                       children: [
                         const Text(
                           'Pet Name',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          style: AppTypography.petName,
                         ),
-                        if (hasLinkedPet) ...[
+                        if (hasLinkedPet) ...[ 
                           const SizedBox(width: 6),
                           const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.text3),
                           const SizedBox(width: 4),
                           const Text(
                             '(Registered Pet)',
-                            style: TextStyle(fontSize: 12, color: AppColors.text3, fontWeight: FontWeight.w500),
+                            style: AppTypography.detailText,
                           ),
                         ],
                       ],
@@ -548,7 +536,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                         padding: EdgeInsets.only(top: 4.0),
                         child: Text(
                           'Linked to your registered pet. To change their name, go to Profile > Pets.',
-                          style: TextStyle(fontSize: 11.5, color: AppColors.text3),
+                          style: AppTypography.detailText,
                         ),
                       ),
 
@@ -557,7 +545,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                       children: [
                         const Text(
                           'Species',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          style: AppTypography.petName,
                         ),
                         if (hasLinkedPet) ...[
                           const SizedBox(width: 6),
@@ -565,7 +553,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                           const SizedBox(width: 4),
                           const Text(
                             '(Registered Pet)',
-                            style: TextStyle(fontSize: 12, color: AppColors.text3, fontWeight: FontWeight.w500),
+                            style: AppTypography.detailText,
                           ),
                         ],
                       ],
@@ -583,7 +571,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                         padding: EdgeInsets.only(top: 8.0),
                         child: Text(
                           'Linked to your registered pet. To change their name, go to Profile > Pets.',
-                          style: TextStyle(fontSize: 11.5, color: AppColors.text3),
+                          style: AppTypography.detailText,
                         ),
                       ),
 
@@ -594,18 +582,14 @@ class _EditReportSheetState extends State<EditReportSheet> {
                       children: [
                         const Text(
                           'Location Name / Address',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          style: AppTypography.petName,
                         ),
                         TextButton.icon(
                           onPressed: _handlePinOnMap,
                           icon: const Icon(Icons.pin_drop_rounded, size: 16, color: AppColors.primary),
                           label: const Text(
                             'Pin on Map',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
+                            style: AppTypography.bodySmall,
                           ),
                         ),
                       ],
@@ -627,8 +611,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                         padding: const EdgeInsets.only(top: 6.0),
                         child: Text(
                           'Pinned: ${_pinnedLocation!.latitude.toStringAsFixed(4)}° N, ${_pinnedLocation!.longitude.toStringAsFixed(4)}° E',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: AppTypography.bodySmall.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
@@ -638,7 +621,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
 
                     const Text(
                       'Description',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      style: AppTypography.petName,
                     ),
                     const SizedBox(height: 8),
                     PawTextField(
@@ -677,7 +660,7 @@ class _EditReportSheetState extends State<EditReportSheet> {
                       padding: const EdgeInsets.only(bottom: 10.0),
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        style: AppTypography.bodySmall.copyWith(color: Colors.red),
                       ),
                     ),
                   PawButton(
