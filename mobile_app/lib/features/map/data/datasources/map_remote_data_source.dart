@@ -116,9 +116,9 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
             .order('created_at', ascending: false)
             .limit(150);
 
-        if (fallback is List && fallback.isNotEmpty) {
+        if (fallback.isNotEmpty) {
           reports = fallback
-              .map((row) => MapReportModel.fromViewJson(row as Map<String, dynamic>))
+              .map((row) => MapReportModel.fromViewJson(row))
               .whereType<MapReportModel>()
               .toList();
           debugPrint(
@@ -235,7 +235,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
           .maybeSingle();
 
       if (row != null) {
-        return MapReportModel.fromViewJson(row as Map<String, dynamic>);
+        return MapReportModel.fromViewJson(row);
       }
     } catch (e) {
       debugPrint('[MapRemoteDataSourceImpl] getReportById view fetch error: $e');

@@ -184,6 +184,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
           name: name ?? existing.name,
           species: species ?? existing.species,
           breed: breed ?? existing.breed,
+          color: color ?? existing.color,
           description: description ?? existing.description,
           photoURLs: photoUrls ?? existing.photoURLs,
           status: existing.status,
@@ -247,6 +248,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       name: 'Banana',
       species: 'Cat',
       breed: 'Tabby',
+      color: 'Orange',
       description:
           'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
       photoURLs: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'],
@@ -257,6 +259,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       name: 'Mochi',
       species: 'Cat',
       breed: 'Calico',
+      color: 'White & Brown',
       description:
           'A gentle calico cat with distinct white and brown markings. Loves napping in sunny spots.',
       photoURLs: ['https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80'],

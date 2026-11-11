@@ -1,5 +1,4 @@
 import 'dart:async' show unawaited;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:paws_and_found/core/network/orchestrator_client.dart';
@@ -122,8 +121,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? description,
     List<String>? photoUrls,
   }) async {
-    // 1. Delete-before-upload logic if photoUrls changed
-    if (photoUrls != null && photoUrls.isNotEmpty) {
+    // 1. Delete-before-upload logic if photoUrls changed (including when removed)
+    if (photoUrls != null) {
       try {
         final currentPets = await remoteDataSource.getPets();
         final matches = currentPets.where((p) => p.petID == petId);
@@ -131,9 +130,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
         final oldPhoto = (currentPet != null && currentPet.photoURLs.isNotEmpty)
             ? currentPet.photoURLs.first
             : null;
-        final newPhoto = photoUrls.first;
+        final newPhoto = photoUrls.isNotEmpty ? photoUrls.first : null;
 
-        if (oldPhoto != null && oldPhoto.isNotEmpty && oldPhoto != newPhoto) {
+        if (oldPhoto != null && oldPhoto.isNotEmpty && (photoUrls.isEmpty || oldPhoto != newPhoto)) {
           const storageUrlMatchToken = '/storage/v1/object/public/animal-photos/';
           if (oldPhoto.contains(storageUrlMatchToken)) {
             final relativePath = oldPhoto.split(storageUrlMatchToken).last;

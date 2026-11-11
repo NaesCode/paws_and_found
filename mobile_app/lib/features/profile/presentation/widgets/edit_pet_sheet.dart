@@ -73,7 +73,7 @@ class _EditPetSheetState extends State<EditPetSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.pet.name);
     _breedController = TextEditingController(text: widget.pet.breed ?? '');
-    _colorController = TextEditingController();
+    _colorController = TextEditingController(text: widget.pet.color ?? '');
     _descriptionController = TextEditingController(text: widget.pet.description ?? '');
 
     final existingSpecies = widget.pet.species.trim();
@@ -359,7 +359,7 @@ class _EditPetSheetState extends State<EditPetSheet> {
                                 )
                               : hasExistingPhoto
                                   ? Image.network(
-                                      existingPhoto!,
+                                      existingPhoto,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, _, _) => Image.asset(
                                         AppAssets.petPlaceholder,
