@@ -12,6 +12,7 @@ import 'pet_info_card.dart';
 class PetItem extends StatelessWidget {
   final Pet pet;
   final VoidCallback? onStatusActionPressed;
+  final VoidCallback? onEditPressed;
   final VoidCallback? onDeletePressed;
   final VoidCallback? onTap;
 
@@ -19,6 +20,7 @@ class PetItem extends StatelessWidget {
     super.key,
     required this.pet,
     this.onStatusActionPressed,
+    this.onEditPressed,
     this.onDeletePressed,
     this.onTap,
   });
@@ -32,37 +34,69 @@ class PetItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Action row above card: Delete icon button on left, Status action pill on right
+          // Action row above card: Edit & Delete buttons on left, Status action pill on right
           Padding(
             padding: const EdgeInsets.only(bottom: 6.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (onDeletePressed != null)
-                  InkWell(
-                    onTap: onDeletePressed,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline_rounded, size: 15, color: Colors.red.shade600),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Delete',
-                            style: TextStyle(
-                              fontFamily: 'Nunito Sans',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red.shade600,
-                            ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onEditPressed != null)
+                      InkWell(
+                        onTap: onEditPressed,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 15,
+                                color: isSafe ? AppColors.primary : AppColors.text3,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Edit',
+                                style: TextStyle(
+                                  fontFamily: 'Nunito Sans',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSafe ? AppColors.primary : AppColors.text3,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
+                    if (onEditPressed != null && onDeletePressed != null)
+                      const SizedBox(width: 8),
+                    if (onDeletePressed != null)
+                      InkWell(
+                        onTap: onDeletePressed,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, size: 15, color: Colors.red.shade600),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  fontFamily: 'Nunito Sans',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 isSafe
                     ? PawPillButton.danger(
                         text: 'Report Missing!',

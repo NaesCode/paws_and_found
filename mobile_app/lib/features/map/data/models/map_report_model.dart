@@ -94,6 +94,110 @@ class MapReportModel extends MapReportEntity {
     );
   }
 
+  /// Factory constructor for rows returned from the `feed_reports` Supabase view.
+  ///
+  /// The view unpacks PostGIS geometry and exposes:
+  ///  - `latitude`/`longitude`  (float8) instead of a raw geography column
+  ///  - `location_name`         (text, nullable)
+  ///  - `animal_name`           (text, nullable – user-entered pet name)
+  ///  - `animal_type`           (text – 'Canine', 'Feline', 'Other', etc.)
+  ///  - `reporter_id`           (uuid)
+  factory MapReportModel.fromViewJson(Map<String, dynamic> json) {
+    final animalType = json['animal_type'] as String? ?? 'Other';
+    final status = json['status'] as String? ?? 'stray';
+    final desc = json['description'] as String? ?? '';
+    final lat = (json['latitude'] ?? LocationConstants.defaultLatitude) as num;
+    final lng = (json['longitude'] ?? LocationConstants.defaultLongitude) as num;
+
+    final rawTitle = json['animal_name'] as String? ?? json['pet_name'] as String?;
+    final title = (rawTitle != null && rawTitle.isNotEmpty)
+        ? rawTitle
+        : (animalType.isNotEmpty ? '$animalType Sighting' : 'Animal Sighting');
+
+    String locationName = json['location_name'] as String? ?? '';
+    if (locationName.isEmpty) {
+      locationName = 'Cebu Community Area';
+    }
+
+    final List<String> tags = [
+      if (animalType.isNotEmpty) animalType,
+      status.toUpperCase(),
+    ];
+
+    return MapReportModel(
+      id: json['id']?.toString() ?? '',
+      reporterId: json['reporter_id']?.toString() ?? '',
+      petId: json['pet_id']?.toString(),
+      title: title,
+      animalType: animalType,
+      description: desc,
+      photoUrl: json['photo_url'] as String?,
+      status: status,
+      locationName: locationName,
+      latitude: lat.toDouble(),
+      longitude: lng.toDouble(),
+      normalizedX: 0.5,
+      normalizedY: 0.5,
+      distanceMeters: null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      tags: tags,
+    );
+  }
+
+  /// Factory constructor for rows returned directly from the `reports` Supabase table.
+  ///
+  /// Column name differences vs. the `nearby_reports` RPC:
+  ///  - `species`   → animalType  (RPC uses `animal_type`)
+  ///  - `user_id`   → reporterId  (RPC uses `reporter_id`)
+  ///  - `animal_name` → title     (RPC may expose `title`)
+  factory MapReportModel.fromTableJson(Map<String, dynamic> json) {
+    final species = json['species'] as String? ?? 'Other';
+    final animalType = json['animal_type'] as String? ?? species;
+    final status = json['status'] as String? ?? 'stray';
+    final desc = json['description'] as String? ?? '';
+    final lat = (json['lat'] ?? json['latitude'] ?? LocationConstants.defaultLatitude) as num;
+    final lng = (json['lng'] ?? json['longitude'] ?? LocationConstants.defaultLongitude) as num;
+
+    // Derive a display title from animal_name or description
+    final rawTitle = json['animal_name'] as String? ?? json['title'] as String?;
+    final title = (rawTitle != null && rawTitle.isNotEmpty)
+        ? rawTitle
+        : (animalType.isNotEmpty ? '$animalType Sighting' : 'Animal Sighting');
+
+    String locationName = json['location_name'] as String? ?? '';
+    if (locationName.isEmpty) {
+      locationName = 'Cebu Community Area';
+    }
+
+    final List<String> tags = [
+      if (animalType.isNotEmpty) animalType,
+      status.toUpperCase(),
+    ];
+
+    return MapReportModel(
+      id: json['id']?.toString() ?? '',
+      reporterId: json['user_id']?.toString() ?? json['reporter_id']?.toString() ?? '',
+      petId: json['pet_id']?.toString(),
+      title: title,
+      animalType: animalType,
+      description: desc,
+      photoUrl: json['photo_url'] as String?,
+      status: status,
+      locationName: locationName,
+      latitude: lat.toDouble(),
+      longitude: lng.toDouble(),
+      normalizedX: 0.5,
+      normalizedY: 0.5,
+      distanceMeters: null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      tags: tags,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

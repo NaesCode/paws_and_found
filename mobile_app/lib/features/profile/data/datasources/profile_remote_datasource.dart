@@ -19,6 +19,15 @@ abstract class ProfileRemoteDataSource {
     String? description,
     List<String> photoUrls = const [],
   });
+  Future<PetModel> updatePet(
+    String petId, {
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  });
   Future<void> deletePet(String petId, {String? reason, String? details});
   Future<void> reportPetMissing(
     String petId, {
@@ -152,6 +161,61 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
+  Future<PetModel> updatePet(
+    String petId, {
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  }) async {
+    final uid = _currentUserId;
+    if (uid == null) {
+      throw Exception('User is not authenticated');
+    }
+
+    if (petId.startsWith('mock-')) {
+      final index = _mockPets.indexWhere((p) => p.petID == petId);
+      if (index != -1) {
+        final existing = _mockPets[index];
+        final updated = PetModel(
+          petID: existing.petID,
+          name: name ?? existing.name,
+          species: species ?? existing.species,
+          breed: breed ?? existing.breed,
+          color: color ?? existing.color,
+          description: description ?? existing.description,
+          photoURLs: photoUrls ?? existing.photoURLs,
+          status: existing.status,
+        );
+        _mockPets[index] = updated;
+        return updated;
+      }
+      throw Exception('Mock pet not found');
+    }
+
+    final updatePayload = <String, dynamic>{
+      if (name != null) 'name': name.trim(),
+      if (species != null) 'species': species.trim(),
+      if (breed != null) 'breed': breed.trim(),
+      if (color != null) 'color': color.trim(),
+      if (description != null) 'description': description.trim(),
+      if (photoUrls != null) 'photo_urls': photoUrls,
+    };
+
+    final data = await supabase
+        .from('pets')
+        .update(updatePayload)
+        .eq('id', petId)
+        .eq('owner_id', uid)
+        .select()
+        .single();
+
+    return PetModel.fromJson(data);
+  }
+
+  @override
   Future<void> deletePet(String petId, {String? reason, String? details}) async {
     final uid = _currentUserId;
     if (uid == null) {
@@ -184,6 +248,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       name: 'Banana',
       species: 'Cat',
       breed: 'Tabby',
+      color: 'Orange',
       description:
           'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
       photoURLs: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'],
@@ -194,6 +259,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       name: 'Mochi',
       species: 'Cat',
       breed: 'Calico',
+      color: 'White & Brown',
       description:
           'A gentle calico cat with distinct white and brown markings. Loves napping in sunny spots.',
       photoURLs: ['https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80'],

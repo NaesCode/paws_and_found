@@ -11,6 +11,7 @@ import '../widgets/identity_block.dart';
 import '../widgets/profile_details.dart';
 import '../widgets/edit_profile_sheet.dart';
 import '../widgets/add_pet_sheet.dart';
+import '../widgets/edit_pet_sheet.dart';
 import '../widgets/delete_pet_sheet.dart';
 import '../../../../core/services/location_service.dart';
 import '../widgets/paws_profile_section.dart';
@@ -289,6 +290,47 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
+  Future<void> _showEditPetSheet(Pet pet) async {
+    if (pet.status == PetStatus.missing) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+          content: Text(
+            'Cannot edit ${pet.name}\'s details while reported missing. Mark them as safe first.',
+          ),
+          backgroundColor: AppColors.accentOrange,
+        ),
+      );
+      return;
+    }
+
+    final updatedPet = await EditPetSheet.show(
+      context: context,
+      pet: pet,
+      repository: _repository,
+    );
+
+    if (updatedPet != null && mounted) {
+      setState(() => _isLoading = true);
+      final updatedPets = await _repository.getPets();
+      if (!mounted) return;
+      setState(() {
+        _pets = updatedPets;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully updated ${updatedPet.name}!'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
   Future<void> _showAddPetSheet() async {
     final newPet = await AddPetSheet.show(
       context: context,
@@ -412,16 +454,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       pets: _pets,
                       isLoading: _isLoading && _pets.isEmpty,
                       onStatusToggle: _handlePetStatusToggle,
+                      onEditPet: _showEditPetSheet,
                       onDeletePet: _showDeletePetSheet,
                       onAddPetPressed: _showAddPetSheet,
-                      onPetTap: (pet) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Pet details for ${pet.name} coming soon.'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
+                      onPetTap: _showEditPetSheet,
                     ),
                   ),
                 ],
