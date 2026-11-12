@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
 
-void showFeedCommentsModal(BuildContext context, {String? reportId, String? petName}) {
+void showFeedCommentsModal(
+  BuildContext context, {
+  String? reportId,
+  String? petName,
+  String? reporterName,
+  String? contactInfo,
+  int initialTab = 0,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -11,6 +18,9 @@ void showFeedCommentsModal(BuildContext context, {String? reportId, String? petN
       return FeedCommentsModal(
         reportId: reportId,
         petName: petName,
+        reporterName: reporterName,
+        contactInfo: contactInfo,
+        initialTab: initialTab,
       );
     },
   );
