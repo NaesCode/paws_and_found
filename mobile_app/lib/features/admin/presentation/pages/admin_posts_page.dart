@@ -1216,30 +1216,44 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                             ],
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
+                        const Divider(height: 1, color: WireframeColors.border),
+                        const SizedBox(height: 12),
+
+                        // Reporter Identity Row with Profile Picture
                         Row(
                           children: [
-                            const Icon(Icons.person_outline,
-                                size: 16, color: WireframeColors.textMuted),
-                            const SizedBox(width: 6),
+                            _buildReporterProfileAvatar(post),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                'Reported by ${post.username}',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: WireframeColors.textSecondary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Icon(Icons.calendar_today_outlined,
-                                size: 14, color: WireframeColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(
-                              post.dateFormatted,
-                              style: const TextStyle(
-                                fontSize: 12.0,
-                                color: WireframeColors.textMuted,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Reported by ${post.username}',
+                                    style: const TextStyle(
+                                      fontSize: 13.0,
+                                      fontWeight: FontWeight.w700,
+                                      color: WireframeColors.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today_outlined,
+                                          size: 13, color: WireframeColors.textMuted),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Posted on ${post.dateFormatted}',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: WireframeColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -1372,6 +1386,62 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildReporterProfileAvatar(AdminPostItem post) {
+    final avatarUrl = post.reporterAvatarUrl?.trim();
+    final hasValidUrl = avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+    final initial = post.username.trim().isNotEmpty
+        ? post.username.trim()[0].toUpperCase()
+        : 'U';
+
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: WireframeColors.primaryDark.withValues(alpha: 0.1),
+        border: Border.all(color: WireframeColors.border, width: 1.2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasValidUrl
+          ? Image.network(
+              avatarUrl,
+              width: 38,
+              height: 38,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _buildAvatarInitialFallback(initial),
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Center(
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: WireframeColors.primaryDark,
+                    ),
+                  ),
+                );
+              },
+            )
+          : _buildAvatarInitialFallback(initial),
+    );
+  }
+
+  Widget _buildAvatarInitialFallback(String initial) {
+    return Center(
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.bold,
+          color: WireframeColors.primaryDark,
+        ),
+      ),
     );
   }
 

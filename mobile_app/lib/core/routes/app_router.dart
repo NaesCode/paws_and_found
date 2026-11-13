@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/admin/presentation/pages/admin_analytics_page.dart';
 import '../../features/admin/presentation/pages/admin_page.dart';
 import '../../features/admin/presentation/pages/admin_posts_page.dart';
 import '../../features/admin/presentation/pages/admin_users_page.dart';
@@ -171,7 +172,8 @@ class AppRouter {
         name: 'admin',
         builder: (context, state) {
           final tabStr = state.uri.queryParameters['tab'];
-          final initialTab = tabStr == 'posts' ? 1 : 0;
+          final initialTab =
+              tabStr == 'analytics' ? 2 : (tabStr == 'posts' ? 1 : 0);
           return AdminPage(initialTabIndex: initialTab);
         },
       ),
@@ -184,6 +186,11 @@ class AppRouter {
         path: '/admin/posts',
         name: 'adminPosts',
         builder: (context, state) => const AdminPostsPage(),
+      ),
+      GoRoute(
+        path: '/admin/analytics',
+        name: 'adminAnalytics',
+        builder: (context, state) => const AdminAnalyticsPage(),
       ),
     ],
   );

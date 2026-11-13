@@ -19,6 +19,10 @@ class ApiConstants {
     defaultValue: '467320972940-c5ac1g2r9kpplk5ddtfhggs2eofvjnd7.apps.googleusercontent.com',
   );
 
+  static const String supabaseUrl = 'https://pbbrnlytulbaylsbpagx.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiYnJubHl0dWxiYXlsc2JwYWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjg0NTgsImV4cCI6MjEwNTY0NDQ1OH0.9m6TPNn04dAk12vCAP8aRngOuQ4lw2vySWM8XbHZtHA';
+
   static String? _resolvedBaseUrl;
 
   /// Returns the active base URL for the Django orchestrator backend.

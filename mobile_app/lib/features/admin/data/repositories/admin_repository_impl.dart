@@ -74,4 +74,23 @@ class AdminRepositoryImpl implements AdminRepository {
       notifyUser: notifyUser,
     );
   }
+
+  @override
+  Future<AdminUserItem> createUser({
+    required String name,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String role = 'User',
+    String status = 'Active',
+  }) {
+    return _remoteDataSource.createUser(
+      name: name,
+      email: email,
+      password: password,
+      phoneNumber: phoneNumber,
+      role: role,
+      status: status,
+    );
+  }
 }

@@ -12,6 +12,7 @@ class AdminUserItem {
   final bool canPostReports;
   final bool canClaimAnimals;
   final String? avatarUrl;
+  final DateTime? createdAt;
 
   const AdminUserItem({
     required this.id,
@@ -25,6 +26,7 @@ class AdminUserItem {
     this.canPostReports = true,
     this.canClaimAnimals = true,
     this.avatarUrl,
+    this.createdAt,
   });
 
   bool get isActive => status.toLowerCase() == 'active';
@@ -44,6 +46,7 @@ class AdminUserItem {
     bool? canPostReports,
     bool? canClaimAnimals,
     String? avatarUrl,
+    DateTime? createdAt,
   }) {
     return AdminUserItem(
       id: id ?? this.id,
@@ -57,6 +60,7 @@ class AdminUserItem {
       canPostReports: canPostReports ?? this.canPostReports,
       canClaimAnimals: canClaimAnimals ?? this.canClaimAnimals,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -79,6 +83,11 @@ class AdminUserItem {
       masked = '${email[0].toLowerCase()}..';
     }
 
+    DateTime? createdAt;
+    if (json['created_at'] != null) {
+      createdAt = DateTime.tryParse(json['created_at'].toString());
+    }
+
     return AdminUserItem(
       id: id,
       name: displayName,
@@ -91,6 +100,7 @@ class AdminUserItem {
       canPostReports: (json['can_post_reports'] as bool?) ?? true,
       canClaimAnimals: (json['can_claim_animals'] as bool?) ?? true,
       avatarUrl: json['profile_photo_url'] as String?,
+      createdAt: createdAt,
     );
   }
 
@@ -106,6 +116,7 @@ class AdminUserItem {
       'can_post_reports': canPostReports,
       'can_claim_animals': canClaimAnimals,
       'profile_photo_url': avatarUrl,
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 

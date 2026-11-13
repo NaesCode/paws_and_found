@@ -4,6 +4,7 @@ import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_user_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
 import '../../domain/repositories/admin_repository.dart';
+import '../utils/admin_export_helper.dart';
 import '../widgets/admin_bottom_nav_bar.dart';
 import '../widgets/admin_header.dart';
 import '../widgets/admin_user_status_pill.dart';
@@ -68,7 +69,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       final users = await _adminRepository.fetchUsers();
       if (!mounted) return;
       setState(() {
-        _allUsers = users;
+        _allUsers = List<AdminUserItem>.from(users);
         _displayedUsers = _filterByQuery(users, _searchController.text);
         _isLoading = false;
       });
@@ -181,7 +182,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
 
                   // Export Button
                   OutlinedButton(
-                    onPressed: () => _showActionFeedback('User export', 'CSV'),
+                    onPressed: _showExportUsersModal,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: WireframeColors.primaryDark,
                       side: const BorderSide(color: WireframeColors.border, width: 1.2),
@@ -202,7 +203,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
 
                   // + Add User Button
                   ElevatedButton(
-                    onPressed: () => _showActionFeedback('Add user modal', 'New User'),
+                    onPressed: _showAddUserModal,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: WireframeColors.primaryDark,
                       foregroundColor: Colors.white,
@@ -807,6 +808,725 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Export Users Functionality (PDF & Excel)
+  // ---------------------------------------------------------------------------
+
+  void _showExportUsersModal() {
+    final parentMessenger = ScaffoldMessenger.of(context);
+    String selectedFormat = 'PDF';
+    bool exportAll = _searchController.text.isEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: WireframeColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            final targetUsers = exportAll ? _allUsers : _displayedUsers;
+            final previewText = AdminExportHelper.generatePreviewSummary(
+              format: selectedFormat,
+              users: targetUsers,
+            );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 16.0,
+                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24.0,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: WireframeColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Export Users',
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  fontWeight: FontWeight.w800,
+                                  color: WireframeColors.primaryDark,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${targetUsers.length} user record${targetUsers.length == 1 ? '' : 's'} ready to export',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: WireframeColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(ctx),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          color: WireframeColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Format Toggle: PDF vs Excel
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => selectedFormat = 'PDF'),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: selectedFormat == 'PDF'
+                                    ? WireframeColors.primaryDark
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.picture_as_pdf_rounded,
+                                    size: 16,
+                                    color: selectedFormat == 'PDF'
+                                        ? Colors.white
+                                        : WireframeColors.textPrimary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'PDF (.pdf)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: selectedFormat == 'PDF'
+                                          ? Colors.white
+                                          : WireframeColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => selectedFormat = 'Excel'),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: selectedFormat == 'Excel'
+                                    ? const Color(0xFF166534)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.table_chart_rounded,
+                                    size: 16,
+                                    color: selectedFormat == 'Excel'
+                                        ? Colors.white
+                                        : WireframeColors.textPrimary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Excel (.xlsx)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: selectedFormat == 'Excel'
+                                          ? Colors.white
+                                          : WireframeColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (_searchController.text.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: Text('Filtered (${_displayedUsers.length})'),
+                            selected: !exportAll,
+                            onSelected: (val) => setModalState(() => exportAll = !val),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: Text('All Users (${_allUsers.length})'),
+                            selected: exportAll,
+                            onSelected: (val) => setModalState(() => exportAll = val),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+                    const Text(
+                      'PREVIEW SPECIFICATIONS',
+                      style: TextStyle(
+                        fontSize: 11.0,
+                        fontWeight: FontWeight.w700,
+                        color: WireframeColors.textMuted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 140,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: WireframeColors.border),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          previewText,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11.0,
+                            color: Color(0xFFE2E8F0),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Export & Share File Button
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final navigator = Navigator.of(ctx);
+                        navigator.pop();
+                        parentMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Successfully exported ${targetUsers.length} user record(s) to $selectedFormat!',
+                            ),
+                            backgroundColor: selectedFormat == 'Excel'
+                                ? const Color(0xFF166534)
+                                : WireframeColors.primaryDark,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        // Trigger async file creation and share dialog
+                        AdminExportHelper.exportAndShare(
+                          format: selectedFormat,
+                          users: targetUsers,
+                        );
+                      },
+                      icon: const Icon(Icons.share_rounded, size: 18),
+                      label: Text(
+                        'Export $selectedFormat File',
+                        style: const TextStyle(
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: selectedFormat == 'Excel'
+                            ? const Color(0xFF166534)
+                            : WireframeColors.primaryDark,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Close Button
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: WireframeColors.textPrimary,
+                        side: const BorderSide(color: WireframeColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add User Functionality
+  // ---------------------------------------------------------------------------
+
+  void _showAddUserModal() {
+    final parentMessenger = ScaffoldMessenger.of(context);
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController(text: 'Paws2026!');
+    final phoneController = TextEditingController();
+
+    String selectedRole = 'User';
+    String selectedStatus = 'Active';
+    bool obscurePassword = true;
+    bool isSubmitting = false;
+    String? submitError;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: WireframeColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 16.0,
+                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24.0,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: WireframeColors.border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Add New User',
+                                  style: TextStyle(
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w800,
+                                    color: WireframeColors.primaryDark,
+                                  ),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Provision a user account from the admin console',
+                                  style: TextStyle(
+                                    fontSize: 12.0,
+                                    color: WireframeColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(ctx),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            color: WireframeColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      if (submitError != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFF87171)),
+                          ),
+                          child: Text(
+                            submitError!,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFFB91C1C),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // Full Name Field
+                      TextFormField(
+                        controller: nameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: 'Full Name *',
+                          hintText: 'e.g. Juan Dela Cruz',
+                          prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter user name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Email Field
+                      TextFormField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'Email Address *',
+                          hintText: 'e.g. juan@example.com',
+                          prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter an email address';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Please enter a valid email address';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Password Field
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Temporary Password *',
+                          hintText: 'Minimum 6 characters',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setModalState(() => obscurePassword = !obscurePassword),
+                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Phone Field (Optional)
+                      TextFormField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number (Optional)',
+                          hintText: '+63 912 345 6789',
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Role Selector
+                      const Text(
+                        'ASSIGNED ROLE',
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.w700,
+                          color: WireframeColors.textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setModalState(() => selectedRole = 'User'),
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: selectedRole == 'User'
+                                      ? WireframeColors.primaryDark.withValues(alpha: 0.08)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: selectedRole == 'User'
+                                        ? WireframeColors.primaryDark
+                                        : WireframeColors.border,
+                                    width: selectedRole == 'User' ? 1.6 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_rounded,
+                                      size: 20,
+                                      color: selectedRole == 'User'
+                                          ? WireframeColors.primaryDark
+                                          : WireframeColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'User',
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setModalState(() => selectedRole = 'Admin'),
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: selectedRole == 'Admin'
+                                      ? const Color(0xFF7C3AED).withValues(alpha: 0.08)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: selectedRole == 'Admin'
+                                        ? const Color(0xFF7C3AED)
+                                        : WireframeColors.border,
+                                    width: selectedRole == 'Admin' ? 1.6 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.admin_panel_settings_rounded,
+                                      size: 20,
+                                      color: selectedRole == 'Admin'
+                                          ? const Color(0xFF7C3AED)
+                                          : WireframeColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Admin',
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Initial Status Selector
+                      const Text(
+                        'INITIAL ACCOUNT STATUS',
+                        style: TextStyle(
+                          fontSize: 11.0,
+                          fontWeight: FontWeight.w700,
+                          color: WireframeColors.textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Active'),
+                            selected: selectedStatus == 'Active',
+                            onSelected: (_) => setModalState(() => selectedStatus = 'Active'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Warning'),
+                            selected: selectedStatus == 'Warning',
+                            onSelected: (_) => setModalState(() => selectedStatus = 'Warning'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Suspended'),
+                            selected: selectedStatus == 'Suspended',
+                            onSelected: (_) => setModalState(() => selectedStatus = 'Suspended'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Create Button
+                      ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) return;
+                                setModalState(() {
+                                  isSubmitting = true;
+                                  submitError = null;
+                                });
+
+                                final navigator = Navigator.of(ctx);
+                                try {
+                                  final newUser = await _adminRepository.createUser(
+                                    name: nameController.text.trim(),
+                                    email: emailController.text.trim(),
+                                    password: passwordController.text.trim(),
+                                    phoneNumber: phoneController.text.trim(),
+                                    role: selectedRole,
+                                    status: selectedStatus,
+                                  );
+
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _allUsers.insert(0, newUser);
+                                    _displayedUsers = _filterByQuery(_allUsers, _searchController.text);
+                                  });
+
+                                  navigator.pop();
+
+                                  parentMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text("User '${newUser.name}' created successfully!"),
+                                      backgroundColor: WireframeColors.primaryDark,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  setModalState(() {
+                                    isSubmitting = false;
+                                    submitError = e.toString().replaceFirst('Exception: ', '');
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WireframeColors.primaryDark,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Create User Account',
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      OutlinedButton(
+                        onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: WireframeColors.textPrimary,
+                          side: const BorderSide(color: WireframeColors.border),
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

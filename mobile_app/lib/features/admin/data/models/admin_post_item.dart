@@ -13,6 +13,8 @@ class AdminPostItem {
   final String? photoUrl;
   final String? description;
   final String? reporterId;
+  final String? reporterAvatarUrl;
+  final DateTime? createdAt;
 
   const AdminPostItem({
     required this.id,
@@ -28,6 +30,8 @@ class AdminPostItem {
     this.photoUrl,
     this.description,
     this.reporterId,
+    this.reporterAvatarUrl,
+    this.createdAt,
   }) : rawId = rawId ?? id;
 
   bool get isMissing => status.toLowerCase() == 'missing';
@@ -51,6 +55,8 @@ class AdminPostItem {
     String? photoUrl,
     String? description,
     String? reporterId,
+    String? reporterAvatarUrl,
+    DateTime? createdAt,
   }) {
     return AdminPostItem(
       id: id ?? this.id,
@@ -66,6 +72,8 @@ class AdminPostItem {
       photoUrl: photoUrl ?? this.photoUrl,
       description: description ?? this.description,
       reporterId: reporterId ?? this.reporterId,
+      reporterAvatarUrl: reporterAvatarUrl ?? this.reporterAvatarUrl,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -153,12 +161,14 @@ class AdminPostItem {
       }
     }
 
-    // Username from joined profiles or email handle
+    // Username and profile photo from joined profiles or email handle
     final profile = json['profiles'] as Map<String, dynamic>?;
     String username = 'anonymous';
+    String? reporterAvatarUrl;
     if (profile != null) {
       final name = (profile['name'] as String?)?.trim();
       final email = (profile['email'] as String?)?.trim();
+      reporterAvatarUrl = (profile['profile_photo_url'] ?? profile['avatar_url']) as String?;
       if (name != null && name.isNotEmpty) {
         username = name;
       } else if (email != null && email.isNotEmpty) {
@@ -168,6 +178,9 @@ class AdminPostItem {
       final repId = json['reporter_id'].toString();
       username = 'user_${repId.length >= 4 ? repId.substring(0, 4) : repId}';
     }
+    reporterAvatarUrl ??= (json['reporter_avatar_url'] ??
+        json['profile_photo_url'] ??
+        json['avatar_url']) as String?;
 
     final moderationStatus =
         (json['moderation_status'] as String?)?.toLowerCase().trim() ?? 'approved';
@@ -193,6 +206,10 @@ class AdminPostItem {
       photoUrl: json['photo_url'] as String?,
       description: description,
       reporterId: json['reporter_id'] as String?,
+      reporterAvatarUrl: reporterAvatarUrl,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 }
