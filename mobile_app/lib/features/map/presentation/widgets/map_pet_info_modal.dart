@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+// import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/wireframe_status_badge.dart';
 import '../../../../shared/atoms/wireframe_tag.dart';
@@ -76,6 +77,7 @@ class MapPetInfoModal extends StatelessWidget {
       context,
       reportId: report.id,
       petName: report.title,
+      initialTab: 1, // Directly focus Community Chat
     );
   }
 
@@ -100,7 +102,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report details copied to clipboard!'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: WireframeColors.primaryDark,
           duration: Duration(seconds: 2),
         ),
       );

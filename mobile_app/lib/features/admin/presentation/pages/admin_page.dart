@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_bottom_nav_bar.dart';
+import 'admin_analytics_page.dart';
 import 'admin_posts_page.dart';
 import 'admin_users_page.dart';
 
@@ -79,6 +80,13 @@ class _AdminPageState extends State<AdminPage> {
             showBottomNav: false,
           ),
           AdminPostsPage(
+            selectedTabIndex: _selectedTab,
+            onTabChanged: _onTabChanged,
+            onLogout: widget.onLogout,
+            repository: widget.repository,
+            showBottomNav: false,
+          ),
+          AdminAnalyticsPage(
             selectedTabIndex: _selectedTab,
             onTabChanged: _onTabChanged,
             onLogout: widget.onLogout,

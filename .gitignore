@@ -56,8 +56,13 @@ app.*.map.json
 # Environment variables & secrets (NEVER commit these)
 .env
 .env.*
+!.env.example
+!*.env.example
 backend/.env
 mobile_app/.env
+client_secret*.json
+*.keystore
+*.jks
 
 # Supabase local CLI cache
 supabase/.temp/
@@ -72,3 +77,4 @@ backend/eval_data/
 eval_data/
 *.pth
 matching_eval_results.csv
+.vscode/settings.json

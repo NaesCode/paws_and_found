@@ -19,7 +19,6 @@ class FeedPostDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          // TODO: change the way this get the names from the db and other details
           'Name: $name',
           style: TextStyle(
             fontWeight: FontWeight.bold,

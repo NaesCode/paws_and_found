@@ -1,6 +1,7 @@
 import 'dart:async' show unawaited;
 import 'package:flutter/foundation.dart';
-import '../../../../core/network/orchestrator_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:paws_and_found/core/network/orchestrator_client.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -34,8 +35,38 @@ class ProfileRepositoryImpl implements ProfileRepository {
     if (phoneNumber != null) fields['phone_number'] = phoneNumber;
     if (address != null) fields['address'] = address;
     if (bio != null) fields['bio'] = bio;
-    if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
 
+    if (profilePhotoURL != null) {
+      fields['profile_photo_url'] = profilePhotoURL;
+      try {
+        // Fetch the user's current profile data to check for an existing photo
+        final currentProfile = await remoteDataSource.getProfile();
+        final String? oldUrl = currentProfile.profilePhotoURL;
+
+        // Only run deletion if a photo existed and it is actually changing
+        if (oldUrl != null && oldUrl.isNotEmpty && oldUrl != profilePhotoURL) {
+          // Token matches the 'user-profile-photo' storage path structure
+          final String storageUrlMatchToken = '/storage/v1/object/public/user-profile-photo/';
+
+          if (oldUrl.contains(storageUrlMatchToken)) {
+            final relativePath = oldUrl.split(storageUrlMatchToken).last;
+
+            final supabase = Supabase.instance.client;
+
+            // Security Check: Enforce that users can only delete out of their own folder
+            if (relativePath.startsWith('${currentProfile.userID}/')) {
+              await supabase.storage
+                  .from('user-profile-photo')
+                  .remove([relativePath]);
+              debugPrint('[ProfileRepositoryImpl] Cleaned up old profile photo: $relativePath');
+            }
+          }
+        }
+      } catch (storageError) {
+        debugPrint('[ProfileRepositoryImpl] Profile photo storage cleanup deferred: $storageError');
+      }
+    }
+    // if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
     return await remoteDataSource.updateProfile(fields);
   }
 
@@ -78,6 +109,67 @@ class ProfileRepositoryImpl implements ProfileRepository {
     }
 
     return pet;
+  }
+
+  @override
+  Future<Pet> updatePet({
+    required String petId,
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  }) async {
+    // 1. Delete-before-upload logic if photoUrls changed (including when removed)
+    if (photoUrls != null) {
+      try {
+        final currentPets = await remoteDataSource.getPets();
+        final matches = currentPets.where((p) => p.petID == petId);
+        final currentPet = matches.isNotEmpty ? matches.first : null;
+        final oldPhoto = (currentPet != null && currentPet.photoURLs.isNotEmpty)
+            ? currentPet.photoURLs.first
+            : null;
+        final newPhoto = photoUrls.isNotEmpty ? photoUrls.first : null;
+
+        if (oldPhoto != null && oldPhoto.isNotEmpty && (photoUrls.isEmpty || oldPhoto != newPhoto)) {
+          const storageUrlMatchToken = '/storage/v1/object/public/animal-photos/';
+          if (oldPhoto.contains(storageUrlMatchToken)) {
+            final relativePath = oldPhoto.split(storageUrlMatchToken).last;
+            final supabase = Supabase.instance.client;
+            final currentUserId = supabase.auth.currentUser?.id;
+
+            if (currentUserId != null && relativePath.startsWith('$currentUserId/')) {
+              await supabase.storage.from('animal-photos').remove([relativePath]);
+              debugPrint('[ProfileRepositoryImpl] Cleaned up old pet photo: $relativePath');
+            }
+          }
+        }
+      } catch (storageError) {
+        debugPrint('[ProfileRepositoryImpl] Pet photo storage cleanup deferred: $storageError');
+      }
+    }
+
+    // 2. Commit update to Supabase
+    final updatedPet = await remoteDataSource.updatePet(
+      petId,
+      name: name,
+      species: species,
+      breed: breed,
+      color: color,
+      description: description,
+      photoUrls: photoUrls,
+    );
+
+    // 3. AI re-embedding & reverse matching dispatch:
+    // If the photo was updated, force-refresh the embedding vector on the Django orchestrator.
+    // Also if the pet is currently missing, the orchestrator's PetAnalyzeView re-runs reverse matching.
+    if (!petId.startsWith('mock-')) {
+      final photoWasUpdated = photoUrls != null && photoUrls.isNotEmpty;
+      unawaited(_requestPetAnalysis(petId, refresh: photoWasUpdated));
+    }
+
+    return updatedPet;
   }
 
   @override

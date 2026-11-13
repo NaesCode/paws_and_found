@@ -48,6 +48,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
   final TextEditingController _breedController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _customSpeciesController = TextEditingController();
 
   String _selectedSpecies = 'Dog';
   final List<String> _speciesOptions = ['Dog', 'Cat', 'Bird', 'Rabbit', 'Other'];
@@ -57,6 +58,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
   final ImagePicker _picker = ImagePicker();
 
   String? _nameError;
+  String? _customSpeciesError;
   String? _generalError;
   bool _isLoading = false;
 
@@ -66,6 +68,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
     _breedController.dispose();
     _colorController.dispose();
     _descriptionController.dispose();
+    _customSpeciesController.dispose();
     super.dispose();
   }
 
@@ -143,10 +146,16 @@ class _AddPetSheetState extends State<AddPetSheet> {
     bool isValid = true;
     setState(() {
       _nameError = null;
+      _customSpeciesError = null;
       _generalError = null;
 
       if (_nameController.text.trim().isEmpty) {
         _nameError = 'Pet name is required';
+        isValid = false;
+      }
+
+      if (_selectedSpecies == 'Other' && _customSpeciesController.text.trim().isEmpty) {
+        _customSpeciesError = 'Please specify the species';
         isValid = false;
       }
     });
@@ -171,6 +180,10 @@ class _AddPetSheetState extends State<AddPetSheet> {
       final color = _colorController.text.trim().isNotEmpty ? _colorController.text.trim() : null;
       final description = _descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null;
 
+      final finalSpecies = _selectedSpecies == 'Other' && _customSpeciesController.text.trim().isNotEmpty
+          ? _customSpeciesController.text.trim()
+          : _selectedSpecies;
+
       List<String> photoUrls = [];
 
       // 1. Upload photo to Supabase Storage if user selected an image
@@ -185,7 +198,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
       // 2. Add pet record in Supabase
       final newPet = await widget.repository.addPet(
         name: name,
-        species: _selectedSpecies,
+        species: finalSpecies,
         breed: breed,
         color: color,
         description: description,
@@ -370,12 +383,32 @@ class _AddPetSheetState extends State<AddPetSheet> {
                       ),
                       onSelected: (selected) {
                         if (selected) {
-                          setState(() => _selectedSpecies = species);
+                          setState(() {
+                            _selectedSpecies = species;
+                            if (species != 'Other') {
+                              _customSpeciesError = null;
+                            }
+                          });
                         }
                       },
                     );
                   }).toList(),
                 ),
+                if (_selectedSpecies == 'Other') ...[
+                  const SizedBox(height: 10),
+                  PawTextField(
+                    hintText: 'Specify species (e.g. Hamster, Turtle, Ferret) *',
+                    controller: _customSpeciesController,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    errorText: _customSpeciesError,
+                    onChanged: (_) {
+                      if (_customSpeciesError != null) {
+                        setState(() => _customSpeciesError = null);
+                      }
+                    },
+                  ),
+                ],
                 const SizedBox(height: 14),
 
                 // Breed Field (Optional)

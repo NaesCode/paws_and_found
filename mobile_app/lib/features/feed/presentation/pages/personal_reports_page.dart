@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -10,6 +11,7 @@ import 'package:paws_and_found/features/feed/presentation/widgets/delete_report_
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/edit_report_sheet.dart';
 
 class PersonalReportsPage extends StatefulWidget {
   final bool showBottomNavPlaceholder;
@@ -36,6 +38,25 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     _fetchPersonalReports(_selectedFilter); // Load initial data
   }
 
+  Future<void> _handleEditReport(FeedPost report) async {
+    final updated = await EditReportSheet.show(
+      context: context,
+      report: report,
+      repository: _repository,
+      useSafeArea: true,
+    );
+
+    if (updated == true && mounted){
+      _fetchPersonalReports(_selectedFilter);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report successfully updated.'),
+          backgroundColor: AppColors.primary,
+        )
+      );
+    }
+  }
+
   Future<void> _handleUndoReport(FeedPost report) async {
     final deleted = await DeleteReportSheet.show(
       context: context,
@@ -60,7 +81,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     setState(
       () {
       _selectedFilter = filterValue;
-       String dbFilterValue = filterValue;
+      String dbFilterValue = filterValue;
       if (filterValue.toLowerCase() == 'spotted') {
         dbFilterValue = 'stray';
       }
@@ -143,23 +164,41 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                   
                   final reports = snapshot.data ?? [];
                   if (reports.isEmpty) {
-                    return const Center(child: Text('No Reports Found'));
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () async {
+                        _fetchPersonalReports(_selectedFilter);
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 120),
+                          Center(child: Text('No Reports Found')),
+                        ],
+                      ),
+                    );
                   }
 
-                  return TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, opacityValue, child) {
-                      return Opacity(
-                        opacity: opacityValue,
-                        child: child,
-                      );
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () async {
+                      _fetchPersonalReports(_selectedFilter);
                     },
-                    child: ListView.separated(
-                      itemCount: reports.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 15),
-                      itemBuilder: (context, index) {
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, opacityValue, child) {
+                        return Opacity(
+                          opacity: opacityValue,
+                          child: child,
+                        );
+                      },
+                      child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: reports.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 15),
+                        itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
@@ -182,15 +221,29 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           button2Text: isMissing ? "Edit" : "Found",
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
-                          onButton1Pressed: () {},
-                          onButton2Pressed: () {},
+                          onButton1Pressed: () {
+                            if (!isMissing) {
+                              _handleEditReport(report);
+                            } else {
+                              // Navigate to Community Map and focus the pin for this report
+                              context.push('/map?reportId=${report.id}');
+                            }
+                          },
+                          onButton2Pressed: () {
+                            if(isMissing){
+                              _handleEditReport(report);
+                            } else{
+                              // mark found or like the pet is already found chuchu or the automatic after the pipeline
+                            }
+                          },
                           onUndoPressed: isWithinGracePeriod
                               ? () => _handleUndoReport(report)
                               : null,
                         );
                       },
                     ),
-                  );
+                  ),
+                );
                 },
               ),
             ),

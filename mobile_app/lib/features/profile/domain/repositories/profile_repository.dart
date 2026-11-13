@@ -34,6 +34,17 @@ abstract class ProfileRepository {
     List<String> photoUrls = const [],
   });
 
+  /// Updates an existing registered pet's details (name, species, breed, color, description, photoUrls).
+  Future<Pet> updatePet({
+    required String petId,
+    String? name,
+    String? species,
+    String? breed,
+    String? color,
+    String? description,
+    List<String>? photoUrls,
+  });
+
   /// Deletes a registered pet with an audit reason.
   Future<void> deletePet(String petId, {String? reason, String? details});
 

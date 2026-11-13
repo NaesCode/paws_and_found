@@ -6,6 +6,7 @@ class PetModel extends Pet {
     required super.name,
     required super.species,
     super.breed,
+    super.color,
     super.description,
     super.photoURLs,
     super.status,
@@ -27,6 +28,7 @@ class PetModel extends Pet {
       name: (json['name'] ?? '') as String,
       species: (json['species'] ?? 'Pet') as String,
       breed: json['breed'] as String?,
+      color: json['color'] as String?,
       description: json['description'] as String?,
       photoURLs: rawPhotos is List ? rawPhotos.map((e) => e.toString()).toList() : const [],
       status: petStatus,
@@ -39,6 +41,7 @@ class PetModel extends Pet {
       'name': name,
       'species': species,
       if (breed != null) 'breed': breed,
+      if (color != null) 'color': color,
       if (description != null) 'description': description,
       'photo_urls': photoURLs,
     };

@@ -384,28 +384,10 @@ class CameraReportController extends ChangeNotifier {
         unawaited(_repository.requestReportAnalysis(reportId));
       } catch (e, stack) {
         debugPrint('[CameraReportController] createReport database error: $e\n$stack');
-        // Fallback for development/wireframe mode
-        final fallbackId = 'rep-${DateTime.now().millisecondsSinceEpoch}';
-        _successReportId = fallbackId;
-
-        MapReportModel.addReport(
-          MapReportModel(
-            id: fallbackId,
-            reporterId: 'current_user',
-            title: '$_animalType (${_status.toUpperCase()})',
-            animalType: _animalType,
-            description: descriptionController.text.trim(),
-            status: _status.toLowerCase(),
-            locationName: _geocodedAddress ?? 'Pinned Location',
-            latitude: lat,
-            longitude: lng,
-            normalizedX: 0.5,
-            normalizedY: 0.5,
-            createdAt: DateTime.now(),
-            tags: [_animalType, _status.toUpperCase()],
-            photoUrl: photoUrl.isNotEmpty ? photoUrl : null,
-          ),
-        );
+        _errorMessage = 'Database submission failed: $e';
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
       }
 
       _isSubmitting = false;

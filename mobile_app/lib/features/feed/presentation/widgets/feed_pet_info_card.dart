@@ -56,7 +56,7 @@ class FeedPetInfoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-               Positioned.fill(
+              Positioned.fill(
                 child: (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))
                     ? Image.network(
                         imageUrl,
@@ -99,7 +99,6 @@ class FeedPetInfoCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: FeedPostDetails(
-                  // TODO: need to change data from db
                   name: name,
                   specie: specie,
                   description: description,
@@ -111,17 +110,13 @@ class FeedPetInfoCard extends StatelessWidget {
                   FeedActionBtns(
                     text: button1Text, 
                     backgroundColor: AppColors.darkCharcoal, 
-                    onPressed: (){
-                      // TODO:function here
-                    }
+                    onPressed: onButton1Pressed,
                   ),
                   const SizedBox(width: 8),
                   FeedActionBtns(
                     text: button2Text, 
                     backgroundColor: AppColors.primary, 
-                    onPressed: (){
-                      // TODO:function here
-                    }
+                    onPressed: onButton2Pressed,
                   )
                 ],
               ),

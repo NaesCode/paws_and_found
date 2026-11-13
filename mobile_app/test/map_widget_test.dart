@@ -184,7 +184,10 @@ void main() {
     testWidgets('MapPage full screen renders with InteractiveMapCanvas and CustomAppBar', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: MapPage(showBottomNavPlaceholder: true),
+          home: MapPage(
+            showBottomNavPlaceholder: true,
+            initialReportId: '8f91a575-653f-4071-a9c8-549152a1cad1',
+          ),
         ),
       );
       await tester.pumpAndSettle();

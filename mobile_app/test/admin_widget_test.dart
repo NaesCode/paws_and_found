@@ -3,11 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:paws_and_found/features/admin/data/models/admin_post_item.dart';
 import 'package:paws_and_found/features/admin/data/models/admin_user_item.dart';
 import 'package:paws_and_found/features/admin/domain/repositories/admin_repository.dart';
+import 'package:paws_and_found/features/admin/presentation/pages/admin_analytics_page.dart';
 import 'package:paws_and_found/features/admin/presentation/pages/admin_page.dart';
 import 'package:paws_and_found/features/admin/presentation/pages/admin_posts_page.dart';
 import 'package:paws_and_found/features/admin/presentation/pages/admin_users_page.dart';
+import 'package:paws_and_found/features/admin/presentation/widgets/admin_bar_chart.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_header.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_moderation_pill.dart';
+import 'package:paws_and_found/features/admin/presentation/widgets/admin_pie_chart.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_post_status_pill.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_user_status_pill.dart';
 
@@ -26,12 +29,12 @@ class FakeAdminRepository implements AdminRepository {
   String? warnedMessage;
 
   FakeAdminRepository({
-    this.users = const [],
+    List<AdminUserItem>? users,
     this.posts = const [],
-  });
+  }) : users = users != null ? List.from(users) : [];
 
   @override
-  Future<List<AdminUserItem>> fetchUsers() async => users;
+  Future<List<AdminUserItem>> fetchUsers() async => List<AdminUserItem>.from(users);
 
   @override
   Future<List<AdminPostItem>> fetchPosts() async => posts;
@@ -94,6 +97,39 @@ class FakeAdminRepository implements AdminRepository {
     reviewedDecision = decision;
     reviewedNotes = notes;
     reviewedNotifyUser = notifyUser;
+  }
+
+  String? createdUserName;
+  String? createdUserEmail;
+  String? createdUserRole;
+  String? createdUserStatus;
+
+  @override
+  Future<AdminUserItem> createUser({
+    required String name,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String role = 'User',
+    String status = 'Active',
+  }) async {
+    createdUserName = name;
+    createdUserEmail = email;
+    createdUserRole = role;
+    createdUserStatus = status;
+
+    final newUser = AdminUserItem(
+      id: 'user-${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      emailMasked: email.isNotEmpty ? '${email[0].toLowerCase()}..' : '--',
+      fullEmail: email,
+      phoneNumber: phoneNumber ?? '',
+      reputation: 0,
+      status: status,
+      role: role,
+    );
+    users.insert(0, newUser);
+    return newUser;
   }
 }
 
@@ -239,16 +275,86 @@ void main() {
       // Tap on Export button
       await tester.tap(find.text('Export'));
       await tester.pumpAndSettle();
-      expect(find.text('User export triggered for CSV'), findsOneWidget);
+      expect(find.text('Export Users'), findsOneWidget);
+      expect(find.text('PDF (.pdf)'), findsOneWidget);
+      expect(find.text('Excel (.xlsx)'), findsOneWidget);
+      expect(find.text('Export PDF File'), findsOneWidget);
+
+      // Toggle to Excel format
+      await tester.tap(find.text('Excel (.xlsx)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Export Excel File'), findsOneWidget);
+
+      // Ensure visible and Tap Export Excel File
+      await tester.ensureVisible(find.text('Export Excel File'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Export Excel File'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Successfully exported'), findsOneWidget);
 
       // Wait for SnackBar to dismiss before next tap
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
       // Tap on + Add User button
       await tester.tap(find.text('+ Add User'));
       await tester.pumpAndSettle();
-      expect(find.text('Add user modal triggered for New User'), findsOneWidget);
+      expect(find.text('Add New User'), findsOneWidget);
+      expect(find.text('Create User Account'), findsOneWidget);
+    });
+
+    testWidgets('Screen 09 — Admin can fill and submit Add User modal to create user', (tester) async {
+      setMobileScreen(tester);
+      final fakeRepo = FakeAdminRepository(
+        users: [
+          const AdminUserItem(
+            id: 'user-01',
+            name: 'Maria Santos',
+            emailMasked: 'm..',
+            reputation: 8,
+            status: 'Active',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminUsersPage(repository: fakeRepo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 users total'), findsOneWidget);
+
+      // Tap on + Add User button
+      await tester.tap(find.text('+ Add User'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add New User'), findsOneWidget);
+
+      // Enter Full Name
+      await tester.enterText(find.widgetWithText(TextFormField, 'Full Name *'), 'Jane Doe');
+      // Enter Email
+      await tester.enterText(find.widgetWithText(TextFormField, 'Email Address *'), 'jane.doe@example.com');
+      // Enter Temporary Password
+      await tester.enterText(find.widgetWithText(TextFormField, 'Temporary Password *'), 'Secret123!');
+      // Enter Phone
+      await tester.enterText(find.widgetWithText(TextFormField, 'Phone Number (Optional)'), '+639123456789');
+
+      await tester.pumpAndSettle();
+
+      // Tap Create User Account
+      await tester.tap(find.text('Create User Account'));
+      await tester.pumpAndSettle();
+
+      // Verify user was created in repository
+      expect(fakeRepo.createdUserName, equals('Jane Doe'));
+      expect(fakeRepo.createdUserEmail, equals('jane.doe@example.com'));
+
+      // Verify new user appears in the UI
+      expect(find.text('Jane Doe'), findsOneWidget);
+      expect(find.text('2 users total'), findsOneWidget);
+      expect(find.text("User 'Jane Doe' created successfully!"), findsOneWidget);
     });
 
     testWidgets('Screen 10 — AdminPostsPage filters and shows action menu', (tester) async {
@@ -395,6 +501,7 @@ void main() {
 
       // Verify modal contents
       expect(find.text('Post #9B2A'), findsOneWidget);
+      expect(find.text('Reported by alice_w'), findsOneWidget);
       expect(find.text('Full Description'), findsOneWidget);
       expect(find.text('Friendly Siberian Husky with a blue collar.'), findsOneWidget);
       expect(find.text('AI Content Moderation Flag'), findsOneWidget);
@@ -419,6 +526,7 @@ void main() {
         'profiles': {
           'name': 'Carlos Gomez',
           'email': 'carlos@example.com',
+          'profile_photo_url': 'https://example.com/carlos.jpg',
         },
         'pets': {
           'name': 'Rex',
@@ -436,6 +544,7 @@ void main() {
       expect(post.status, equals('stray'));
       expect(post.dateFormatted, equals('Oct 30'));
       expect(post.username, equals('Carlos Gomez'));
+      expect(post.reporterAvatarUrl, equals('https://example.com/carlos.jpg'));
       expect(post.isFlagged, isTrue);
     });
 
@@ -452,12 +561,18 @@ void main() {
       // Initially on Tab 0: Users
       expect(find.byKey(const Key('admin_nav_users')), findsOneWidget);
       expect(find.byKey(const Key('admin_nav_posts')), findsOneWidget);
+      expect(find.byKey(const Key('admin_nav_analytics')), findsOneWidget);
       expect(find.text('User Management'), findsWidgets);
 
       // Tap bottom appbar navigation item for Post Management
       await tester.tap(find.byKey(const Key('admin_nav_posts')));
       await tester.pumpAndSettle();
       expect(find.text('Post Management'), findsWidgets);
+
+      // Tap bottom appbar navigation item for Analytics
+      await tester.tap(find.byKey(const Key('admin_nav_analytics')));
+      await tester.pumpAndSettle();
+      expect(find.text('Analytics & Insights'), findsWidgets);
 
       // Tap bottom appbar navigation item for User Management
       await tester.tap(find.byKey(const Key('admin_nav_users')));
@@ -688,6 +803,104 @@ void main() {
       expect(fakeRepo.reviewedDecision, equals('request_edit'));
       expect(fakeRepo.reviewedNotifyUser, isTrue);
       expect(find.textContaining('Edit Requested'), findsOneWidget);
+    });
+
+    testWidgets('AdminAnalyticsPage renders KPI metrics, user growth, and post status pie chart', (tester) async {
+      setMobileScreen(tester);
+
+      final fakeRepo = FakeAdminRepository(
+        users: [
+          AdminUserItem(
+            id: 'u-1',
+            name: 'Sarah Connor',
+            emailMasked: 's..',
+            status: 'Active',
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+          AdminUserItem(
+            id: 'u-2',
+            name: 'Kyle Reese',
+            emailMasked: 'k..',
+            status: 'Warning',
+            createdAt: DateTime.now().subtract(const Duration(days: 10)),
+          ),
+        ],
+        posts: [
+          const AdminPostItem(
+            id: '#001',
+            title: 'Max',
+            status: 'missing',
+            dateFormatted: 'Nov 1',
+            username: 'sarah_c',
+          ),
+          const AdminPostItem(
+            id: '#002',
+            title: 'Bella',
+            status: 'stray',
+            dateFormatted: 'Nov 2',
+            username: 'kyle_r',
+          ),
+          const AdminPostItem(
+            id: '#003',
+            title: 'Charlie',
+            status: 'found',
+            dateFormatted: 'Nov 3',
+            username: 'sarah_c',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminAnalyticsPage(repository: fakeRepo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Header & Filters
+      expect(find.text('Analytics & Insights'), findsOneWidget);
+      expect(find.text('All Insights'), findsOneWidget);
+      expect(find.text('Users'), findsOneWidget);
+      expect(find.text('Posts'), findsOneWidget);
+
+      // KPI summary metrics
+      expect(find.text('TOTAL USERS'), findsOneWidget);
+      expect(find.text('TOTAL POSTS'), findsWidgets);
+
+      // User Analytics Section
+      expect(find.text('User Growth & Velocity'), findsOneWidget);
+      expect(find.text('This Week'), findsOneWidget);
+      expect(find.text('This Month'), findsOneWidget);
+      expect(find.text('REGISTRATION ACTIVITY'), findsOneWidget);
+      expect(find.text('ACCOUNT STATUS DISTRIBUTION'), findsOneWidget);
+
+      // Switch Timeframe from This Week to This Month
+      await tester.tap(find.text('This Month'));
+      await tester.pumpAndSettle();
+      expect(find.text('Wk 1'), findsOneWidget);
+      expect(find.text('Wk 4'), findsOneWidget);
+
+      // Post Analytics Section (Pie Chart)
+      expect(find.text('Post Status Breakdown'), findsOneWidget);
+      expect(find.text('Missing Pets'), findsOneWidget);
+      expect(find.text('Stray Sightings'), findsOneWidget);
+      expect(find.text('Found / Reunited'), findsOneWidget);
+
+      // Verify custom charts are present
+      expect(find.byType(AdminPieChart), findsOneWidget);
+      expect(find.byType(AdminBarChart), findsOneWidget);
+
+      // Filter tabs: click Users -> Post section is hidden
+      await tester.tap(find.text('Users'));
+      await tester.pumpAndSettle();
+      expect(find.text('User Growth & Velocity'), findsOneWidget);
+      expect(find.text('Post Status Breakdown'), findsNothing);
+
+      // Filter tabs: click Posts -> User section is hidden
+      await tester.tap(find.text('Posts'));
+      await tester.pumpAndSettle();
+      expect(find.text('User Growth & Velocity'), findsNothing);
+      expect(find.text('Post Status Breakdown'), findsOneWidget);
     });
 
   });

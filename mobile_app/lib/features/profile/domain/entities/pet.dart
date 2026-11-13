@@ -10,6 +10,7 @@ class Pet {
   final String name;
   final String species;
   final String? breed;
+  final String? color;
   final String? description;
   final List<String> photoURLs;
   final PetStatus status;
@@ -19,6 +20,7 @@ class Pet {
     required this.name,
     required this.species,
     this.breed,
+    this.color,
     this.description,
     this.photoURLs = const [],
     this.status = PetStatus.safe,
@@ -43,6 +45,7 @@ class Pet {
     String? name,
     String? species,
     String? breed,
+    String? color,
     String? description,
     List<String>? photoURLs,
     PetStatus? status,
@@ -52,6 +55,7 @@ class Pet {
       name: name ?? this.name,
       species: species ?? this.species,
       breed: breed ?? this.breed,
+      color: color ?? this.color,
       description: description ?? this.description,
       photoURLs: photoURLs ?? this.photoURLs,
       status: status ?? this.status,

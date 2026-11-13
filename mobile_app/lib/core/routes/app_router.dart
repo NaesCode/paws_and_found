@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/admin/presentation/pages/admin_analytics_page.dart';
 import '../../features/admin/presentation/pages/admin_page.dart';
 import '../../features/admin/presentation/pages/admin_posts_page.dart';
 import '../../features/admin/presentation/pages/admin_users_page.dart';
@@ -13,41 +14,30 @@ import '../../features/report/presentation/pages/camera_report_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    // =========================================================================
-    // TODO: TESTING ONLY - Launches directly into the map screen on startup
-    // so the map pins and pet info modal can be verified immediately.
-    // NOTE: MUST BE REVERTED TO '/login' AFTER TESTING.
-    // =========================================================================
-    initialLocation: '/map',
+    initialLocation: '/login',
 
     /// Global redirect guard.
     ///
     /// Runs before every navigation attempt.
     /// Rules:
-    ///   1. Public routes ('/login', '/map', '/camera', '/report') are accessible without auth.
-    ///   2. If user is NOT logged in and not heading to a public route → redirect to /login.
-    ///   3. If user IS logged in and tries to reach /login:
-    ///      - If admin → redirect to /admin.
-    ///      - Otherwise → redirect to /home.
-    ///   4. If user attempts to reach '/admin' routes:
+    ///   1. If user is NOT logged in and not heading to '/login' → redirect to '/login'.
+    ///   2. If user IS logged in and tries to reach '/login':
+    ///      - If admin → redirect to '/admin'.
+    ///      - Otherwise → redirect to '/home'.
+    ///   3. If user attempts to reach '/admin' routes:
     ///      - Must be logged in AND have admin claims in app_metadata.
-    ///      - Otherwise → redirect to /home (or /login if not authenticated).
-    ///   5. Otherwise → allow navigation.
+    ///      - Otherwise → redirect to '/home' (or '/login' if not authenticated).
+    ///   4. Otherwise → allow navigation.
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
       final user = Supabase.instance.client.auth.currentUser;
 
-      final isPublicRoute =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/map' ||
-          state.matchedLocation == '/camera' ||
-          state.matchedLocation == '/report';
-
+      final isHeadingToLogin = state.matchedLocation == '/login';
       final isHeadingToAdmin = state.matchedLocation.startsWith('/admin');
 
-      // 1. Not logged in and NOT heading to a public route → force login
-      if (!isLoggedIn && !isPublicRoute) {
+      // 1. Not logged in and NOT heading to login → force login
+      if (!isLoggedIn && !isHeadingToLogin) {
         ScaffoldMessenger.of(context).clearSnackBars();
         return '/login';
       }
@@ -58,18 +48,17 @@ class AppRouter {
            user.appMetadata['role'] == 'admin' ||
            user.appMetadata['role'] == 'ADMIN');
 
-      // 2. Already logged in and heading to login → send to respective home
-      // Clear any lingering snackbars when heading to login
-      if (state.matchedLocation == '/login') {
+      // 2. Clear any lingering snackbars when heading to login
+      if (isHeadingToLogin) {
         ScaffoldMessenger.of(context).clearSnackBars();
       }
 
-      // Already logged in and heading to login → send to home
-      if (isLoggedIn && state.matchedLocation == '/login') {
+      // 3. Already logged in and heading to login → send to respective home
+      if (isLoggedIn && isHeadingToLogin) {
         return isAdmin ? '/admin' : '/home';
       }
 
-      // 3. Admin Access Gate: Only authenticated admins can access /admin
+      // 4. Admin Access Gate: Only authenticated admins can access /admin
       if (isHeadingToAdmin) {
         if (!isLoggedIn) {
           return '/login';
@@ -183,7 +172,8 @@ class AppRouter {
         name: 'admin',
         builder: (context, state) {
           final tabStr = state.uri.queryParameters['tab'];
-          final initialTab = tabStr == 'posts' ? 1 : 0;
+          final initialTab =
+              tabStr == 'analytics' ? 2 : (tabStr == 'posts' ? 1 : 0);
           return AdminPage(initialTabIndex: initialTab);
         },
       ),
@@ -196,6 +186,11 @@ class AppRouter {
         path: '/admin/posts',
         name: 'adminPosts',
         builder: (context, state) => const AdminPostsPage(),
+      ),
+      GoRoute(
+        path: '/admin/analytics',
+        name: 'adminAnalytics',
+        builder: (context, state) => const AdminAnalyticsPage(),
       ),
     ],
   );

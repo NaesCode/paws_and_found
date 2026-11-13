@@ -1,5 +1,9 @@
 // ignore_for_file: use_null_aware_elements
+import 'dart:async' show unawaited;
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:paws_and_found/core/network/orchestrator_client.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
@@ -7,7 +11,14 @@ import 'package:paws_and_found/features/feed/domain/repositories/feed_repository
 //fetching data both personal and general with each filters na
 
 class FeedRepositoryImpl implements FeedRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase;
+  final OrchestratorClient _orchestratorClient;
+
+  FeedRepositoryImpl({
+    SupabaseClient? supabaseClient,
+    OrchestratorClient? orchestratorClient,
+  })  : _supabase = supabaseClient ?? Supabase.instance.client,
+        _orchestratorClient = orchestratorClient ?? OrchestratorClient();
 
   @override
   Future<List<FeedPost>> getPersonalReports(String userId, {String? filterStatus}) async {
@@ -17,6 +28,7 @@ class FeedRepositoryImpl implements FeedRepository {
         reporter_id,
         pet_id,
         animal_type,
+        animal_name,
         description,
         photo_url,
         location_name,
@@ -52,6 +64,7 @@ class FeedRepositoryImpl implements FeedRepository {
         photo_url, 
         location_name, 
         status, 
+        animal_name,
         analysis_status, 
         moderation_status, 
         created_at,
@@ -86,6 +99,7 @@ class FeedRepositoryImpl implements FeedRepository {
         photo_url, 
         location_name, 
         status, 
+        animal_name,
         analysis_status, 
         moderation_status,
         created_at,
@@ -183,7 +197,8 @@ class FeedRepositoryImpl implements FeedRepository {
             moderation_status,
             created_at,
             profiles(name, profile_photo_url),
-            pets(name)
+            pets(name),
+            animal_name
           ''')
           .eq('linked_report_id', reportId)
           .order('created_at', ascending: false);
@@ -239,4 +254,118 @@ class FeedRepositoryImpl implements FeedRepository {
       }
     }
   }
+
+  @override
+  Future<String> uploadReportPhoto(
+    Uint8List bytes, {
+    String extension = 'jpg',
+  }) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) throw Exception('User is not authenticated');
+    const uuid = Uuid();
+    final path = '$uid/${uuid.v4()}.$extension';
+
+    await _supabase.storage.from('animal-photos').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: 'image/$extension',
+        upsert: false,
+      ),
+    );
+    return _supabase.storage.from('animal-photos').getPublicUrl(path);
+  }
+
+  @override
+  Future<void> updateReport(
+    String reportId, {
+    String? description,
+    String? locationName,
+    String? status,
+    String? animalType,
+    String? photoUrl,
+    String? petId,
+    String? petName,
+    double? lat,
+    double? lng,
+    String? specie,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (description != null) updates['description'] = description.trim();
+      if (locationName != null) updates['location_name'] = locationName.trim();
+      if (status != null) updates['status'] = status.toLowerCase();
+      if (animalType != null) updates['animal_type'] = animalType.trim();
+      
+      if (petId == null && specie != null && specie.isNotEmpty) {
+        updates['animal_type'] = specie.trim();
+      }
+
+      if (petId == null && petName != null && petName.trim().isNotEmpty) {
+        updates['animal_name'] = petName.trim();
+      }
+
+      if (lat != null && lng != null) {
+        updates['location'] = 'POINT($lng $lat)';
+      }
+
+      // delete-before-upload logic ni siya
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        updates['photo_url'] = photoUrl;
+
+        // Reset analysis_status so the AI orchestrator re-extracts embeddings for the new photo.
+        // Without this, matching.py would continue using stale feature vectors from the old image.
+        updates['analysis_status'] = 'pending';
+
+        // Fetch the current report from the database to see if a photo already exists
+        final currentReport = await getReportById(reportId);
+        
+        if (currentReport != null && currentReport.imageUrl.isNotEmpty) {
+          final oldUrl = currentReport.imageUrl;
+
+          // Only delete if the image actually changed
+          if (oldUrl != photoUrl) {
+            try {
+              // Extract the relative storage path out of the full Public URL
+              final String storageUrlMatchToken = '/storage/v1/object/public/animal-photos/';
+              
+              if (oldUrl.contains(storageUrlMatchToken)) {
+                final relativePath = oldUrl.split(storageUrlMatchToken).last;
+                
+                // Delete the old photo from the bucket immediately
+                await _supabase.storage
+                  .from('animal-photos')
+                  .remove([relativePath]);
+              }
+            } catch (storageError) {
+              // Log the error but don't crash the application; let the DB update proceed
+              debugPrint('[FeedRepositoryImpl] Failed to delete orphaned storage file: $storageError');
+            }
+          }
+        }
+      }
+
+      if (updates.isNotEmpty) {
+        await _supabase.from('reports').update(updates).eq('id', reportId);
+
+        // If the photo was changed, trigger an asynchronous re-analysis on the orchestrator
+        if (photoUrl != null && photoUrl.isNotEmpty) {
+          unawaited(_requestReportAnalysis(reportId));
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to update report: $e');
+    }
+  }
+
+  /// Requests the AI micro-orchestrator to re-extract embeddings and re-run forward matching
+  Future<void> _requestReportAnalysis(String reportId) async {
+    try {
+      await _orchestratorClient.post('/api/reports/$reportId/analyze/');
+      debugPrint('[FeedRepositoryImpl] AI re-analysis requested for report: $reportId');
+    } catch (e) {
+      debugPrint('[FeedRepositoryImpl] AI re-analysis dispatch deferred (orchestrator offline): $e');
+    }
+  }
 }
+

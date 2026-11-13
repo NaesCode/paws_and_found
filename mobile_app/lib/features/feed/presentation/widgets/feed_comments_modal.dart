@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
@@ -14,12 +15,16 @@ class FeedCommentsModal extends StatefulWidget {
   final String? reportId;
   final String? petName;
   final int initialTab;
+  final String? reporterName;
+  final String? contactInfo;
 
   const FeedCommentsModal({
     super.key,
     this.reportId,
     this.petName,
     this.initialTab = 0,
+    this.reporterName,
+    this.contactInfo,
   });
 
   @override
@@ -34,6 +39,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
 
   List<FeedComment> _comments = [];
   List<FeedPost> _sightings = [];
+  FeedPost? _reportPost;
   bool _isLoading = false;
   String? _errorMessage;
   late int _selectedTab;
@@ -56,12 +62,14 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
       final results = await Future.wait([
         _repository.getComments(widget.reportId!),
         _repository.getLinkedSightings(widget.reportId!),
+        _repository.getReportById(widget.reportId!),
       ]);
 
       if (mounted) {
         setState(() {
           _comments = results[0] as List<FeedComment>;
           _sightings = results[1] as List<FeedPost>;
+          _reportPost = results[2] as FeedPost?;
           _isLoading = false;
         });
       }
@@ -158,6 +166,9 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                   ),
                 ),
 
+                // Contact / Case Lead Banner (Option C)
+                _buildContactBanner(),
+
                 // Dual-Tab Switcher: Sightings Dashboard vs. Community Chat
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
@@ -225,6 +236,117 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildContactBanner() {
+    final ownerName = widget.reporterName ?? _reportPost?.postedBy ?? 'Pet Owner';
+
+    // Look for phone in widget.contactInfo first, then regex search in report description
+    String? phone = widget.contactInfo;
+    if ((phone == null || phone.isEmpty) && _reportPost != null && _reportPost!.description.isNotEmpty) {
+      final phoneRegex = RegExp(r'(\+?63\s?|0)9\d{2}[\s\-]?\d{3}[\s\-]?\d{4}|\b\d{3}[\s\-]?\d{4}\b');
+      final match = phoneRegex.firstMatch(_reportPost!.description);
+      if (match != null) {
+        phone = match.group(0);
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+            child: const Icon(Icons.person_pin_circle_rounded, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Case Lead: $ownerName',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.darkCharcoal,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (phone != null && phone.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.phone_rounded, size: 12, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        phone,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  const Text(
+                    'Message the owner directly in the discussion below.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.text3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (phone != null && phone.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.copy_rounded, size: 18, color: AppColors.primary),
+              tooltip: 'Copy Phone Number',
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: phone!));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Phone number copied to clipboard!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            )
+          else
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.primary),
+              label: const Text('Chat', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+              onPressed: () {
+                if (_selectedTab != 1) {
+                  setState(() => _selectedTab = 1);
+                }
+                _commentFocusNode.requestFocus();
+              },
+            ),
+        ],
+      ),
     );
   }
 

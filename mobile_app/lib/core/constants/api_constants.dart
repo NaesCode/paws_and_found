@@ -10,6 +10,18 @@ class ApiConstants {
 
   static const String djangoBaseUrl = String.fromEnvironment('DJANGO_BASE_URL');
   static const String ngrokUrl = String.fromEnvironment('NGROK_URL');
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: '467320972940-idmruqnpvd1fvuv1h7l24oqpvjcn56qb.apps.googleusercontent.com',
+  );
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
+    defaultValue: '467320972940-c5ac1g2r9kpplk5ddtfhggs2eofvjnd7.apps.googleusercontent.com',
+  );
+
+  static const String supabaseUrl = 'https://pbbrnlytulbaylsbpagx.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiYnJubHl0dWxiYXlsc2JwYWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjg0NTgsImV4cCI6MjEwNTY0NDQ1OH0.9m6TPNn04dAk12vCAP8aRngOuQ4lw2vySWM8XbHZtHA';
 
   static String? _resolvedBaseUrl;
 
