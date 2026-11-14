@@ -46,7 +46,9 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
   List<AdminPostItem> _allPosts = [];
   bool _isLoading = true;
   String? _errorMessage;
-  String _selectedFilter = 'all'; // 'all', 'missing', 'stray', 'found'
+  String _selectedFilter = 'all'; // 'all', 'flagged', 'missing', 'stray', 'found'
+  String _timeFilter = 'all'; // 'all', 'today', 'week', 'month'
+  String _timeSortOrder = 'none'; // 'none', 'latest', 'oldest'
 
   @override
   void initState() {
@@ -80,18 +82,132 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     }
   }
 
-  List<AdminPostItem> get _filteredPosts {
-    if (_selectedFilter == 'all') {
-      return _allPosts;
+  DateTime _getPostDate(AdminPostItem post) {
+    if (post.createdAt != null) {
+      return post.createdAt!;
     }
-    if (_selectedFilter == 'flagged') {
-      return _allPosts
+
+    if (post.dateFormatted.isNotEmpty && post.dateFormatted != 'Recent') {
+      const months = {
+        'jan': 1,
+        'feb': 2,
+        'mar': 3,
+        'apr': 4,
+        'may': 5,
+        'jun': 6,
+        'jul': 7,
+        'aug': 8,
+        'sep': 9,
+        'oct': 10,
+        'nov': 11,
+        'dec': 12,
+      };
+      final parts = post.dateFormatted.trim().split(RegExp(r'\s+'));
+      if (parts.length >= 2) {
+        final mStr = parts[0].toLowerCase();
+        final dStr = parts[1];
+        final m = months[mStr];
+        final d = int.tryParse(dStr);
+        if (m != null && d != null) {
+          final now = DateTime.now();
+          int y = now.year;
+          if (m > now.month) {
+            y = now.year - 1;
+          }
+          return DateTime(y, m, d);
+        }
+      }
+    }
+
+    final numMatch = RegExp(r'\d+').firstMatch(post.id);
+    if (numMatch != null) {
+      final val = int.tryParse(numMatch.group(0)!) ?? 0;
+      return DateTime(2024, 1, 1).add(Duration(days: val));
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  List<AdminPostItem> get _filteredPosts {
+    // 1. Status Filter
+    List<AdminPostItem> list;
+    if (_selectedFilter == 'all') {
+      list = List.from(_allPosts);
+    } else if (_selectedFilter == 'flagged') {
+      list = _allPosts
           .where((p) => p.isFlagged || p.isModerationFlagged)
           .toList();
+    } else {
+      list = _allPosts
+          .where((p) => p.status.toLowerCase() == _selectedFilter)
+          .toList();
     }
-    return _allPosts
-        .where((p) => p.status.toLowerCase() == _selectedFilter)
-        .toList();
+
+    // 2. Time Range Filter: 'all', 'today', 'week', 'month'
+    if (_timeFilter != 'all') {
+      final now = DateTime.now();
+      list = list.where((p) {
+        final postDate = _getPostDate(p);
+        if (_timeFilter == 'today') {
+          return (postDate.year == now.year &&
+                  postDate.month == now.month &&
+                  postDate.day == now.day) ||
+              now.difference(postDate).inHours.abs() < 24;
+        } else if (_timeFilter == 'week') {
+          final diff = now.difference(postDate);
+          return !diff.isNegative && diff.inDays <= 7;
+        } else if (_timeFilter == 'month') {
+          final diff = now.difference(postDate);
+          return (postDate.year == now.year && postDate.month == now.month) ||
+              (!diff.isNegative && diff.inDays <= 30);
+        }
+        return true;
+      }).toList();
+    }
+
+    // 3. Chronological Sort: 'latest' (newest first) vs 'oldest' (oldest first)
+    if (_timeSortOrder != 'none') {
+      list.sort((a, b) {
+        final dateA = _getPostDate(a);
+        final dateB = _getPostDate(b);
+        final comp = dateB.compareTo(dateA); // Descending (latest first)
+        if (comp != 0) {
+          return _timeSortOrder == 'latest' ? comp : -comp;
+        }
+        // Tie-breaker by ID
+        final idComp = b.id.compareTo(a.id);
+        return _timeSortOrder == 'latest' ? idComp : -idComp;
+      });
+    }
+
+    return list;
+  }
+
+  String _getFilterSummaryText(int count) {
+    final parts = <String>[];
+    if (_timeFilter != 'all') {
+      switch (_timeFilter) {
+        case 'today':
+          parts.add('Today');
+          break;
+        case 'week':
+          parts.add('This Week');
+          break;
+        case 'month':
+          parts.add('This Month');
+          break;
+      }
+    }
+    if (_timeSortOrder == 'latest') {
+      parts.add('Latest first');
+    } else if (_timeSortOrder == 'oldest') {
+      parts.add('Oldest first');
+    }
+
+    if (parts.isEmpty) {
+      return '$count posts';
+    }
+    return '$count posts · ${parts.join(', ')}';
   }
 
   int get _flaggedCount =>
@@ -1461,10 +1577,10 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               onLogout: widget.onLogout,
             ),
 
-            // 2. Filter Chips Bar (All, Flagged, Missing, Stray, Found)
+            // 2. Status Filter Chips Bar (All, Flagged, Missing, Stray, Found)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 5.0),
               child: Row(
                 children: [
                   _buildFilterChip('All', 'all'),
@@ -1480,35 +1596,74 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               ),
             ),
 
-            // 3. Flagged count indicator row below Filter Chips
+            // 2b. Time Filter & Chronological Order Bar (All Time, Today, This Week, This Month | Latest, Oldest)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 3.0),
+              child: Row(
+                children: [
+                  _buildTimeFilterChip('All Time', 'all', icon: Icons.access_time_rounded),
+                  const SizedBox(width: 6),
+                  _buildTimeFilterChip('Today', 'today'),
+                  const SizedBox(width: 6),
+                  _buildTimeFilterChip('This Week', 'week'),
+                  const SizedBox(width: 6),
+                  _buildTimeFilterChip('This Month', 'month'),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    width: 1.0,
+                    height: 18.0,
+                    color: AppColors.border,
+                  ),
+                  _buildSortChip('Latest', 'latest', Icons.arrow_downward_rounded),
+                  const SizedBox(width: 6),
+                  _buildSortChip('Oldest', 'oldest', Icons.arrow_upward_rounded),
+                ],
+              ),
+            ),
+
+            // 3. Flagged count indicator row & active filter summary
             Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 4.0, 16.0, 8.0),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Flagged count badge with '!'
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11.0,
+                  Row(
+                    children: [
+                      // Flagged count badge with '!'
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11.0,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_flaggedCount flagged',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
                   Text(
-                    '$_flaggedCount flagged',
+                    _getFilterSummaryText(_filteredPosts.length),
                     style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.0,
+                      color: AppColors.textMuted,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1669,15 +1824,30 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _selectedFilter == 'all'
-                          ? 'No posts available'
-                          : 'No $_selectedFilter posts found',
+                      _selectedFilter != 'all'
+                          ? 'No $_selectedFilter posts found'
+                          : (_timeFilter != 'all'
+                              ? 'No posts found for this time filter'
+                              : 'No posts available'),
                       style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    if (_selectedFilter != 'all' || _timeFilter != 'all') ...[
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedFilter = 'all';
+                            _timeFilter = 'all';
+                            _timeSortOrder = 'none';
+                          });
+                        },
+                        child: const Text('Reset Filters'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1874,6 +2044,107 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
             fontSize: 12.0,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeFilterChip(String label, String value, {IconData? icon}) {
+    final isSelected = _timeFilter == value;
+
+    return InkWell(
+      key: ValueKey('btn_time_filter_$value'),
+      onTap: () {
+        setState(() {
+          _timeFilter = value;
+        });
+      },
+      borderRadius: BorderRadius.circular(8.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? WireframeColors.primaryDark
+              : WireframeColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(
+            color: isSelected ? WireframeColors.primaryDark : WireframeColors.border,
+            width: 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 13.0,
+                color:
+                    isSelected ? Colors.white : WireframeColors.textSecondary,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color:
+                    isSelected ? Colors.white : WireframeColors.textSecondary,
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortChip(String label, String value, IconData icon) {
+    final isSelected = _timeSortOrder == value;
+
+    return InkWell(
+      key: ValueKey('btn_sort_$value'),
+      onTap: () {
+        setState(() {
+          if (_timeSortOrder == value) {
+            _timeSortOrder = 'none';
+          } else {
+            _timeSortOrder = value;
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? WireframeColors.primaryDark
+              : WireframeColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(
+            color: isSelected ? WireframeColors.primaryDark : WireframeColors.border,
+            width: 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13.0,
+              color: isSelected ? Colors.white : WireframeColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color:
+                    isSelected ? Colors.white : WireframeColors.textSecondary,
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

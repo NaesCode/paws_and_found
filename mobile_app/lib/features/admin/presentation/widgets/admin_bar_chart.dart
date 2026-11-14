@@ -58,7 +58,9 @@ class AdminBarChart extends StatelessWidget {
 
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: groups.length > 8 ? 1.5 : 4.0,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -66,7 +68,7 @@ class AdminBarChart extends StatelessWidget {
                       Text(
                         g.value.toString(),
                         style: TextStyle(
-                          fontSize: 11.0,
+                          fontSize: groups.length > 8 ? 9.5 : 11.0,
                           fontWeight: g.isHighlight ? FontWeight.w800 : FontWeight.w600,
                           color: g.isHighlight
                               ? WireframeColors.primaryDark
@@ -86,8 +88,8 @@ class AdminBarChart extends StatelessWidget {
                               : (g.value > 0
                                   ? WireframeColors.primaryDark.withValues(alpha: 0.65)
                                   : WireframeColors.border),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(5.0),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(groups.length > 8 ? 3.0 : 5.0),
                           ),
                         ),
                       ),
@@ -113,8 +115,9 @@ class AdminBarChart extends StatelessWidget {
               child: Center(
                 child: Text(
                   g.label,
+                  maxLines: 1,
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: groups.length > 8 ? 9.0 : 10.5,
                     fontWeight: g.isHighlight ? FontWeight.w700 : FontWeight.w500,
                     color: g.isHighlight
                         ? WireframeColors.primaryDark

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository_impl.dart';
 

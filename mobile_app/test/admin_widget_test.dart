@@ -357,6 +357,76 @@ void main() {
       expect(find.text("User 'Jane Doe' created successfully!"), findsOneWidget);
     });
 
+    testWidgets('Screen 09 — Admin can tap user row to view full details card with un-truncated email and copy actions', (tester) async {
+      setMobileScreen(tester);
+      final fakeRepo = FakeAdminRepository(
+        users: [
+          const AdminUserItem(
+            id: 'usr-uuid-999',
+            name: 'Sarah Connor',
+            emailMasked: 's..',
+            fullEmail: 'sarah.connor.resistance@cyberdyne.org',
+            phoneNumber: '+63 917 555 0199',
+            reputation: 42,
+            status: 'Active',
+            role: 'Admin',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminUsersPage(repository: fakeRepo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // In the compact table, name and status are visible, email column is omitted from table
+      expect(find.text('Sarah Connor'), findsOneWidget);
+      expect(find.text('EMAIL'), findsNothing);
+      expect(find.text('s..'), findsNothing);
+      expect(find.text('sarah.connor.resistance@cyberdyne.org'), findsNothing);
+
+      // Tap on the user row to open full details card
+      await tester.tap(find.text('Sarah Connor'));
+      await tester.pumpAndSettle();
+
+      // Card Header
+      expect(find.text('User Information'), findsOneWidget);
+      expect(find.text('CONTACT & IDENTITY'), findsOneWidget);
+
+      // Full un-truncated email and contact details are visible in the card
+      expect(find.text('sarah.connor.resistance@cyberdyne.org'), findsOneWidget);
+      expect(find.text('+63 917 555 0199'), findsOneWidget);
+      expect(find.text('Member Since'), findsOneWidget);
+
+      // UUID, Reputation points, and Account Standing & Permissions are NOT included per specifications
+      expect(find.text('usr-uuid-999'), findsNothing);
+      expect(find.text('42 pts'), findsNothing);
+      expect(find.text('ACCOUNT STANDING & PERMISSIONS'), findsNothing);
+      expect(find.text('Can Post Sighting Reports'), findsNothing);
+      expect(find.text('Can Claim Found Animals'), findsNothing);
+
+      // Test Copy button
+      final copyEmailBtn = find.byTooltip('Copy full email');
+      expect(copyEmailBtn, findsOneWidget);
+      await tester.tap(copyEmailBtn);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('copied to clipboard'), findsOneWidget);
+
+      // Dismiss SnackBar
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      // Tap Close button
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      // Card is dismissed, back to table
+      expect(find.text('User Information'), findsNothing);
+      expect(find.text('Sarah Connor'), findsOneWidget);
+    });
+
     testWidgets('Screen 10 — AdminPostsPage filters and shows action menu', (tester) async {
       setMobileScreen(tester);
 
@@ -463,6 +533,124 @@ void main() {
       expect(fakeRepo.deletedPostId, equals('9b2a-uuid-1234'));
       expect(find.text('#9B2A'), findsNothing);
       expect(find.text('Deleted Post: #9B2A'), findsOneWidget);
+    });
+
+    testWidgets('Screen 10 — AdminPostsPage filters by time and sorts by latest and oldest', (tester) async {
+      setMobileScreen(tester);
+
+      final now = DateTime.now();
+      final fakeRepo = FakeAdminRepository(
+        posts: [
+          AdminPostItem(
+            id: '#001',
+            rawId: 'post-old',
+            title: 'Rex',
+            subtitle: 'German Shepherd',
+            status: 'missing',
+            dateFormatted: 'Nov 1',
+            username: 'john_d',
+            createdAt: now.subtract(const Duration(days: 20)),
+          ),
+          AdminPostItem(
+            id: '#002',
+            rawId: 'post-mid',
+            title: 'Luna',
+            subtitle: 'Poodle',
+            status: 'stray',
+            dateFormatted: 'Nov 10',
+            username: 'emma_s',
+            createdAt: now.subtract(const Duration(days: 4)),
+          ),
+          AdminPostItem(
+            id: '#003',
+            rawId: 'post-new',
+            title: 'Rocky',
+            subtitle: 'Bulldog',
+            status: 'found',
+            dateFormatted: 'Nov 14',
+            username: 'alex_k',
+            createdAt: now,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminPostsPage(repository: fakeRepo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify initial list displays all 3 posts
+      expect(find.text('#001'), findsOneWidget);
+      expect(find.text('#002'), findsOneWidget);
+      expect(find.text('#003'), findsOneWidget);
+
+      // Verify time and sort chips are present
+      expect(find.byKey(const ValueKey('btn_time_filter_all')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_time_filter_today')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_time_filter_week')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_time_filter_month')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_sort_latest')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_sort_oldest')), findsOneWidget);
+
+      // 1. Sort by Latest (newest first: Rocky #003 should appear before Rex #001)
+      await tester.tap(find.byKey(const ValueKey('btn_sort_latest')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Latest first'), findsOneWidget);
+
+      final latestIdsInOrder = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((w) => w.data)
+          .where((t) => t == '#001' || t == '#002' || t == '#003')
+          .toList();
+      expect(latestIdsInOrder.first, equals('#003')); // Rocky (newest) is first
+
+      // 2. Sort by Oldest (oldest first: Rex #001 should appear before Rocky #003)
+      await tester.tap(find.byKey(const ValueKey('btn_sort_oldest')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Oldest first'), findsOneWidget);
+
+      final oldestIdsInOrder = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((w) => w.data)
+          .where((t) => t == '#001' || t == '#002' || t == '#003')
+          .toList();
+      expect(oldestIdsInOrder.first, equals('#001')); // Rex (oldest) is first
+
+      // 3. Filter by Today: only Rocky (#003) was created today
+      await tester.tap(find.byKey(const ValueKey('btn_time_filter_today')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('#003'), findsOneWidget);
+      expect(find.text('#001'), findsNothing);
+      expect(find.text('#002'), findsNothing);
+      expect(find.textContaining('posts · Today'), findsOneWidget);
+
+      // 4. Filter by This Week: Luna (#002, 4 days ago) and Rocky (#003, today) match
+      await tester.tap(find.byKey(const ValueKey('btn_time_filter_week')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('#002'), findsOneWidget);
+      expect(find.text('#003'), findsOneWidget);
+      expect(find.text('#001'), findsNothing); // Rex (20 days ago) is filtered out
+      expect(find.textContaining('posts · This Week'), findsOneWidget);
+
+      // 5. Filter by This Month: all 3 match (0, 4, and 20 days ago)
+      await tester.tap(find.byKey(const ValueKey('btn_time_filter_month')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('#001'), findsOneWidget);
+      expect(find.text('#002'), findsOneWidget);
+      expect(find.text('#003'), findsOneWidget);
+
+      // 6. Reset to All Time
+      await tester.tap(find.byKey(const ValueKey('btn_time_filter_all')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('#001'), findsOneWidget);
+      expect(find.text('#002'), findsOneWidget);
+      expect(find.text('#003'), findsOneWidget);
     });
 
     testWidgets('Screen 10 — tapping View Full Sighting Details opens full details modal', (tester) async {
@@ -867,28 +1055,91 @@ void main() {
       expect(find.text('TOTAL USERS'), findsOneWidget);
       expect(find.text('TOTAL POSTS'), findsWidgets);
 
-      // User Analytics Section
+      // User Analytics Section & History Filters (Weekly, Monthly, Yearly)
       expect(find.text('User Growth & Velocity'), findsOneWidget);
-      expect(find.text('This Week'), findsOneWidget);
-      expect(find.text('This Month'), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_user_timeframe_weekly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_user_timeframe_monthly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_user_timeframe_yearly')), findsOneWidget);
       expect(find.text('REGISTRATION ACTIVITY'), findsOneWidget);
       expect(find.text('ACCOUNT STATUS DISTRIBUTION'), findsOneWidget);
 
-      // Switch Timeframe from This Week to This Month
-      await tester.tap(find.text('This Month'));
-      await tester.pumpAndSettle();
-      expect(find.text('Wk 1'), findsOneWidget);
-      expect(find.text('Wk 4'), findsOneWidget);
+      // Default is Weekly: shows weekdays
+      expect(find.text('Mon'), findsWidgets);
+      expect(find.text('Sun'), findsWidgets);
 
-      // Post Analytics Section (Pie Chart)
+      // Switch User Timeframe to Monthly: shows weeks (Wk 1, Wk 4)
+      await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_monthly')));
+      await tester.pumpAndSettle();
+      expect(find.text('Wk 1'), findsWidgets);
+      expect(find.text('Wk 4'), findsWidgets);
+
+      // Switch User Timeframe to Yearly: shows months (Jan, Dec)
+      await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_yearly')));
+      await tester.pumpAndSettle();
+      expect(find.text('Jan'), findsWidgets);
+      expect(find.text('Dec'), findsWidgets);
+
+      // Switch back to Weekly
+      await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_weekly')));
+      await tester.pumpAndSettle();
+
+      // Post Analytics Section (Pie Chart & Timeline)
       expect(find.text('Post Status Breakdown'), findsOneWidget);
-      expect(find.text('Missing Pets'), findsOneWidget);
-      expect(find.text('Stray Sightings'), findsOneWidget);
-      expect(find.text('Found / Reunited'), findsOneWidget);
+      expect(find.text('Missing Pets'), findsWidgets);
+      expect(find.text('Stray Sightings'), findsWidgets);
+      expect(find.text('Found / Reunited'), findsWidgets);
+      expect(find.byKey(const ValueKey('btn_post_status_daily')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_post_status_weekly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_post_status_monthly')), findsOneWidget);
 
       // Verify custom charts are present
       expect(find.byType(AdminPieChart), findsOneWidget);
-      expect(find.byType(AdminBarChart), findsOneWidget);
+      expect(find.byType(AdminBarChart), findsWidgets);
+
+      // Toggle Post Status Breakdown to Daily
+      await tester.tap(find.byKey(const ValueKey('btn_post_status_daily')));
+      await tester.pumpAndSettle();
+      expect(find.text('DAILY POSTS'), findsOneWidget);
+
+      // Toggle Post Status Breakdown to Monthly
+      await tester.tap(find.byKey(const ValueKey('btn_post_status_monthly')));
+      await tester.pumpAndSettle();
+      expect(find.text('MONTHLY POSTS'), findsOneWidget);
+
+      // Toggle Post Status Breakdown back to Weekly
+      await tester.tap(find.byKey(const ValueKey('btn_post_status_weekly')));
+      await tester.pumpAndSettle();
+      expect(find.text('WEEKLY POSTS'), findsOneWidget);
+
+      // Post Submission Timeline Section & Timeframe Filters (Weekly, Monthly, Yearly)
+      expect(find.text('POST SUBMISSION TIMELINE'), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_timeline_weekly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_timeline_monthly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_timeline_yearly')), findsOneWidget);
+
+      // Default is Weekly view: shows weekdays
+      expect(find.text('Mon'), findsWidgets);
+      expect(find.text('Sun'), findsWidgets);
+
+      // Toggle Timeline to Monthly: shows weeks (Wk 1, Wk 4)
+      await tester.tap(find.byKey(const ValueKey('btn_timeline_monthly')));
+      await tester.pumpAndSettle();
+      expect(find.text('This Month'), findsWidgets);
+      expect(find.text('Wk 1'), findsWidgets);
+      expect(find.text('Wk 4'), findsWidgets);
+
+      // Toggle Timeline to Yearly: shows months (Jan, Dec)
+      await tester.tap(find.byKey(const ValueKey('btn_timeline_yearly')));
+      await tester.pumpAndSettle();
+      expect(find.text('This Year'), findsOneWidget);
+      expect(find.text('Jan'), findsOneWidget);
+      expect(find.text('Dec'), findsOneWidget);
+
+      // Toggle Timeline back to Weekly
+      await tester.tap(find.byKey(const ValueKey('btn_timeline_weekly')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mon'), findsWidgets);
+      expect(find.text('Sun'), findsWidgets);
 
       // Filter tabs: click Users -> Post section is hidden
       await tester.tap(find.text('Users'));

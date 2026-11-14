@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
@@ -16,7 +17,7 @@ import '../widgets/admin_user_status_pill.dart';
 /// - Admin header with 'A' badge, Users/Posts selector, and ADMIN dropdown button
 /// - User search field with placeholder "Search users..."
 /// - Live fetching of registered users from Supabase `profiles` table
-/// - Table layout: NAME, EMAIL, REP., STATUS
+/// - Table layout: NAME, EMAIL, STATUS
 /// - Bottom bar: Total users count, Export, and + Add User buttons
 class AdminUsersPage extends StatefulWidget {
   final ValueChanged<int>? onTabChanged;
@@ -234,7 +235,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               child: Row(
                 children: const [
                   Expanded(
-                    flex: 5,
                     child: Text(
                       'NAME',
                       style: TextStyle(
@@ -245,42 +245,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       ),
                     ),
                   ),
-                  Expanded(
-                    flex: 2,
+                  Align(
+                    alignment: Alignment.centerRight,
                     child: Text(
-                      'EMAIL',
+                      'STATUS',
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textMuted,
                         letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      'REP.',
-                      style: TextStyle(
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'STATUS',
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
-                          letterSpacing: 0.5,
-                        ),
                       ),
                     ),
                   ),
@@ -402,93 +375,82 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final user = _displayedUsers[index];
-          return Row(
-            children: [
-              // Name & Avatar Column
-              Expanded(
-                flex: 5,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDDE3EA),
-                        shape: BoxShape.circle,
-                        image: (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
-                            ? DecorationImage(
-                                image: NetworkImage(user.avatarUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      alignment: Alignment.center,
-                      child: (user.avatarUrl == null || user.avatarUrl!.isEmpty)
-                          ? Text(
-                              user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        user.name,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkCharcoal,
+          return InkWell(
+            key: Key('user_row_${user.id}'),
+            borderRadius: BorderRadius.circular(8.0),
+            onTap: () => _showUserDetailsModal(user),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3.0),
+              child: Row(
+                children: [
+                  // Name & Avatar Column
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDDE3EA),
+                            shape: BoxShape.circle,
+                            image: (user.avatarUrl != null &&
+                                    user.avatarUrl!.isNotEmpty)
+                                ? DecorationImage(
+                                    image: NetworkImage(user.avatarUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          alignment: Alignment.center,
+                          child: (user.avatarUrl == null ||
+                                  user.avatarUrl!.isEmpty)
+                              ? Text(
+                                  user.name.isNotEmpty
+                                      ? user.name[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                )
+                              : null,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            user.name,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.darkCharcoal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Email Masked
-              Expanded(
-                flex: 2,
-                child: Text(
-                  user.emailMasked,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
                   ),
-                ),
-              ),
 
-              // Rep. count
-              Expanded(
-                flex: 1,
-                child: Text(
-                  '${user.reputation}',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkCharcoal,
+                  // Status Pill & Chevron Indicator
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AdminUserStatusPill(
+                        status: user.status,
+                        onTap: () => _showUpdateStatusModal(user),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
-
-              // Status Pill
-              Expanded(
-                flex: 3,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: AdminUserStatusPill(
-                    status: user.status,
-                    onTap: () => _showUpdateStatusModal(user),
-                  ),
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
@@ -551,6 +513,422 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // User Details Modal Card (Full User Info & Un-Truncated Email)
+  // ---------------------------------------------------------------------------
+
+  void _showUserDetailsModal(AdminUserItem user) {
+    final displayEmail =
+        user.fullEmail.isNotEmpty ? user.fullEmail : user.emailMasked;
+    final createdDateFormatted = user.createdAt != null
+        ? '${_formatMonth(user.createdAt!.month)} ${user.createdAt!.day}, ${user.createdAt!.year}'
+        : 'Member';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 12.0,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.0,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Top Bar: Title & Close Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7.0),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.badge_outlined,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'User Information',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.darkCharcoal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          color: AppColors.textSecondary,
+                          onPressed: () => Navigator.pop(ctx),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 1. Hero Profile Card
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFF8FAFC),
+                            AppColors.surface,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16.0),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          // Large Avatar
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2E8F0),
+                              shape: BoxShape.circle,
+                              image: (user.avatarUrl != null &&
+                                      user.avatarUrl!.isNotEmpty)
+                                  ? DecorationImage(
+                                      image: NetworkImage(user.avatarUrl!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            alignment: Alignment.center,
+                            child: (user.avatarUrl == null ||
+                                    user.avatarUrl!.isEmpty)
+                                ? Text(
+                                    user.name.isNotEmpty
+                                        ? user.name[0].toUpperCase()
+                                        : 'U',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user.name,
+                                  style: const TextStyle(
+                                    fontSize: 17.0,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.darkCharcoal,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8.0,
+                                  runSpacing: 4.0,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    // Role Badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8.0, vertical: 3.0),
+                                      decoration: BoxDecoration(
+                                        color: user.isAdmin
+                                            ? const Color(0xFF7C3AED)
+                                                .withValues(alpha: 0.12)
+                                            : const Color(0xFFE2E8F0),
+                                        borderRadius:
+                                            BorderRadius.circular(6.0),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            user.isAdmin
+                                                ? Icons.admin_panel_settings_rounded
+                                                : Icons.person_rounded,
+                                            size: 13,
+                                            color: user.isAdmin
+                                                ? const Color(0xFF7C3AED)
+                                                : AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            user.role,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: user.isAdmin
+                                                  ? const Color(0xFF7C3AED)
+                                                  : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Status Badge
+                                    AdminUserStatusPill(status: user.status),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 2. Full Contact Details Card (SOLVES THE TRUNCATED EMAIL DISPLAY PROBLEM)
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.0),
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CONTACT & IDENTITY',
+                            style: TextStyle(
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // FULL UN-TRUNCATED EMAIL ROW WITH COPY
+                          _buildDetailTile(
+                            context: ctx,
+                            icon: Icons.email_rounded,
+                            iconColor: AppColors.primary,
+                            label: 'Full Email Address',
+                            value: displayEmail,
+                            copyValue: displayEmail,
+                            tooltip: 'Copy full email',
+                            highlight: true,
+                          ),
+                          const Divider(height: 20, color: Color(0xFFF1F5F9)),
+
+                          // Phone Number
+                          _buildDetailTile(
+                            context: ctx,
+                            icon: Icons.phone_rounded,
+                            iconColor: const Color(0xFF0284C7),
+                            label: 'Phone Number',
+                            value: user.phoneNumber.isNotEmpty
+                                ? user.phoneNumber
+                                : 'Not provided',
+                            copyValue: user.phoneNumber.isNotEmpty
+                                ? user.phoneNumber
+                                : null,
+                            tooltip: 'Copy phone number',
+                          ),
+                          const Divider(height: 20, color: Color(0xFFF1F5F9)),
+
+                          // Member Since
+                          _buildDetailTile(
+                            context: ctx,
+                            icon: Icons.calendar_today_rounded,
+                            iconColor: AppColors.primary,
+                            label: 'Member Since',
+                            value: createdDateFormatted,
+                            tooltip: 'Account registration date',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 4. Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _showUpdateStatusModal(user);
+                            },
+                            icon: const Icon(Icons.manage_accounts_rounded,
+                                size: 18),
+                            label: const Text(
+                              'Update Status',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 1,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.border),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                            ),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailTile({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? copyValue,
+    String? tooltip,
+    bool highlight = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: iconColor, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.0,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              SelectableText(
+                value,
+                style: TextStyle(
+                  fontSize: highlight ? 14.0 : 13.0,
+                  fontWeight: highlight ? FontWeight.w700 : FontWeight.w600,
+                  color: highlight
+                      ? AppColors.darkCharcoal
+                      : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (copyValue != null && copyValue.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 17),
+            color: AppColors.textSecondary,
+            tooltip: tooltip ?? 'Copy',
+            splashRadius: 18,
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: copyValue));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$label copied to clipboard!'),
+                  duration: const Duration(seconds: 2),
+                  backgroundColor: AppColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  String _formatMonth(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    if (month >= 1 && month <= 12) {
+      return months[month - 1];
+    }
+    return '';
   }
 
   void _showUpdateStatusModal(AdminUserItem user) {
