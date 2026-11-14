@@ -69,12 +69,9 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
           final responseBody = await streamedResponse.stream.bytesToString();
           final data = jsonDecode(responseBody) as Map<String, dynamic>;
           final rawList = data['candidates'] as List<dynamic>? ?? [];
-          final candidates = rawList
+          return rawList
               .map((item) => AiMatchCandidate.fromJson(item as Map<String, dynamic>))
               .toList();
-          if (candidates.isNotEmpty) {
-            return candidates;
-          }
         }
       } catch (e) {
         debugPrint('[AiPreMatchService] Host $base unavailable ($e), falling back to proximity scan...');

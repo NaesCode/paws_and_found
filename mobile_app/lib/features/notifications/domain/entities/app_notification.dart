@@ -34,18 +34,29 @@ class AppNotification {
     required this.createdAt,
   });
 
-  /// Whether this notification is linked to an animal sighting or missing pet post.
+  /// Whether this notification is linked to an active animal sighting or missing pet post.
   bool get isPostRelated {
+    // Confirmations of deletion, withdrawal, or removal have no active post to view
+    final msgLower = message.toLowerCase();
+    if (msgLower.contains('withdrawn') ||
+        msgLower.contains('removed from your account') ||
+        msgLower.contains('successfully deleted') ||
+        msgLower.contains('successfully removed')) {
+      return false;
+    }
+
     if (relatedReportId != null && relatedReportId!.isNotEmpty) return true;
     if (relatedMatchId != null && relatedMatchId!.isNotEmpty) return true;
     switch (type) {
       case 'match_found':
       case 'report_nearby':
-      case 'report_update':
       case 'verification_request':
       case 'match_confirmed':
       case 'pet_safe':
         return true;
+      case 'report_update':
+        return (relatedReportId != null && relatedReportId!.isNotEmpty) ||
+            (relatedMatchId != null && relatedMatchId!.isNotEmpty);
       case 'warning':
         return message.toLowerCase().contains('sighting') ||
             message.toLowerCase().contains('post') ||

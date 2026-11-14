@@ -239,6 +239,11 @@ class MapReportModel extends MapReportEntity {
     _dynamicReports.insert(0, report);
   }
 
+  /// Removes a report from dynamic session reports (e.g. when undone or withdrawn).
+  static void removeReport(String reportId) {
+    _dynamicReports.removeWhere((r) => r.id == reportId);
+  }
+
   /// Clears dynamic reports (used primarily for test resets).
   static void clearDynamicReports() {
     _dynamicReports.clear();

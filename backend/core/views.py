@@ -129,18 +129,16 @@ class ReportAnalyzeView(APIView):
             emb_result = embed_image(photo_bytes)
 
             # Smart Content Moderation check via SSDLite320
-            # If the user selected cat or dog, but the detector found no animal (confidence < 0.35 and no crop)
-            # flag the post for admin review to prevent spam, offensive images, or non-animal posts.
-            target_species = report.animal_type.lower()
-            is_canine_or_feline = target_species in ("canine", "feline", "dog", "cat")
-            is_unrecognized = not emb_result.used_crop and emb_result.detector_score < 0.35
+            # If the detector found no animal (confidence < 0.25 and no crop) across any claimed species,
+            # flag the post for admin review to prevent spam, unrelated images, or non-animal posts.
+            is_unrecognized = not emb_result.used_crop and emb_result.detector_score < 0.25
 
-            if is_canine_or_feline and is_unrecognized:
+            if is_unrecognized:
                 with transaction.atomic():
                     report.moderation_status = "flagged"
                     report.moderation_notes = (
-                        f"Flagged by AI: Low animal confidence score ({emb_result.detector_score:.2f}) "
-                        f"for claimed {report.animal_type} sighting. Pending administrative verification."
+                        f"Flagged by AI: No clear animal detected (confidence: {emb_result.detector_score:.2f}) "
+                        f"for claimed '{report.animal_type}' post. Pending administrative verification."
                     )
                     report.analysis_status = "done"
                     report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
@@ -152,7 +150,7 @@ class ReportAnalyzeView(APIView):
                         type="warning",
                         message=(
                             f"Post Under Review: Sighting #{report_short_id} was flagged by AI as no clear animal was detected. "
-                            f"If this was a mistake, an admin will review it shortly."
+                            f"If this was a mistake, an admin will review and verify it shortly."
                         ),
                     )
 
@@ -469,6 +467,14 @@ class MatchCandidatesView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # Gate: Do not suggest missing pet matches if no animal was detected in the photo
+        if not emb_result.used_crop and emb_result.detector_score < 0.25:
+            logger.info(
+                "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
+                emb_result.detector_score,
+            )
+            return Response({"candidates": []})
+
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
         lng_raw = request.data.get("lng")
@@ -519,13 +525,14 @@ class MatchCandidatesView(APIView):
             elif report_embedding and report_embedding.vector:
                 target_vector = report_embedding.vector
 
-            if target_vector:
-                score = cosine(query_vector, target_vector)
-            else:
-                is_same_species = (
-                    animal_type and report.animal_type and animal_type in report.animal_type.lower()
-                )
-                score = 0.72 if is_same_species else 0.55
+            if not target_vector:
+                continue
+
+            score = cosine(query_vector, target_vector)
+
+            # Require minimum visual similarity threshold (>= 0.60) to consider a plausible match
+            if score < 0.60:
+                continue
 
             distance_km = None
             if point is not None and hasattr(report, "distance") and report.distance is not None:

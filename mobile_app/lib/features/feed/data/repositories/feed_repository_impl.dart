@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:paws_and_found/core/network/orchestrator_client.dart';
+import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
@@ -252,6 +253,9 @@ class FeedRepositoryImpl implements FeedRepository {
         await _supabase.from('matches').delete().eq('report_id', reportId);
         await _supabase.from('reports').delete().eq('id', reportId).eq('reporter_id', currentUserId);
       }
+    } finally {
+      // Purge from in-memory map cache so the marker immediately vanishes from the map canvas
+      MapReportModel.removeReport(reportId);
     }
   }
 
