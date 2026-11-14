@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/wireframe_colors.dart';
 
 /// Bottom Navigation Bar for Admin section allowing switching between
 /// User Management (Tab 0) and Post Management (Tab 1).

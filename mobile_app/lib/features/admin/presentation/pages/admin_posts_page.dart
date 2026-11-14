@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/wireframe_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_post_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
