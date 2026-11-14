@@ -6,6 +6,7 @@ import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/features/map/domain/entities/map_report_entity.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
+import 'package:paws_and_found/features/map/presentation/providers/map_controller.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/interactive_map_canvas.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_filter_bar.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_legend.dart';
@@ -76,8 +77,9 @@ void main() {
       expect(find.text('Golden'), findsOneWidget);
     });
 
-    testWidgets('MapFilterBar triggers filter selection', (tester) async {
+    testWidgets('MapFilterBar triggers filter selection and status filter selection', (tester) async {
       String selected = 'all';
+      String? selectedStatus;
       bool animalTypeClicked = false;
 
       await tester.pumpWidget(
@@ -85,7 +87,9 @@ void main() {
           home: Scaffold(
             body: MapFilterBar(
               selectedFilter: selected,
+              selectedStatus: selectedStatus,
               onFilterSelected: (val) => selected = val,
+              onStatusSelected: (val) => selectedStatus = val,
               onAnimalTypePressed: () => animalTypeClicked = true,
             ),
           ),
@@ -95,6 +99,18 @@ void main() {
       expect(find.text('All'), findsOneWidget);
       expect(find.text('For You'), findsOneWidget);
       expect(find.text('Animal Type'), findsOneWidget);
+      expect(find.text('Missing'), findsOneWidget);
+      expect(find.text('Stray'), findsOneWidget);
+      expect(find.text('Found'), findsOneWidget);
+
+      await tester.tap(find.text('Missing'));
+      expect(selectedStatus, 'missing');
+
+      await tester.tap(find.text('Stray'));
+      expect(selectedStatus, 'stray');
+
+      await tester.tap(find.text('Found'));
+      expect(selectedStatus, 'found');
 
       await tester.tap(find.text('For You'));
       expect(selected, 'for_you');
@@ -103,11 +119,16 @@ void main() {
       expect(animalTypeClicked, isTrue);
     });
 
-    testWidgets('MapLegend renders M, S, F descriptions', (tester) async {
+    testWidgets('MapLegend renders M, S, F descriptions and triggers onStatusSelected', (tester) async {
+      String? tappedStatus;
+
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: MapLegend(),
+            body: MapLegend(
+              selectedStatus: null,
+              onStatusSelected: (status) => tappedStatus = status,
+            ),
           ),
         ),
       );
@@ -115,6 +136,15 @@ void main() {
       expect(find.text('Missing'), findsOneWidget);
       expect(find.text('Stray'), findsOneWidget);
       expect(find.text('Found'), findsOneWidget);
+
+      await tester.tap(find.text('Missing'));
+      expect(tappedStatus, 'missing');
+
+      await tester.tap(find.text('Stray'));
+      expect(tappedStatus, 'stray');
+
+      await tester.tap(find.text('Found'));
+      expect(tappedStatus, 'found');
     });
 
     testWidgets('MapReportCard renders title, status, subtitle and tags', (tester) async {
@@ -199,10 +229,10 @@ void main() {
       expect(find.text('All'), findsOneWidget);
       expect(find.text('For You'), findsOneWidget);
 
-      // Verify Legend
-      expect(find.text('Missing'), findsOneWidget);
-      expect(find.text('Stray'), findsOneWidget);
-      expect(find.text('Found'), findsOneWidget);
+      // Verify Statuses in Filter Bar and Legend
+      expect(find.text('Missing'), findsNWidgets(2));
+      expect(find.text('Stray'), findsNWidgets(2));
+      expect(find.text('Found'), findsNWidgets(2));
 
       // Verify interactive map canvas
       expect(find.byType(InteractiveMapCanvas), findsOneWidget);
@@ -342,6 +372,112 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(shareBtn);
       expect(shareTapped, isTrue);
+    });
+
+    test('MapController filters reports by status and toggles back', () async {
+      final controller = MapController();
+      await controller.loadReports();
+      expect(controller.reports.length, greaterThanOrEqualTo(4));
+      expect(controller.selectedStatus, isNull);
+
+      // Filter by missing
+      controller.setStatus('missing');
+      expect(controller.selectedStatus, 'missing');
+      expect(controller.reports.every((r) => r.status.toLowerCase() == 'missing'), isTrue);
+      expect(controller.reports.length, 3); // 3 missing in mock data
+
+      // Filter by found
+      controller.setStatus('found');
+      expect(controller.selectedStatus, 'found');
+      expect(controller.reports.every((r) => r.status.toLowerCase() == 'found'), isTrue);
+      expect(controller.reports.length, 1); // 1 found in mock data
+
+      // Filter by stray
+      controller.setStatus('stray');
+      expect(controller.selectedStatus, 'stray');
+      expect(controller.reports.isEmpty, isTrue); // 0 strays in baseline
+
+      // Toggle active status to reset to all
+      controller.setStatus('stray');
+      expect(controller.selectedStatus, isNull);
+      expect(controller.reports.length, greaterThanOrEqualTo(4));
+
+      // Explicitly passing 'all' resets to all
+      controller.setStatus('missing');
+      expect(controller.selectedStatus, 'missing');
+      controller.setStatus('all');
+      expect(controller.selectedStatus, isNull);
+      expect(controller.reports.length, greaterThanOrEqualTo(4));
+    });
+
+    testWidgets('MapPage status filter updates map reports when filter pill is tapped', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MapPage(
+            showBottomNavPlaceholder: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Initially all 4 reports are fed to canvas
+      var canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
+      expect(canvas.reports.length, 4);
+
+      // Find 'Missing' pill in MapFilterBar and tap it
+      final missingFilterPill = find.descendant(
+        of: find.byType(MapFilterBar),
+        matching: find.text('Missing'),
+      );
+      expect(missingFilterPill, findsOneWidget);
+      await tester.tap(missingFilterPill);
+      await tester.pumpAndSettle();
+
+      // Verify only missing reports are fed to canvas
+      canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
+      expect(canvas.reports.length, 3);
+      expect(canvas.reports.every((r) => r.status.toLowerCase() == 'missing'), isTrue);
+
+      // Tap 'Found' pill in MapFilterBar
+      final foundFilterPill = find.descendant(
+        of: find.byType(MapFilterBar),
+        matching: find.text('Found'),
+      );
+      expect(foundFilterPill, findsOneWidget);
+      await tester.tap(foundFilterPill);
+      await tester.pumpAndSettle();
+
+      // Verify only found report is fed to canvas
+      canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
+      expect(canvas.reports.length, 1);
+      expect(canvas.reports.first.status.toLowerCase(), 'found');
+
+      // Tap 'All' in MapFilterBar to reset filter
+      final allFilterPill = find.descendant(
+        of: find.byType(MapFilterBar),
+        matching: find.text('All'),
+      );
+      expect(allFilterPill, findsOneWidget);
+      await tester.tap(allFilterPill);
+      await tester.pumpAndSettle();
+
+      // All 4 reports restored
+      canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
+      expect(canvas.reports.length, 4);
+
+      // Tap 'Found' in MapLegend
+      final foundLegendItem = find.descendant(
+        of: find.byType(MapLegend),
+        matching: find.text('Found'),
+      );
+      expect(foundLegendItem, findsOneWidget);
+      await tester.tap(foundLegendItem);
+      await tester.pumpAndSettle();
+
+      // Only found report is fed to canvas
+      canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
+      expect(canvas.reports.length, 1);
+      expect(canvas.reports.first.status.toLowerCase(), 'found');
     });
   });
 }

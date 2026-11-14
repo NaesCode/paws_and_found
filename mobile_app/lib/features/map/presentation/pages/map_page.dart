@@ -3,7 +3,6 @@ import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../shared/atoms/current_location_button.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
@@ -286,16 +285,23 @@ class _MapPageState extends State<MapPage> {
       // 1. Header: "Animal Map" + Re-center target button
       header: _buildHeader(),
 
-      // 2. Filter Bar: "All", "For You", "Animal Type ▼"
+      // 2. Filter Bar: "All", Statuses ("Missing", "Stray", "Found"), "For You", "Animal Type ▼"
       filterBar: MapFilterBar(
         selectedFilter: _controller.currentFilter == MapFilterType.all
             ? 'all'
             : 'for_you',
+        selectedStatus: _controller.selectedStatus,
         selectedAnimalType: _controller.selectedAnimalType,
         onFilterSelected: (filter) {
-          _controller.setFilter(
-            filter == 'all' ? MapFilterType.all : MapFilterType.forYou,
-          );
+          if (filter == 'all') {
+            _controller.setStatus(null);
+            _controller.setFilter(MapFilterType.all);
+          } else {
+            _controller.setFilter(MapFilterType.forYou);
+          }
+        },
+        onStatusSelected: (status) {
+          _controller.setStatus(status);
         },
         onAnimalTypePressed: _showSpeciesFilterDialog,
       ),
@@ -338,8 +344,13 @@ class _MapPageState extends State<MapPage> {
             )
           : null,
 
-      // 5. Pin status legend at the bottom
-      legend: const MapLegend(),
+      // 5. Pin status legend at the bottom (interactive status toggling)
+      legend: MapLegend(
+        selectedStatus: _controller.selectedStatus,
+        onStatusSelected: (status) {
+          _controller.setStatus(status);
+        },
+      ),
 
       // 6. Floating Action Button on Bottom Right: Takes user to their current location
       floatingActionButton: CurrentLocationButton(
