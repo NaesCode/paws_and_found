@@ -58,10 +58,11 @@ class _PawLoadingIndicatorState extends State<PawLoadingIndicator> with SingleTi
           Text(
             widget.message,
             style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-              letterSpacing: 1.2,
+              fontFamily: 'Ek Mukta',
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
             ),
           ),
         ],

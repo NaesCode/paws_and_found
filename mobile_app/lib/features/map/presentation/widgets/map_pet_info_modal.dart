@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+// import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/wireframe_status_badge.dart';
@@ -89,11 +90,11 @@ class MapPetInfoModal extends StatelessWidget {
         ? report.locationName
         : '${report.latitude.toStringAsFixed(4)}° N, ${report.longitude.toStringAsFixed(4)}° E';
     final shareText = '''
-🐾 [${report.status.toUpperCase()}] ${report.title} (${report.animalType})
+🐾 [${report.status.toUpperCase()}] ${report.title}
+Species: ${report.animalType}
 Location: $locationLine (${report.latitude.toStringAsFixed(4)}°, ${report.longitude.toStringAsFixed(4)}°)
-Details: ${report.description.isNotEmpty ? report.description : 'No additional details provided.'}
+Details: ${report.description.isNotEmpty ? report.description : 'No additional details.'}
 Reported on Paws and Found: ${report.formattedTimeAgo}
-https://pawsandfound.org/report/${report.id}
 '''.trim();
 
     await Clipboard.setData(ClipboardData(text: shareText));
@@ -124,9 +125,9 @@ https://pawsandfound.org/report/${report.id}
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: WireframeColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: WireframeColors.border, width: 1.5),
+            border: Border.all(color: AppColors.border, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.16),
@@ -165,7 +166,7 @@ https://pawsandfound.org/report/${report.id}
                                 Text(
                                   report.title,
                                   style: const TextStyle(
-                                    color: WireframeColors.textPrimary,
+                                    color: AppColors.darkCharcoal,
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: -0.3,
@@ -175,7 +176,7 @@ https://pawsandfound.org/report/${report.id}
                                 Text(
                                   report.animalType,
                                   style: const TextStyle(
-                                    color: WireframeColors.textSecondary,
+                                    color: AppColors.textSecondary,
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -202,14 +203,14 @@ https://pawsandfound.org/report/${report.id}
                       ],
 
                       const SizedBox(height: 14),
-                      const Divider(color: WireframeColors.divider, height: 1),
+                      const Divider(color: AppColors.divider, height: 1),
                       const SizedBox(height: 14),
 
                       // Geolocation Card
                       _buildLocationSection(),
 
                       const SizedBox(height: 14),
-                      const Divider(color: WireframeColors.divider, height: 1),
+                      const Divider(color: AppColors.divider, height: 1),
                       const SizedBox(height: 14),
 
                       // Sighting / Description Notes
@@ -241,13 +242,13 @@ https://pawsandfound.org/report/${report.id}
               Icon(
                 Icons.pets_rounded,
                 size: 18,
-                color: WireframeColors.textSecondary,
+                color: AppColors.textSecondary,
               ),
               SizedBox(width: 6),
               Text(
                 'Animal Details',
                 style: TextStyle(
-                  color: WireframeColors.textSecondary,
+                  color: AppColors.textSecondary,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
@@ -259,7 +260,7 @@ https://pawsandfound.org/report/${report.id}
             key: const Key('map_pet_info_modal_close_button'),
             icon: const Icon(
               Icons.close_rounded,
-              color: WireframeColors.textPrimary,
+              color: AppColors.darkCharcoal,
               size: 22,
             ),
             splashRadius: 20,
@@ -276,9 +277,9 @@ https://pawsandfound.org/report/${report.id}
       height: 170,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: WireframeColors.surfaceSecondary,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: WireframeColors.border, width: 1.0),
+        border: Border.all(color: AppColors.border, width: 1.0),
       ),
       clipBehavior: Clip.antiAlias,
       child: report.photoUrl != null && report.photoUrl!.isNotEmpty
@@ -293,7 +294,7 @@ https://pawsandfound.org/report/${report.id}
 
   Widget _buildPhotoPlaceholder() {
     return Container(
-      color: WireframeColors.surfaceSecondary,
+      color: AppColors.surfaceMuted,
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -301,13 +302,13 @@ https://pawsandfound.org/report/${report.id}
           Icon(
             Icons.photo_camera_outlined,
             size: 38,
-            color: WireframeColors.border,
+            color: AppColors.border,
           ),
           SizedBox(height: 6),
           Text(
             'Photo Placeholder',
             style: TextStyle(
-              color: WireframeColors.textMuted,
+              color: AppColors.textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -327,9 +328,9 @@ https://pawsandfound.org/report/${report.id}
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: WireframeColors.surfaceTertiary,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: WireframeColors.borderLight, width: 1.0),
+        border: Border.all(color: AppColors.borderLight, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +341,7 @@ https://pawsandfound.org/report/${report.id}
               const Icon(
                 Icons.location_on_outlined,
                 size: 18,
-                color: WireframeColors.textPrimary,
+                color: AppColors.darkCharcoal,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -350,7 +351,7 @@ https://pawsandfound.org/report/${report.id}
                     Text(
                       report.locationName,
                       style: const TextStyle(
-                        color: WireframeColors.textPrimary,
+                        color: AppColors.darkCharcoal,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -359,7 +360,7 @@ https://pawsandfound.org/report/${report.id}
                     Text(
                       '${report.latitude.toStringAsFixed(4)}° N, ${report.longitude.toStringAsFixed(4)}° E${distanceText != null ? ' • $distanceText' : ''}',
                       style: const TextStyle(
-                        color: WireframeColors.textSecondary,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                       ),
@@ -375,13 +376,13 @@ https://pawsandfound.org/report/${report.id}
               const Icon(
                 Icons.access_time_rounded,
                 size: 16,
-                color: WireframeColors.textSecondary,
+                color: AppColors.textSecondary,
               ),
               const SizedBox(width: 8),
               Text(
                 'Reported ${report.formattedTimeAgo}',
                 style: const TextStyle(
-                  color: WireframeColors.textSecondary,
+                  color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -400,7 +401,7 @@ https://pawsandfound.org/report/${report.id}
         const Text(
           'Last Seen / Sighting Details',
           style: TextStyle(
-            color: WireframeColors.textSecondary,
+            color: AppColors.textSecondary,
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.2,
@@ -411,16 +412,16 @@ https://pawsandfound.org/report/${report.id}
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: WireframeColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: WireframeColors.borderLight, width: 1.0),
+            border: Border.all(color: AppColors.borderLight, width: 1.0),
           ),
           child: Text(
             report.description.isNotEmpty
                 ? report.description
                 : 'No additional sighting details provided.',
             style: const TextStyle(
-              color: WireframeColors.textPrimary,
+              color: AppColors.darkCharcoal,
               fontSize: 13,
               height: 1.4,
               fontWeight: FontWeight.w400,
@@ -449,7 +450,7 @@ https://pawsandfound.org/report/${report.id}
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: WireframeColors.primaryDark,
+            backgroundColor: AppColors.primary,
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
@@ -469,18 +470,18 @@ https://pawsandfound.org/report/${report.id}
                 icon: const Icon(
                   Icons.chat_bubble_outline_rounded,
                   size: 16,
-                  color: WireframeColors.textPrimary,
+                  color: AppColors.darkCharcoal,
                 ),
                 label: const Text(
                   'Contact',
                   style: TextStyle(
-                    color: WireframeColors.textPrimary,
+                    color: AppColors.darkCharcoal,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: WireframeColors.border, width: 1.2),
+                  side: const BorderSide(color: AppColors.border, width: 1.2),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -496,18 +497,18 @@ https://pawsandfound.org/report/${report.id}
                 icon: const Icon(
                   Icons.share_outlined,
                   size: 16,
-                  color: WireframeColors.textPrimary,
+                  color: AppColors.darkCharcoal,
                 ),
                 label: const Text(
                   'Share',
                   style: TextStyle(
-                    color: WireframeColors.textPrimary,
+                    color: AppColors.darkCharcoal,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: WireframeColors.border, width: 1.2),
+                  side: const BorderSide(color: AppColors.border, width: 1.2),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),

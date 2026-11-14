@@ -9,6 +9,7 @@ import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/interactive_map_canvas.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_filter_bar.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_legend.dart';
+import 'package:paws_and_found/features/map/presentation/widgets/map_pet_info_modal.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_pin_badge.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/map_report_card.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/user_location_marker.dart';
@@ -275,6 +276,72 @@ void main() {
 
       // Map remains centered on user location with marker visible
       expect(find.byType(UserLocationMarker), findsOneWidget);
+    });
+
+    testWidgets('MapPetInfoModal renders animal details and triggers action buttons', (tester) async {
+      bool spottedTapped = false;
+      bool contactTapped = false;
+      bool shareTapped = false;
+
+      final testReport = MapReportModel(
+        id: 'test-report-1',
+        reporterId: 'user-123',
+        title: 'Milo Sighting',
+        animalType: 'Feline',
+        description: 'Orange tabby resting near coffee shop.',
+        status: 'stray',
+        locationName: 'IT Park, Cebu City',
+        latitude: 10.3274,
+        longitude: 123.9051,
+        normalizedX: 0.5,
+        normalizedY: 0.5,
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+        tags: const ['Feline', 'STRAY', 'Tabby'],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MapPetInfoModal(
+              report: testReport,
+              onReportSighting: () => spottedTapped = true,
+              onContact: () => contactTapped = true,
+              onShare: () => shareTapped = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify header, title, tags, and location
+      expect(find.text('Animal Details'), findsOneWidget);
+      expect(find.text('Milo Sighting'), findsOneWidget);
+      expect(find.text('IT Park, Cebu City'), findsOneWidget);
+      expect(find.text('Orange tabby resting near coffee shop.'), findsOneWidget);
+
+      // Verify and tap primary action
+      final spottedBtn = find.byKey(const Key('modal_action_spotted_button'));
+      expect(spottedBtn, findsOneWidget);
+      await tester.ensureVisible(spottedBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(spottedBtn);
+      expect(spottedTapped, isTrue);
+
+      // Verify and tap contact action
+      final contactBtn = find.byKey(const Key('modal_action_contact_button'));
+      expect(contactBtn, findsOneWidget);
+      await tester.ensureVisible(contactBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(contactBtn);
+      expect(contactTapped, isTrue);
+
+      // Verify and tap share action
+      final shareBtn = find.byKey(const Key('modal_action_share_button'));
+      expect(shareBtn, findsOneWidget);
+      await tester.ensureVisible(shareBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(shareBtn);
+      expect(shareTapped, isTrue);
     });
   });
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/wireframe_colors.dart';
+import '../../core/theme/app_colors.dart';
 
-/// A status badge atom showing "MISSING", "STRAY", or "FOUND" in wireframe styling.
+/// A status badge atom showing "MISSING", "STRAY", or "FOUND" in minimal clinical styling.
 ///
 /// Adheres to Atomic Design: dumb, stateless UI element relying purely on
 /// passed properties.
@@ -28,22 +28,22 @@ class WireframeStatusBadge extends StatelessWidget {
 
     switch (normalized) {
       case 'missing':
-        bgColor = WireframeColors.badgeMissingBg;
-        textColor = WireframeColors.badgeMissingText;
+        bgColor = AppColors.statusMissing;
+        textColor = Colors.white;
         border = null;
         break;
       case 'stray':
-        bgColor = WireframeColors.badgeStrayBg;
-        textColor = WireframeColors.badgeStrayText;
+        bgColor = AppColors.statusStray;
+        textColor = Colors.white;
         border = null;
         break;
       case 'found':
-        bgColor = WireframeColors.badgeFoundBg;
-        textColor = WireframeColors.badgeFoundText;
-        border = Border.all(color: WireframeColors.badgeFoundBorder, width: 1.5);
+        bgColor = AppColors.surface;
+        textColor = AppColors.primary;
+        border = Border.all(color: AppColors.primary, width: 1.5);
         break;
       default:
-        bgColor = WireframeColors.secondarySlate;
+        bgColor = AppColors.textSecondary;
         textColor = Colors.white;
         border = null;
     }

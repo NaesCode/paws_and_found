@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 /// A circular map marker pin atom used on the interactive map canvas and location pickers.
 ///
 /// Adheres to Atomic Design: dumb, stateless UI element relying purely on
 /// passed properties.
 ///
-/// Visual styles:
-/// - 'M' / Missing: Dark slate filled circle with white text.
-/// - 'S' / Stray: Medium slate filled circle with white text.
-/// - 'F' / Found: White circle with dark slate border and dark slate text.
+/// Visual styles (Veterinary / Clinical Theme):
+/// - 'M' / Missing: Deep Maroon alert filled circle with white text.
+/// - 'S' / Stray: Warm Accent Orange filled circle with white text.
+/// - 'F' / Found: Clean white circle with Forest Teal border and text.
 class MapPinBadge extends StatelessWidget {
   final String label;
   final String status;
@@ -38,19 +38,19 @@ class MapPinBadge extends StatelessWidget {
     Border? border;
 
     if (isMissing) {
-      bgColor = WireframeColors.pinMissing;
+      bgColor = AppColors.statusMissing;
       textColor = Colors.white;
       border = null;
     } else if (isStray) {
-      bgColor = WireframeColors.pinStray;
+      bgColor = AppColors.statusStray;
       textColor = Colors.white;
       border = null;
     } else if (isFound) {
-      bgColor = WireframeColors.pinFoundBg;
-      textColor = WireframeColors.pinFoundBorder;
-      border = Border.all(color: WireframeColors.pinFoundBorder, width: 2.2);
+      bgColor = AppColors.surface;
+      textColor = AppColors.primary;
+      border = Border.all(color: AppColors.primary, width: 2.2);
     } else {
-      bgColor = WireframeColors.secondarySlate;
+      bgColor = AppColors.textSecondary;
       textColor = Colors.white;
       border = null;
     }
@@ -70,7 +70,7 @@ class MapPinBadge extends StatelessWidget {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: WireframeColors.primaryDark.withValues(alpha: 0.35),
+                color: AppColors.primary.withValues(alpha: 0.35),
                 blurRadius: 10,
                 spreadRadius: 3,
                 offset: const Offset(0, 2),
@@ -97,4 +97,3 @@ class MapPinBadge extends StatelessWidget {
     );
   }
 }
-

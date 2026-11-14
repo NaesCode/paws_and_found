@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/organisms/location_pin_picker_sheet.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../widgets/ai_match_scanner_card.dart';
@@ -229,7 +229,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               'Pin updated: ${picked.latitude.toStringAsFixed(4)}° N, ${picked.longitude.toStringAsFixed(4)}° E',
             ),
             duration: const Duration(seconds: 2),
-            backgroundColor: WireframeColors.primaryDark,
+            backgroundColor: AppColors.primary,
           ),
         );
       }
@@ -253,7 +253,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
           builder: (ctx, scrollController) {
             return Container(
               decoration: const BoxDecoration(
-                color: WireframeColors.surface,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Column(
@@ -263,7 +263,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: WireframeColors.border,
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -271,14 +271,14 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome, color: WireframeColors.primaryDark),
+                        const Icon(Icons.auto_awesome, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'AI Visual Matches (${candidates.length})',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: WireframeColors.textPrimary,
+                            color: AppColors.darkCharcoal,
                           ),
                         ),
                       ],
@@ -325,8 +325,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: candidate.isHighConfidence
-                                      ? const Color(0xFF33691E)
-                                      : WireframeColors.primaryDark,
+                                      ? AppColors.primary
+                                      : AppColors.accentOrange,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -344,13 +344,13 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                             '${candidate.species}${candidate.distanceKm != null ? " • ${candidate.distanceKm!.toStringAsFixed(1)} km away" : ""}\nLast seen: ${candidate.lastSeenLocation ?? "Unknown location"}',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11, color: WireframeColors.textSecondary),
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle, color: Color(0xFF33691E))
+                              ? const Icon(Icons.check_circle, color: AppColors.primary)
                               : ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: WireframeColors.primaryDark,
+                                    backgroundColor: AppColors.primary,
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     visualDensity: VisualDensity.compact,
                                   ),
@@ -391,7 +391,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
           builder: (ctx, scrollController) {
             return Container(
               decoration: const BoxDecoration(
-                color: WireframeColors.surface,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Column(
@@ -401,7 +401,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: WireframeColors.border,
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -409,14 +409,14 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                     padding: EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Icons.link_rounded, color: WireframeColors.primaryDark),
+                        Icon(Icons.link_rounded, color: AppColors.primary),
                         SizedBox(width: 8),
                         Text(
                           'Select Missing Pet Thread',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: WireframeColors.textPrimary,
+                            color: AppColors.darkCharcoal,
                           ),
                         ),
                       ],
@@ -428,14 +428,14 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                       future: FeedRepositoryImpl().getGeneralReports('', filterStatus: 'missing'),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: WireframeColors.primaryDark));
+                          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                         }
                         final missingReports = snapshot.data ?? [];
                         if (missingReports.isEmpty) {
                           return const Center(
                             child: Text(
                               'No active missing pet reports found.',
-                              style: TextStyle(color: WireframeColors.textSecondary),
+                              style: TextStyle(color: AppColors.textSecondary),
                             ),
                           );
                         }
@@ -449,11 +449,11 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                                 (pet.imageUrl.startsWith('http://') || pet.imageUrl.startsWith('https://'));
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: WireframeColors.surfaceSecondary,
+                                backgroundColor: AppColors.surfaceMuted,
                                 backgroundImage: hasPic ? NetworkImage(pet.imageUrl) : null,
                                 child: hasPic
                                     ? null
-                                    : const Icon(Icons.pets, color: WireframeColors.primaryDark),
+                                    : const Icon(Icons.pets, color: AppColors.primary),
                               ),
                               title: Text(
                                 pet.petName,
@@ -495,16 +495,16 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: WireframeColors.surface,
+          backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Row(
             children: [
-              Icon(Icons.check_circle_outline, color: WireframeColors.primaryDark),
+              Icon(Icons.check_circle_outline, color: AppColors.primary),
               SizedBox(width: 8),
               Text(
                 'Report Submitted',
                 style: TextStyle(
-                  color: WireframeColors.textPrimary,
+                  color: AppColors.darkCharcoal,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -517,13 +517,13 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
             children: [
               Text(
                 'Your sighting report for a ${_controller.animalType} (${_controller.status.toUpperCase()}) has been registered.',
-                style: const TextStyle(color: WireframeColors.textSecondary, fontSize: 13.5),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: WireframeColors.surfaceSecondary,
+                  color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Column(
@@ -531,7 +531,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                   children: [
                     Text(
                       '• Pinned to Community Animal Map\n• Queued for AI Image Matching engine\n• Logged in User Contribution History',
-                      style: TextStyle(color: WireframeColors.textPrimary, fontSize: 12, height: 1.4),
+                      style: TextStyle(color: AppColors.darkCharcoal, fontSize: 12, height: 1.4),
                     ),
                   ],
                 ),
@@ -569,7 +569,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: WireframeColors.primaryDark,
+                backgroundColor: AppColors.primary,
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
@@ -605,7 +605,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     }
 
     return Scaffold(
-      backgroundColor: WireframeColors.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: widget.showBottomNavPlaceholder == false,
         child: SingleChildScrollView(
@@ -641,13 +641,13 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                   margin: const EdgeInsets.only(top: 10, bottom: 6),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: WireframeColors.surfaceSecondary,
+                    color: AppColors.surfaceMuted,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: WireframeColors.primaryDark, width: 1.2),
+                    border: Border.all(color: AppColors.primary, width: 1.2),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.link_rounded, size: 22, color: WireframeColors.primaryDark),
+                      const Icon(Icons.link_rounded, size: 22, color: AppColors.primary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -658,7 +658,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                color: WireframeColors.primaryDark,
+                                color: AppColors.primary,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -666,14 +666,14 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                               'This sighting will be linked to the missing pet report and sightings dashboard.',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: WireframeColors.textSecondary,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 18, color: WireframeColors.textSecondary),
+                        icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
                         onPressed: _controller.clearThreadContext,
                         tooltip: 'Unlink from report',
                         visualDensity: VisualDensity.compact,
@@ -686,8 +686,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                   padding: const EdgeInsets.only(top: 8, bottom: 4),
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: WireframeColors.primaryDark,
-                      side: const BorderSide(color: WireframeColors.border, width: 1.0),
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.border, width: 1.0),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),

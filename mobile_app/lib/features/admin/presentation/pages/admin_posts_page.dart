@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_post_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
@@ -101,7 +101,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       SnackBar(
         content: Text('$actionName: $details'),
         duration: const Duration(seconds: 2),
-        backgroundColor: WireframeColors.primaryDark,
+        backgroundColor: AppColors.primary,
       ),
     );
   }
@@ -109,7 +109,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
   void _showPostActionMenu(AdminPostItem post) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -126,14 +126,14 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   style: const TextStyle(
                     fontSize: 16.0,
                     fontWeight: FontWeight.w700,
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.visibility_outlined,
-                      color: WireframeColors.primaryDark),
+                      color: AppColors.primary),
                   title: const Text('View Full Sighting Details'),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -187,7 +187,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -211,7 +211,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: WireframeColors.border,
+                          color: AppColors.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -243,14 +243,14 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                 style: TextStyle(
                                   fontSize: 17.0,
                                   fontWeight: FontWeight.w800,
-                                  color: WireframeColors.primaryDark,
+                                  color: AppColors.primary,
                                 ),
                               ),
                               Text(
                                 'Post ${post.id} · ${post.title}',
                                 style: const TextStyle(
                                   fontSize: 12.0,
-                                  color: WireframeColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -309,7 +309,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -319,28 +319,28 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       maxLines: 3,
                       style: const TextStyle(
                         fontSize: 13.0,
-                        color: WireframeColors.textPrimary,
+                        color: AppColors.darkCharcoal,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Enter instructions explaining what the author must edit...',
                         hintStyle: const TextStyle(
-                          color: WireframeColors.textMuted,
+                          color: AppColors.textMuted,
                           fontSize: 12.5,
                         ),
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
-                          borderSide: const BorderSide(color: WireframeColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
-                          borderSide: const BorderSide(color: WireframeColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           borderSide: const BorderSide(
-                            color: WireframeColors.primaryDark,
+                            color: AppColors.primary,
                             width: 1.5,
                           ),
                         ),
@@ -522,7 +522,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -547,7 +547,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: WireframeColors.border,
+                          color: AppColors.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -567,7 +567,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                 style: TextStyle(
                                   fontSize: 18.0,
                                   fontWeight: FontWeight.w800,
-                                  color: WireframeColors.primaryDark,
+                                  color: AppColors.primary,
                                 ),
                               ),
                               const SizedBox(height: 3),
@@ -575,7 +575,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                 'Post ${post.id} · Author: ${post.username}',
                                 style: const TextStyle(
                                   fontSize: 12.5,
-                                  color: WireframeColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -587,7 +587,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           onPressed: () => Navigator.pop(ctx),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ],
                     ),
@@ -600,12 +600,12 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: WireframeColors.border),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.pets_rounded,
-                              size: 20, color: WireframeColors.textMuted),
+                              size: 20, color: AppColors.textMuted),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -620,7 +620,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                   style: const TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w700,
-                                    color: WireframeColors.textPrimary,
+                                    color: AppColors.darkCharcoal,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -628,7 +628,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                   'Reported on ${post.dateFormatted} by ${post.username}',
                                   style: const TextStyle(
                                     fontSize: 11.5,
-                                    color: WireframeColors.textMuted,
+                                    color: AppColors.textMuted,
                                   ),
                                 ),
                               ],
@@ -646,7 +646,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -678,7 +678,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                               border: Border.all(
                                 color: isSelected
                                     ? Colors.amber[800]!
-                                    : WireframeColors.border,
+                                    : AppColors.border,
                                 width: isSelected ? 1.6 : 1.0,
                               ),
                             ),
@@ -687,7 +687,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                 Icon(icon,
                                     color: isSelected
                                         ? Colors.amber[800]
-                                        : WireframeColors.textMuted,
+                                        : AppColors.textMuted,
                                     size: 20),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -702,7 +702,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                           fontWeight: FontWeight.w700,
                                           color: isSelected
                                               ? Colors.amber[900]
-                                              : WireframeColors.textPrimary,
+                                              : AppColors.darkCharcoal,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -710,7 +710,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                         desc,
                                         style: const TextStyle(
                                           fontSize: 11.0,
-                                          color: WireframeColors.textSecondary,
+                                          color: AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -734,7 +734,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -744,12 +744,12 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       maxLines: 3,
                       style: const TextStyle(
                         fontSize: 13.0,
-                        color: WireframeColors.textPrimary,
+                        color: AppColors.darkCharcoal,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Enter warning message to dispatch to user...',
                         hintStyle: const TextStyle(
-                          color: WireframeColors.textMuted,
+                          color: AppColors.textMuted,
                           fontSize: 12.5,
                         ),
                         filled: true,
@@ -757,17 +757,17 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           borderSide:
-                              const BorderSide(color: WireframeColors.border),
+                              const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           borderSide:
-                              const BorderSide(color: WireframeColors.border),
+                              const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           borderSide: const BorderSide(
-                            color: WireframeColors.primaryDark,
+                            color: AppColors.primary,
                             width: 1.5,
                           ),
                         ),
@@ -838,7 +838,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: WireframeColors.surface,
+              backgroundColor: AppColors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
@@ -866,7 +866,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 16.5,
                         fontWeight: FontWeight.w800,
-                        color: WireframeColors.primaryDark,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -881,7 +881,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       TextSpan(
                         style: const TextStyle(
                           fontSize: 13.5,
-                          color: WireframeColors.textPrimary,
+                          color: AppColors.darkCharcoal,
                           height: 1.4,
                         ),
                         children: [
@@ -920,7 +920,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                   notifyUser = val ?? true;
                                 });
                               },
-                              activeColor: WireframeColors.primaryDark,
+                              activeColor: AppColors.primary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4.0),
                               ),
@@ -933,7 +933,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                               style: TextStyle(
                                 fontSize: 13.0,
                                 fontWeight: FontWeight.w600,
-                                color: WireframeColors.textPrimary,
+                                color: AppColors.darkCharcoal,
                               ),
                             ),
                           ),
@@ -948,12 +948,12 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         maxLines: 2,
                         style: const TextStyle(
                           fontSize: 12.5,
-                          color: WireframeColors.textPrimary,
+                          color: AppColors.darkCharcoal,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Reason for removal...',
                           hintStyle: const TextStyle(
-                            color: WireframeColors.textMuted,
+                            color: AppColors.textMuted,
                             fontSize: 12.0,
                           ),
                           filled: true,
@@ -961,17 +961,17 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                             borderSide:
-                                const BorderSide(color: WireframeColors.border),
+                                const BorderSide(color: AppColors.border),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                             borderSide:
-                                const BorderSide(color: WireframeColors.border),
+                                const BorderSide(color: AppColors.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                             borderSide: const BorderSide(
-                              color: WireframeColors.primaryDark,
+                              color: AppColors.primary,
                               width: 1.5,
                             ),
                           ),
@@ -988,7 +988,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   child: const Text(
                     'Cancel',
                     style: TextStyle(
-                      color: WireframeColors.textSecondary,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1043,7 +1043,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1066,7 +1066,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: WireframeColors.border,
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1084,7 +1084,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                             style: const TextStyle(
                               fontSize: 18.0,
                               fontWeight: FontWeight.w800,
-                              color: WireframeColors.primaryDark,
+                              color: AppColors.primary,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1093,7 +1093,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
-                        color: WireframeColors.textSecondary,
+                        color: AppColors.textSecondary,
                         onPressed: () => Navigator.pop(ctx),
                         splashRadius: 20,
                         padding: EdgeInsets.zero,
@@ -1120,7 +1120,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                             child: const Center(
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                color: WireframeColors.primaryDark,
+                                color: AppColors.primary,
                               ),
                             ),
                           );
@@ -1131,19 +1131,19 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF1F4F9),
                               borderRadius: BorderRadius.circular(12.0),
-                              border: Border.all(color: WireframeColors.border),
+                              border: Border.all(color: AppColors.border),
                             ),
                             alignment: Alignment.center,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: const [
                                 Icon(Icons.broken_image_outlined,
-                                    size: 38, color: WireframeColors.textMuted),
+                                    size: 38, color: AppColors.textMuted),
                                 SizedBox(height: 6),
                                 Text(
                                   'Photo unavailable',
                                   style: TextStyle(
-                                    color: WireframeColors.textMuted,
+                                    color: AppColors.textMuted,
                                     fontSize: 12.0,
                                   ),
                                 ),
@@ -1159,19 +1159,19 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F4F9),
                         borderRadius: BorderRadius.circular(12.0),
-                        border: Border.all(color: WireframeColors.border),
+                        border: Border.all(color: AppColors.border),
                       ),
                       alignment: Alignment.center,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Icon(Icons.pets_rounded,
-                              size: 38, color: WireframeColors.textMuted),
+                              size: 38, color: AppColors.textMuted),
                           SizedBox(height: 6),
                           Text(
                             'No photo uploaded for this sighting',
                             style: TextStyle(
-                              color: WireframeColors.textMuted,
+                              color: AppColors.textMuted,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1187,7 +1187,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(color: WireframeColors.border),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1199,7 +1199,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                               style: const TextStyle(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.w700,
-                                color: WireframeColors.textPrimary,
+                                color: AppColors.darkCharcoal,
                               ),
                             ),
                             if (post.subtitle != null &&
@@ -1210,7 +1210,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                 style: const TextStyle(
                                   fontSize: 14.0,
                                   fontWeight: FontWeight.w500,
-                                  color: WireframeColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -1269,7 +1269,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     style: TextStyle(
                       fontSize: 12.0,
                       fontWeight: FontWeight.w700,
-                      color: WireframeColors.textMuted,
+                      color: AppColors.textMuted,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -1280,7 +1280,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(color: WireframeColors.border),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
                       (post.description != null && post.description!.isNotEmpty)
@@ -1288,7 +1288,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           : 'No additional description provided.',
                       style: const TextStyle(
                         fontSize: 13.5,
-                        color: WireframeColors.textPrimary,
+                        color: AppColors.darkCharcoal,
                         height: 1.45,
                       ),
                     ),
@@ -1364,7 +1364,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(ctx),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: WireframeColors.primaryDark,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                         shape: RoundedRectangleBorder(
@@ -1448,7 +1448,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -1489,7 +1489,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     width: 20,
                     height: 20,
                     decoration: const BoxDecoration(
-                      color: WireframeColors.primaryDark,
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -1506,7 +1506,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   Text(
                     '$_flaggedCount flagged',
                     style: const TextStyle(
-                      color: WireframeColors.textSecondary,
+                      color: AppColors.textSecondary,
                       fontSize: 12.0,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1529,7 +1529,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1541,7 +1541,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1553,7 +1553,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1567,7 +1567,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         style: TextStyle(
                           fontSize: 11.0,
                           fontWeight: FontWeight.w700,
-                          color: WireframeColors.textMuted,
+                          color: AppColors.textMuted,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1577,7 +1577,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               ),
             ),
 
-            const Divider(height: 1, thickness: 1, color: WireframeColors.divider),
+            const Divider(height: 1, thickness: 1, color: AppColors.divider),
 
             // 4. Posts Table List (with Pull-to-Refresh & Live Data)
             Expanded(
@@ -1600,7 +1600,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     if (_isLoading && _allPosts.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
-          color: WireframeColors.primaryDark,
+          color: AppColors.primary,
         ),
       );
     }
@@ -1608,7 +1608,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     if (_errorMessage != null && _allPosts.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPosts,
-        color: WireframeColors.primaryDark,
+        color: AppColors.primary,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -1621,14 +1621,14 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.error_outline,
-                          size: 44, color: WireframeColors.textMuted),
+                          size: 44, color: AppColors.textMuted),
                       const SizedBox(height: 10),
                       Text(
                         'Failed to load posts: $_errorMessage',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 13.0,
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1651,7 +1651,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
     if (posts.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPosts,
-        color: WireframeColors.primaryDark,
+        color: AppColors.primary,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -1664,7 +1664,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     const Icon(
                       Icons.inbox_outlined,
                       size: 44,
-                      color: WireframeColors.textMuted,
+                      color: AppColors.textMuted,
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -1674,7 +1674,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
-                        color: WireframeColors.textSecondary,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1688,7 +1688,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadPosts,
-      color: WireframeColors.primaryDark,
+      color: AppColors.primary,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -1706,7 +1706,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                   post.id,
                   style: const TextStyle(
                     fontSize: 12.0,
-                    color: WireframeColors.textSecondary,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1723,7 +1723,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textPrimary,
+                        color: AppColors.darkCharcoal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1738,7 +1738,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                               post.subtitle!,
                               style: const TextStyle(
                                 fontSize: 12.0,
-                                color: WireframeColors.textSecondary,
+                                color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
@@ -1759,7 +1759,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                       post.dateFormatted,
                       style: const TextStyle(
                         fontSize: 11.0,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -1775,7 +1775,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     post.username,
                     style: const TextStyle(
                       fontSize: 12.5,
-                      color: WireframeColors.textPrimary,
+                      color: AppColors.darkCharcoal,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -1798,7 +1798,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           width: 22,
                           height: 22,
                           decoration: const BoxDecoration(
-                            color: WireframeColors.primaryDark,
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           alignment: Alignment.center,
@@ -1821,15 +1821,15 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         width: 28,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: WireframeColors.surface,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(6.0),
-                          border: Border.all(color: WireframeColors.border, width: 1.0),
+                          border: Border.all(color: AppColors.border, width: 1.0),
                         ),
                         alignment: Alignment.center,
                         child: const Text(
                           '···',
                           style: TextStyle(
-                            color: WireframeColors.primaryDark,
+                            color: AppColors.primary,
                             fontSize: 14.0,
                             fontWeight: FontWeight.w900,
                             height: 0.8,
@@ -1859,17 +1859,17 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
         decoration: BoxDecoration(
-          color: isSelected ? WireframeColors.primaryDark : WireframeColors.surface,
+          color: isSelected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(8.0),
           border: Border.all(
-            color: isSelected ? WireframeColors.primaryDark : WireframeColors.border,
+            color: isSelected ? AppColors.primary : AppColors.border,
             width: 1.0,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : WireframeColors.textPrimary,
+            color: isSelected ? Colors.white : AppColors.darkCharcoal,
             fontSize: 12.0,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),

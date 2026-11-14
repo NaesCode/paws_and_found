@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
+import '../../../../shared/molecules/paw_loading.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
@@ -210,7 +211,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Widget _buildBody() {
     if (_isLoading && _notifications.isEmpty) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: PawLoadingIndicator(message: 'Checking notifications...'),
       );
     }
 

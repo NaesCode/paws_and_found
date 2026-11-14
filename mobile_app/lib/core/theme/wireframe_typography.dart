@@ -1,74 +1,28 @@
 import 'package:flutter/material.dart';
-import 'wireframe_colors.dart';
+import 'app_typography.dart';
 
-/// Centralized typography definitions for the wireframe design system.
-///
-/// Ensures clear information hierarchy and consistent typography
-/// across all prototyping screens.
+/// Legacy wireframe typography definitions mapped to [AppTypography].
 class WireframeTypography {
   WireframeTypography._();
 
   // Screen & Large Headers
-  static const TextStyle screenTitle = TextStyle(
-    color: WireframeColors.textPrimary,
-    fontSize: 22.0,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.2,
-  );
-
-  static const TextStyle sectionHeader = TextStyle(
-    color: WireframeColors.textPrimary,
-    fontSize: 18.0,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.1,
-  );
+  static const TextStyle screenTitle = AppTypography.screenTitle;
+  static const TextStyle sectionHeader = AppTypography.sectionHeader;
 
   // Card Titles
-  static const TextStyle cardTitle = TextStyle(
-    color: WireframeColors.textPrimary,
-    fontSize: 16.0,
-    fontWeight: FontWeight.w700,
-  );
+  static const TextStyle cardTitle = AppTypography.cardTitle;
 
   // Body Content
-  static const TextStyle body = TextStyle(
-    color: WireframeColors.textPrimary,
-    fontSize: 13.5,
-    fontWeight: FontWeight.w400,
-    height: 1.35,
-  );
+  static const TextStyle body = AppTypography.body;
 
   // Subtitles & Metadata
-  static const TextStyle subtitle = TextStyle(
-    color: WireframeColors.textSecondary,
-    fontSize: 12.5,
-    fontWeight: FontWeight.w400,
-  );
-
-  static const TextStyle caption = TextStyle(
-    color: WireframeColors.textMuted,
-    fontSize: 11.0,
-    fontWeight: FontWeight.w400,
-  );
+  static const TextStyle subtitle = AppTypography.subtitle;
+  static const TextStyle caption = AppTypography.caption;
 
   // Button Labels
-  static const TextStyle buttonPrimary = TextStyle(
-    color: Colors.white,
-    fontSize: 14.0,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0.2,
-  );
-
-  static const TextStyle buttonOutlined = TextStyle(
-    color: WireframeColors.textPrimary,
-    fontSize: 14.0,
-    fontWeight: FontWeight.w600,
-  );
+  static const TextStyle buttonPrimary = AppTypography.buttonPrimary;
+  static const TextStyle buttonOutlined = AppTypography.buttonOutlined;
 
   // Tags & Badges
-  static const TextStyle tag = TextStyle(
-    color: WireframeColors.textSecondary,
-    fontSize: 11.5,
-    fontWeight: FontWeight.w500,
-  );
+  static const TextStyle tag = AppTypography.tag;
 }

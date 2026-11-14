@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
-/// User account status pill badge matching SDD Screen 09.
+/// User account status pill badge matching SDD Screen 09 with veterinary styling.
 ///
 /// Styles:
-/// - 'Active': White background, subtle border, dark slate text.
+/// - 'Active': Clean white background, subtle border, Forest Teal text.
 /// - 'Warning': Amber-100 background, amber border, amber-700 text.
-/// - 'Suspension' / 'Suspended': Dark slate solid background, white text.
+/// - 'Suspension' / 'Suspended': Forest Teal solid background, white text.
 class AdminUserStatusPill extends StatelessWidget {
   final String status;
   final VoidCallback? onTap;
@@ -28,7 +28,7 @@ class AdminUserStatusPill extends StatelessWidget {
     Border? border;
 
     if (isSuspended) {
-      bgColor = WireframeColors.primaryDark;
+      bgColor = AppColors.primary;
       textColor = Colors.white;
       border = null;
     } else if (isWarning) {
@@ -37,9 +37,9 @@ class AdminUserStatusPill extends StatelessWidget {
       border = Border.all(color: const Color(0xFFF59E0B), width: 1.2);
     } else {
       // Active / default
-      bgColor = WireframeColors.surface;
-      textColor = WireframeColors.primaryDark;
-      border = Border.all(color: WireframeColors.border, width: 1.2);
+      bgColor = AppColors.surface;
+      textColor = AppColors.primary;
+      border = Border.all(color: AppColors.border, width: 1.2);
     }
 
     return GestureDetector(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/models/ai_match_candidate.dart';
 
 /// Presentation widget displaying real-time AI match suggestions on the Camera screen.
@@ -36,9 +36,9 @@ class AiMatchScannerCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: WireframeColors.surfaceSecondary,
+          color: AppColors.surfaceMuted,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: WireframeColors.primaryDark.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: const Row(
           children: [
@@ -47,7 +47,7 @@ class AiMatchScannerCard extends StatelessWidget {
               height: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2.2,
-                color: WireframeColors.primaryDark,
+                color: AppColors.primary,
               ),
             ),
             SizedBox(width: 12),
@@ -60,7 +60,7 @@ class AiMatchScannerCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: WireframeColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                   ),
                   SizedBox(height: 2),
@@ -68,7 +68,7 @@ class AiMatchScannerCard extends StatelessWidget {
                     'Scanning active missing pet reports nearby for visual matches...',
                     style: TextStyle(
                       fontSize: 11,
-                      color: WireframeColors.textSecondary,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -89,9 +89,9 @@ class AiMatchScannerCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F8E9), // Light green tint for confirmation
+          color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF558B2F), width: 1.2),
+          border: Border.all(color: AppColors.primary, width: 1.2),
         ),
         child: Row(
           children: [
@@ -122,7 +122,7 @@ class AiMatchScannerCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF33691E),
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -140,7 +140,7 @@ class AiMatchScannerCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1B5E20),
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -150,7 +150,7 @@ class AiMatchScannerCard extends StatelessWidget {
                     '${pet.species} • ${pet.lastSeenLocation ?? "Cebu Area"}',
                     style: const TextStyle(
                       fontSize: 11,
-                      color: WireframeColors.textSecondary,
+                      color: AppColors.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -159,7 +159,7 @@ class AiMatchScannerCard extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.close_rounded, size: 20, color: WireframeColors.textSecondary),
+              icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textSecondary),
               tooltip: 'Unlink from this pet',
               onPressed: onClearSelection,
               visualDensity: VisualDensity.compact,
@@ -182,7 +182,7 @@ class AiMatchScannerCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: WireframeColors.primaryDark, width: 1.2),
+          border: Border.all(color: AppColors.primary, width: 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -196,21 +196,21 @@ class AiMatchScannerCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, size: 16, color: WireframeColors.primaryDark),
+                const Icon(Icons.auto_awesome, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 const Text(
                   'AI Match Suggestion',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                 ),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: topMatch.isHighConfidence ? Colors.green.shade700 : Colors.orange.shade800,
+                    color: topMatch.isHighConfidence ? AppColors.primary : AppColors.accentOrange,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -254,7 +254,7 @@ class AiMatchScannerCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: WireframeColors.textPrimary,
+                          color: AppColors.darkCharcoal,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -262,7 +262,7 @@ class AiMatchScannerCard extends StatelessWidget {
                         '${topMatch.species} • Missing in ${topMatch.lastSeenLocation ?? "Cebu"}',
                         style: const TextStyle(
                           fontSize: 11.5,
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -286,7 +286,7 @@ class AiMatchScannerCard extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: WireframeColors.primaryDark,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -304,8 +304,8 @@ class AiMatchScannerCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: WireframeColors.textPrimary,
-                      side: const BorderSide(color: WireframeColors.border),
+                      foregroundColor: AppColors.darkCharcoal,
+                      side: const BorderSide(color: AppColors.border),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     ),
@@ -328,8 +328,8 @@ class AiMatchScannerCard extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          foregroundColor: WireframeColors.primaryDark,
-          side: const BorderSide(color: WireframeColors.border, width: 1.0),
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.border, width: 1.0),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         ),

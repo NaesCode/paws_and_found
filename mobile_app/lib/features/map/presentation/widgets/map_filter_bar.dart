@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:paws_and_found/core/theme/wireframe_colors.dart';
+import 'package:paws_and_found/core/theme/app_colors.dart';
 
 /// A filter bar molecule for toggling map discovery modes.
 ///
@@ -61,7 +61,7 @@ class MapFilterBar extends StatelessWidget {
             trailingIcon: const Icon(
               Icons.arrow_drop_down,
               size: 18,
-              color: WireframeColors.textSecondary,
+              color: AppColors.textSecondary,
             ),
             onTap: onAnimalTypePressed,
           ),
@@ -85,13 +85,13 @@ class MapFilterBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? WireframeColors.primaryDark
-              : WireframeColors.surface,
+              ? AppColors.primary
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? WireframeColors.primaryDark
-                : WireframeColors.border,
+                ? AppColors.primary
+                : AppColors.border,
             width: 1.2,
           ),
           boxShadow: [
@@ -110,7 +110,7 @@ class MapFilterBar extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? Colors.white
-                    : WireframeColors.textPrimary,
+                    : AppColors.darkCharcoal,
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),

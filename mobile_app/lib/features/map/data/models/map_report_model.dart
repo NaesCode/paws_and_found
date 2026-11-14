@@ -41,10 +41,18 @@ class MapReportModel extends MapReportEntity {
     }
 
     final petId = json['pet_id']?.toString();
+    final petMap = json['pets'] as Map<String, dynamic>?;
+    final registeredPetName = (petMap?['name'] as String? ?? '').trim();
+    final sightingAnimalName = (json['animal_name'] as String? ?? json['pet_name'] as String? ?? '').trim();
+
     String? rawTitle = json['title'] as String?;
     String title;
     if (rawTitle != null && rawTitle.isNotEmpty) {
       title = rawTitle;
+    } else if (registeredPetName.isNotEmpty) {
+      title = registeredPetName;
+    } else if (sightingAnimalName.isNotEmpty) {
+      title = sightingAnimalName;
     } else if (petId == 'cc4df92c-64e9-4e9e-b37c-507ed997966f') {
       title = 'Thomas';
     } else if (petId == '1d205292-31b4-472f-8450-1c0b0d1653ef') {
