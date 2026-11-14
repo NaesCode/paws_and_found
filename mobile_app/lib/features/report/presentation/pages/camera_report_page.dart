@@ -316,9 +316,13 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                           ),
                           title: Row(
                             children: [
-                              Text(
-                                candidate.petName,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              Flexible(
+                                child: Text(
+                                  candidate.petName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Container(

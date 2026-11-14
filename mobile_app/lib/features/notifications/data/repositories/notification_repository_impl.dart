@@ -121,6 +121,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Map<String, dynamic>?> getPostDetailsForNotification(
       AppNotification notification) async {
+    // 0. If notification is not post-related (e.g. withdrawal, removal, system message), no active post exists
+    if (!notification.isPostRelated) {
+      return null;
+    }
+
     String? reportId = notification.relatedReportId;
 
     // 1. If relatedMatchId is set and reportId is null, resolve from matches
@@ -161,6 +166,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
           return await _mapReportWithPet(row, petMap);
         }
       } catch (_) {}
+
+      // If a specific reportId was referenced but not found, the report was deleted/withdrawn
+      return null;
     }
 
     // 3. Try to query by extracted post ID (e.g. short ID #9B2A or UUID)
@@ -250,8 +258,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
       } catch (_) {}
     }
 
-    // 5. Fallback synthesis for demo, disconnected, or test environments
-    return _synthesizePostDetails(notification);
+    // 5. Fallback synthesis for demo / offline test environments with named pets
+    if (petName != null && petName.isNotEmpty) {
+      return _synthesizePostDetails(notification);
+    }
+
+    return null;
   }
 
   /// Extracts pet name from typical notification message templates.
