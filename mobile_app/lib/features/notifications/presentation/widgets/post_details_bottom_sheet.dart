@@ -118,32 +118,32 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.broken_image_outlined,
+                          const Icon(Icons.info_outline_rounded,
                               size: 48, color: AppColors.text3),
                           const SizedBox(height: 12),
                           const Text(
-                            'Unable to load post details.',
+                            'Post is no longer available.',
                             style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                               color: AppColors.darkCharcoal,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            widget.notification.message,
+                          const Text(
+                            'This report has been withdrawn, removed, or resolved.',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.text3),
+                            style: TextStyle(fontSize: 13, color: AppColors.text3),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           ElevatedButton(
                             onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                             ),
                             child: const Text('Close',
-                                style: TextStyle(color: Colors.white)),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
