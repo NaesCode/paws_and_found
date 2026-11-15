@@ -1,10 +1,44 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paws_and_found/features/report/domain/entities/report.dart';
+import 'package:paws_and_found/features/report/domain/repositories/report_repository.dart';
 import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
 import 'package:paws_and_found/features/report/presentation/widgets/camera_viewfinder_brackets.dart';
 import 'package:paws_and_found/features/report/presentation/widgets/camera_viewfinder_placeholder.dart';
 import 'package:paws_and_found/features/report/presentation/widgets/create_report_form.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
+
+class _MockCameraReportRepository implements ReportRepository {
+  @override
+  Future<List<SightingReport>> getNearbyReports({
+    required double lat,
+    required double lng,
+    double radiusM = 5000,
+    String? animalType,
+    int limit = 200,
+  }) async => [];
+
+  @override
+  Future<String> createReport({
+    required String animalType,
+    required String description,
+    required String photoUrl,
+    required double lat,
+    required double lng,
+    String status = 'stray',
+    String? petId,
+    String? locationName,
+    String? linkedReportId,
+  }) async => 'mock-report-123';
+
+  @override
+  Future<String> uploadReportPhoto(Uint8List bytes, {String extension = 'jpg'}) async =>
+      'https://supabase.co/storage/mock.jpg';
+
+  @override
+  Future<void> requestReportAnalysis(String reportId) async {}
+}
 
 void main() {
   group('Camera & Report Atomic Design Components', () {
@@ -102,8 +136,11 @@ void main() {
 
     testWidgets('CameraReportPage full wireframe screen renders and is interactive', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: CameraReportPage(showBottomNavPlaceholder: true),
+        MaterialApp(
+          home: CameraReportPage(
+            repository: _MockCameraReportRepository(),
+            showBottomNavPlaceholder: true,
+          ),
         ),
       );
       await tester.pumpAndSettle();

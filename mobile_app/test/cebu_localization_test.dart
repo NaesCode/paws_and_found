@@ -321,6 +321,7 @@ void main() {
         MaterialApp(
           home: MapPage(
             repository: repository,
+            initialReportId: 'cebu-1',
             showBottomNavPlaceholder: false,
           ),
         ),
