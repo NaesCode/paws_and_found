@@ -57,3 +57,19 @@ def decode_and_preprocess(
 
     return arr
 
+
+def check_image_blur(arr: np.ndarray, threshold: float = 65.0) -> tuple[bool, float]:
+    """
+    Computes Laplacian variance to detect blurry or unfocused photos.
+    Variance < threshold indicates significant blur.
+    Returns (is_blurry, variance).
+    """
+    try:
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        variance = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        is_blurry = variance < threshold
+        return is_blurry, round(variance, 2)
+    except Exception:
+        return False, 999.0
+
+

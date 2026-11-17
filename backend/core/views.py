@@ -11,6 +11,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from .ai.features import average_embeddings, embed_image
+from .ai.preprocessor import check_image_blur, decode_and_preprocess
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -161,6 +162,73 @@ class ReportAnalyzeView(APIView):
                     "report_id": str(report.id),
                     "reason": "Image flagged for administrative review: no clear animal detected.",
                     "detector_score": emb_result.detector_score,
+                    "matches_created": 0,
+                    "matches_updated": 0,
+                    "notifications_sent": 1,
+                })
+
+            # 3.2. Content Moderation: Detect duplicate / poser posts reusing photos from another user
+            is_potential_poser = False
+            poser_reason = ""
+
+            # Check exact photo URL from another user's pet or report
+            if report.photo_url:
+                existing_pet_with_url = Pet.objects.filter(
+                    photo_urls__contains=[report.photo_url]
+                ).exclude(owner_id=report.reporter_id).first()
+
+                if existing_pet_with_url:
+                    is_potential_poser = True
+                    poser_reason = f"Duplicate image: Photo exactly matches registered pet '{existing_pet_with_url.name}' belonging to another user."
+                else:
+                    existing_report_with_url = Report.objects.filter(
+                        photo_url=report.photo_url
+                    ).exclude(reporter_id=report.reporter_id).exclude(id=report.id).first()
+                    if existing_report_with_url:
+                        is_potential_poser = True
+                        poser_reason = f"Duplicate image: Photo matches existing report #{str(existing_report_with_url.id)[:6].upper()} by another user."
+
+            # Check high visual cosine similarity (>= 0.98) against missing pets of other users
+            if not is_potential_poser:
+                try:
+                    missing_pet_embeddings = PetEmbedding.objects.filter(
+                        pet__status="missing"
+                    ).exclude(pet__owner_id=report.reporter_id).select_related("pet")
+                    for pe in missing_pet_embeddings:
+                        if pe.model_version == emb_result.model_version:
+                            c_score = cosine(emb_result.vector, pe.vector)
+                            if c_score >= 0.98:
+                                is_potential_poser = True
+                                poser_reason = (
+                                    f"Potential poser post: Photo visually identical ({int(round(c_score * 100))}%) "
+                                    f"to missing pet '{pe.pet.name}' owned by another user."
+                                )
+                                break
+                except Exception as ex:
+                    logger.warning("Error checking poser cosine similarity: %s", ex)
+
+            if is_potential_poser:
+                with transaction.atomic():
+                    report.moderation_status = "flagged"
+                    report.moderation_notes = f"Flagged by AI: {poser_reason} Pending administrative verification."
+                    report.analysis_status = "done"
+                    report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
+
+                    report_short_id = str(report.id)[:6].upper()
+                    Notification.objects.create(
+                        user_id=report.reporter_id,
+                        type="warning",
+                        message=(
+                            f"Post Under Review: Report #{report_short_id} was flagged by AI moderation as the photo "
+                            f"closely matches an existing pet photo registered by another user. An administrator will review and verify."
+                        ),
+                    )
+
+                logger.warning("Report %s flagged as potential poser/duplicate post: %s", report.id, poser_reason)
+                return Response({
+                    "status": "flagged",
+                    "report_id": str(report.id),
+                    "reason": f"Flagged for administrative review: {poser_reason}",
                     "matches_created": 0,
                     "matches_updated": 0,
                     "notifications_sent": 1,
@@ -467,13 +535,23 @@ class MatchCandidatesView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # Check image blur / clarity
+        quality_warning = None
+        try:
+            arr = decode_and_preprocess(image_bytes)
+            is_blurry, var = check_image_blur(arr, threshold=50.0)
+            if is_blurry:
+                quality_warning = "Photo appears blurry or out of focus. For better AI matching, consider retaking a clearer photo."
+        except Exception:
+            pass
+
         # Gate: Do not suggest missing pet matches if no animal was detected in the photo
         if not emb_result.used_crop and emb_result.detector_score < 0.25:
             logger.info(
                 "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
                 emb_result.detector_score,
             )
-            return Response({"candidates": []})
+            return Response({"candidates": [], "quality_warning": quality_warning})
 
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
@@ -567,4 +645,7 @@ class MatchCandidatesView(APIView):
             reverse=True,
         )
 
-        return Response({"candidates": candidates[:5]})
+        return Response({
+            "candidates": candidates[:5],
+            "quality_warning": quality_warning,
+        })

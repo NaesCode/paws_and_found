@@ -185,9 +185,62 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                             ),
                           ),
                           const SizedBox(width: 10),
-                          WireframeStatusBadge(
-                            status: report.status,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              WireframeStatusBadge(
+                                status: report.status,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              ),
+                              if (RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false).hasMatch(report.description)) ...[
+                                const SizedBox(height: 4),
+                                Builder(
+                                  builder: (context) {
+                                    final pct = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false)
+                                        .firstMatch(report.description)
+                                        ?.group(1);
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                      decoration: BoxDecoration(
+                                        color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                            ? const Color(0xFFE8F5E9)
+                                            : const Color(0xFFFFF3E0),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                              ? const Color(0xFF81C784)
+                                              : const Color(0xFFFFB74D),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.auto_awesome,
+                                            size: 11,
+                                            color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                                ? const Color(0xFF2E7D32)
+                                                : const Color(0xFFE65100),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            '$pct% Match',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                                  ? const Color(0xFF2E7D32)
+                                                  : const Color(0xFFE65100),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -395,6 +448,11 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
   }
 
   Widget _buildDescriptionSection() {
+    final cleanDesc = report.description
+        .replaceAll(RegExp(r'\[AI Match:\s*\d+%?\]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\[Mobility:\s*[a-zA-Z_]+\]', caseSensitive: false), '')
+        .trim();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -417,8 +475,8 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
             border: Border.all(color: AppColors.borderLight, width: 1.0),
           ),
           child: Text(
-            report.description.isNotEmpty
-                ? report.description
+            cleanDesc.isNotEmpty
+                ? cleanDesc
                 : 'No additional sighting details provided.',
             style: const TextStyle(
               color: AppColors.darkCharcoal,
