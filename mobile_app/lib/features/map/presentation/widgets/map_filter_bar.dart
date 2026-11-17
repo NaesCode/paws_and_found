@@ -12,23 +12,33 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 /// passed properties and callbacks.
 class MapFilterBar extends StatelessWidget {
   final String selectedFilter; // 'all' or 'for_you'
+  final String? selectedStatus; // 'all', 'missing', 'stray', 'found'
   final String? selectedAnimalType;
   final ValueChanged<String> onFilterSelected;
+  final ValueChanged<String?>? onStatusSelected;
   final VoidCallback onAnimalTypePressed;
 
   const MapFilterBar({
     super.key,
     required this.selectedFilter,
+    this.selectedStatus,
     this.selectedAnimalType,
     required this.onFilterSelected,
+    this.onStatusSelected,
     required this.onAnimalTypePressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isAllSelected = selectedFilter.toLowerCase() == 'all';
+    final bool hasSpecificStatus = selectedStatus != null &&
+        selectedStatus!.isNotEmpty &&
+        selectedStatus!.toLowerCase() != 'all';
+    final bool isAllSelected = !hasSpecificStatus && selectedFilter.toLowerCase() == 'all';
     final bool isForYouSelected = selectedFilter.toLowerCase() == 'for_you' ||
         selectedFilter.toLowerCase() == 'foryou';
+    final bool isMissingSelected = selectedStatus?.toLowerCase() == 'missing';
+    final bool isStraySelected = selectedStatus?.toLowerCase() == 'stray';
+    final bool isFoundSelected = selectedStatus?.toLowerCase() == 'found';
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -40,7 +50,37 @@ class MapFilterBar extends StatelessWidget {
           _buildFilterPill(
             label: 'All',
             isSelected: isAllSelected,
-            onTap: () => onFilterSelected('all'),
+            onTap: () {
+              onStatusSelected?.call(null);
+              onFilterSelected('all');
+            },
+          ),
+          const SizedBox(width: 8),
+
+          // "Missing" status pill
+          _buildFilterPill(
+            label: 'Missing',
+            isSelected: isMissingSelected,
+            leadingIcon: _buildStatusDot(AppColors.statusMissing, isMissingSelected),
+            onTap: () => onStatusSelected?.call('missing'),
+          ),
+          const SizedBox(width: 8),
+
+          // "Stray" status pill
+          _buildFilterPill(
+            label: 'Stray',
+            isSelected: isStraySelected,
+            leadingIcon: _buildStatusDot(AppColors.statusStray, isStraySelected),
+            onTap: () => onStatusSelected?.call('stray'),
+          ),
+          const SizedBox(width: 8),
+
+          // "Found" status pill
+          _buildFilterPill(
+            label: 'Found',
+            isSelected: isFoundSelected,
+            leadingIcon: _buildStatusDot(AppColors.primary, isFoundSelected),
+            onTap: () => onStatusSelected?.call('found'),
           ),
           const SizedBox(width: 8),
 
@@ -70,10 +110,22 @@ class MapFilterBar extends StatelessWidget {
     );
   }
 
+  Widget _buildStatusDot(Color color, bool isSelected) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.white : color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
   Widget _buildFilterPill({
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    Widget? leadingIcon,
     Widget? trailingIcon,
   }) {
     return GestureDetector(
@@ -82,7 +134,7 @@ class MapFilterBar extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary
@@ -105,6 +157,10 @@ class MapFilterBar extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (leadingIcon != null) ...[
+              leadingIcon,
+              const SizedBox(width: 6),
+            ],
             Text(
               label,
               style: TextStyle(
