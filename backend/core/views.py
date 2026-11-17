@@ -167,73 +167,6 @@ class ReportAnalyzeView(APIView):
                     "notifications_sent": 1,
                 })
 
-            # 3.2. Content Moderation: Detect duplicate / poser posts reusing photos from another user
-            is_potential_poser = False
-            poser_reason = ""
-
-            # Check exact photo URL from another user's pet or report
-            if report.photo_url:
-                existing_pet_with_url = Pet.objects.filter(
-                    photo_urls__contains=[report.photo_url]
-                ).exclude(owner_id=report.reporter_id).first()
-
-                if existing_pet_with_url:
-                    is_potential_poser = True
-                    poser_reason = f"Duplicate image: Photo exactly matches registered pet '{existing_pet_with_url.name}' belonging to another user."
-                else:
-                    existing_report_with_url = Report.objects.filter(
-                        photo_url=report.photo_url
-                    ).exclude(reporter_id=report.reporter_id).exclude(id=report.id).first()
-                    if existing_report_with_url:
-                        is_potential_poser = True
-                        poser_reason = f"Duplicate image: Photo matches existing report #{str(existing_report_with_url.id)[:6].upper()} by another user."
-
-            # Check high visual cosine similarity (>= 0.98) against missing pets of other users
-            if not is_potential_poser:
-                try:
-                    missing_pet_embeddings = PetEmbedding.objects.filter(
-                        pet__status="missing"
-                    ).exclude(pet__owner_id=report.reporter_id).select_related("pet")
-                    for pe in missing_pet_embeddings:
-                        if pe.model_version == emb_result.model_version:
-                            c_score = cosine(emb_result.vector, pe.vector)
-                            if c_score >= 0.98:
-                                is_potential_poser = True
-                                poser_reason = (
-                                    f"Potential poser post: Photo visually identical ({int(round(c_score * 100))}%) "
-                                    f"to missing pet '{pe.pet.name}' owned by another user."
-                                )
-                                break
-                except Exception as ex:
-                    logger.warning("Error checking poser cosine similarity: %s", ex)
-
-            if is_potential_poser:
-                with transaction.atomic():
-                    report.moderation_status = "flagged"
-                    report.moderation_notes = f"Flagged by AI: {poser_reason} Pending administrative verification."
-                    report.analysis_status = "done"
-                    report.save(update_fields=["moderation_status", "moderation_notes", "analysis_status"])
-
-                    report_short_id = str(report.id)[:6].upper()
-                    Notification.objects.create(
-                        user_id=report.reporter_id,
-                        type="warning",
-                        message=(
-                            f"Post Under Review: Report #{report_short_id} was flagged by AI moderation as the photo "
-                            f"closely matches an existing pet photo registered by another user. An administrator will review and verify."
-                        ),
-                    )
-
-                logger.warning("Report %s flagged as potential poser/duplicate post: %s", report.id, poser_reason)
-                return Response({
-                    "status": "flagged",
-                    "report_id": str(report.id),
-                    "reason": f"Flagged for administrative review: {poser_reason}",
-                    "matches_created": 0,
-                    "matches_updated": 0,
-                    "notifications_sent": 1,
-                })
-
             with transaction.atomic():
                 # 4. Upsert report embedding with model version
                 ReportEmbedding.objects.update_or_create(
@@ -342,6 +275,58 @@ class PetAnalyzeView(APIView):
 
                 # Centroid average and re-normalize across photos
                 final_vector = average_embeddings(vectors)
+
+                # Poser & Duplicate Moderation: Prevent malicious users from registering or claiming
+                # a pet using photos stolen from another user's registered pet
+                for photo_url in candidate_urls:
+                    dup_pet = Pet.objects.filter(
+                        photo_urls__contains=[photo_url]
+                    ).exclude(owner_id=pet.owner_id).exclude(id=pet.id).first()
+                    if dup_pet:
+                        logger.warning("Duplicate pet photo detected: Pet %s reused photo from Pet %s", pet.id, dup_pet.id)
+                        Notification.objects.create(
+                            user_id=pet.owner_id,
+                            type="warning",
+                            message=(
+                                f"Duplicate Photo Alert: The photo uploaded for '{pet.name}' matches another registered pet "
+                                f"('{dup_pet.name}'). Please verify ownership or use your own original photos."
+                            ),
+                        )
+                        return Response(
+                            {
+                                "status": "flagged_duplicate",
+                                "error": f"Photo matches another registered pet '{dup_pet.name}'. Please upload original photos of your pet.",
+                            },
+                            status=status.HTTP_409_CONFLICT,
+                        )
+
+                # Visual cosine similarity check (>= 0.98) across other users' pets
+                try:
+                    other_pet_embeddings = PetEmbedding.objects.exclude(
+                        pet__owner_id=pet.owner_id
+                    ).exclude(pet_id=pet.id).select_related("pet")
+                    for oe in other_pet_embeddings:
+                        if oe.model_version == current_version:
+                            sim = cosine(final_vector, oe.vector)
+                            if sim >= 0.98:
+                                logger.warning("Poser pet detected: Pet %s visually identical (%.2f) to Pet %s", pet.id, sim, oe.pet.id)
+                                Notification.objects.create(
+                                    user_id=pet.owner_id,
+                                    type="warning",
+                                    message=(
+                                        f"Duplicate Pet Profile Alert: '{pet.name}' was flagged as the photos are visually identical "
+                                        f"to an existing pet ('{oe.pet.name}') registered by another user."
+                                    ),
+                                )
+                                return Response(
+                                    {
+                                        "status": "flagged_poser",
+                                        "error": f"Photo visually identical to an existing pet ('{oe.pet.name}') belonging to another user.",
+                                    },
+                                    status=status.HTTP_409_CONFLICT,
+                                )
+                except Exception as ex:
+                    logger.warning("Error checking other pet cosine similarity in PetAnalyzeView: %s", ex)
 
                 PetEmbedding.objects.update_or_create(
                     pet=pet,

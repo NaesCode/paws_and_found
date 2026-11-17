@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/utils/description_tag_helper.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/wireframe_status_badge.dart';
 import '../../../../shared/atoms/wireframe_tag.dart';
@@ -327,10 +328,10 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
 
   Widget _buildPhotoSection() {
     return Container(
-      height: 170,
+      height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border, width: 1.0),
       ),
@@ -338,7 +339,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
       child: report.photoUrl != null && report.photoUrl!.isNotEmpty
           ? Image.network(
               report.photoUrl!,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               errorBuilder: (_, _, _) => _buildPhotoPlaceholder(),
             )
           : _buildPhotoPlaceholder(),
@@ -448,17 +449,29 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
   }
 
   Widget _buildDescriptionSection() {
-    final cleanDesc = report.description
-        .replaceAll(RegExp(r'\[AI Match:\s*\d+%?\]', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\[Mobility:\s*[a-zA-Z_]+\]', caseSensitive: false), '')
-        .trim();
+    final isMissing = report.status.toLowerCase() == 'missing';
+    final mobility = DescriptionTagHelper.extractMobility(report.description);
+    final matchPct = DescriptionTagHelper.extractMatchConfidence(report.description);
+    final cleanDesc = DescriptionTagHelper.cleanDescription(report.description);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Last Seen / Sighting Details',
-          style: TextStyle(
+        // If 'missing' report: Show Mobility Assumption card
+        if (isMissing && mobility != null) ...[
+          DescriptionTagHelper.buildMobilityCard(mobility),
+          const SizedBox(height: 12),
+        ],
+
+        // If 'stray' or 'found' report: Show AI Match Similarity card
+        if (!isMissing && matchPct != null) ...[
+          DescriptionTagHelper.buildAiMatchCard(matchPct),
+          const SizedBox(height: 12),
+        ],
+
+        Text(
+          isMissing ? 'Last Seen / Missing Details' : 'Sighting Details',
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12.5,
             fontWeight: FontWeight.w700,

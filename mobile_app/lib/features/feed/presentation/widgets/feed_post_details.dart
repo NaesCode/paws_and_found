@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class FeedPostDetails extends StatelessWidget {
-
   final String name;
   final String specie;
   final String description;
@@ -11,7 +10,7 @@ class FeedPostDetails extends StatelessWidget {
     required this.name,
     required this.specie,
     required this.description,
-    });
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +21,7 @@ class FeedPostDetails extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (matchConfidence != null) ...[
           Container(
@@ -66,6 +66,8 @@ class FeedPostDetails extends StatelessWidget {
         ],
         Text(
           'Name: $name',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
@@ -75,15 +77,17 @@ class FeedPostDetails extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           'Specie: $specie',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
             color: Colors.black,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         const Text(
-          'Description:', //unchanged
+          'Description:',
           style: TextStyle(
             fontSize: 11,
             color: Colors.black54,
@@ -97,7 +101,7 @@ class FeedPostDetails extends StatelessWidget {
             color: Colors.black87,
             height: 1.3,
           ),
-          maxLines: 5,
+          maxLines: matchConfidence != null ? 2 : 3,
           overflow: TextOverflow.ellipsis,
         ),
       ],
