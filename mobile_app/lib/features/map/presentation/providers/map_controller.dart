@@ -21,9 +21,11 @@ class MapController extends ChangeNotifier {
   })  : _repository = repository ?? MapRepositoryImpl(),
         _locationService = locationService ?? const GeolocatorLocationService();
 
+  List<MapReportEntity> _allReports = [];
   List<MapReportEntity> _reports = [];
   MapReportEntity? _selectedReport;
   MapFilterType _currentFilter = MapFilterType.all;
+  String? _selectedStatus;
   String? _selectedAnimalType;
   bool _isLoading = false;
   String? _errorMessage;
@@ -51,6 +53,7 @@ class MapController extends ChangeNotifier {
   List<MapReportEntity> get reports => _reports;
   MapReportEntity? get selectedReport => _selectedReport;
   MapFilterType get currentFilter => _currentFilter;
+  String? get selectedStatus => _selectedStatus;
   String? get selectedAnimalType => _selectedAnimalType;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -74,21 +77,47 @@ class MapController extends ChangeNotifier {
         filterType: _currentFilter,
       );
 
-      _reports = results;
-
-      // Retain the previously selected report if it still exists in the new results.
-      // Do NOT auto-select the first report on initial load — selection is driven by
-      // explicit user taps or the initialReportId deep-link, not by loadReports().
-      if (_selectedReport != null) {
-        final match = results.where((r) => r.id == _selectedReport!.id);
-        _selectedReport = match.isNotEmpty ? match.first : null;
-      }
+      _allReports = results;
+      _applyStatusFilter();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Filters in-memory reports by [_selectedStatus].
+  void _applyStatusFilter() {
+    if (_selectedStatus != null &&
+        _selectedStatus!.isNotEmpty &&
+        _selectedStatus!.toLowerCase() != 'all') {
+      final target = _selectedStatus!.toLowerCase().trim();
+      _reports = _allReports
+          .where((r) => r.status.toLowerCase().trim() == target)
+          .toList();
+    } else {
+      _reports = List.from(_allReports);
+    }
+
+    if (_selectedReport != null) {
+      final match = _reports.where((r) => r.id == _selectedReport!.id);
+      _selectedReport = match.isNotEmpty ? match.first : null;
+    }
+  }
+
+  /// Sets or toggles the active pin status filter ('all', 'missing', 'stray', 'found').
+  ///
+  /// Passing `null`, `'all'`, or the currently selected status toggles it back to all.
+  void setStatus(String? status) {
+    final clean = status?.toLowerCase().trim();
+    if (clean == null || clean == 'all' || clean == _selectedStatus) {
+      _selectedStatus = null;
+    } else {
+      _selectedStatus = clean;
+    }
+    _applyStatusFilter();
+    notifyListeners();
   }
 
   /// Obtains current GPS coordinates using [LocationService].
@@ -143,12 +172,13 @@ class MapController extends ChangeNotifier {
 
   /// Registers a dynamic report (e.g. from notification navigation) and selects it immediately.
   void registerAndSelectReport(MapReportEntity report) {
-    final idx = _reports.indexWhere((r) => r.id == report.id);
+    final idx = _allReports.indexWhere((r) => r.id == report.id);
     if (idx != -1) {
-      _reports[idx] = report;
+      _allReports[idx] = report;
     } else {
-      _reports.insert(0, report);
+      _allReports.insert(0, report);
     }
+    _applyStatusFilter();
     _selectedReport = report;
     notifyListeners();
   }

@@ -12,10 +12,12 @@ import '../../../auth/data/repositories/auth_repository_impl.dart';
 /// status bar style) defined in [AppTheme.light].
 class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onEditPressed;
+  final VoidCallback? onSettingsPressed;
 
   const ProfileHeader({
     super.key,
     this.onEditPressed,
+    this.onSettingsPressed,
   });
 
   /// Standard AppBar height — matches every other page's header height.
@@ -40,6 +42,12 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
               context.push('/admin');
             } else if (value == 'edit') {
               onEditPressed?.call();
+            } else if (value == 'settings') {
+              if (onSettingsPressed != null) {
+                onSettingsPressed!();
+              } else {
+                context.push('/settings');
+              }
             } else if (value == 'logout') {
               await AuthRepositoryImpl().signOut();
               if (context.mounted) {
@@ -48,7 +56,10 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
             }
           },
           itemBuilder: (context) {
-            final user = Supabase.instance.client.auth.currentUser;
+            User? user;
+            try {
+              user = Supabase.instance.client.auth.currentUser;
+            } catch (_) {}
             final isAdmin = user != null &&
                 (user.appMetadata['is_admin'] == true ||
                  user.appMetadata['role'] == 'admin' ||
@@ -73,6 +84,16 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
                     Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
                     SizedBox(width: 10),
                     Text('Edit Profile', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 18, color: AppColors.primary),
+                    SizedBox(width: 10),
+                    Text('Settings', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
