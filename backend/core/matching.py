@@ -25,17 +25,51 @@ class MatchSummary(NamedTuple):
 # =====================================================================
 
 
-def radius_for(days_missing: float) -> int:
+def radius_for(days_missing: float, mobility: Optional[str] = None) -> int:
     """
-    Returns the search radius in meters for a pet missing for `days_missing` days.
-    Matches the last step in settings.MATCH_RADIUS_STEPS whose min_days_missing <= days_missing.
+    Returns the search radius in meters for a pet missing for `days_missing` days,
+    optionally tailored by the owner's reported mobility assumption.
     """
-    steps = getattr(settings, "MATCH_RADIUS_STEPS", [(0, 10_000), (3, 50_000), (7, 150_000)])
+    if mobility == "distant":
+        return 150_000
+    elif mobility == "flighted":
+        steps = [(0, 60_000), (3, 120_000), (7, 150_000)]
+    elif mobility == "roaming":
+        steps = [(0, 30_000), (3, 75_000), (7, 150_000)]
+    else:
+        steps = getattr(settings, "MATCH_RADIUS_STEPS", [(0, 10_000), (3, 50_000), (7, 150_000)])
+
     matched_radius = steps[0][1]
     for min_days, radius in steps:
         if days_missing >= min_days:
             matched_radius = radius
     return matched_radius
+
+
+def _get_pet_mobility(pet: Pet) -> Optional[str]:
+    """
+    Determines mobility assumption from pet's latest missing report note or species.
+    """
+    try:
+        latest_report = Report.objects.filter(pet=pet, status="missing").order_by("-created_at").first()
+        if latest_report and latest_report.description:
+            desc = latest_report.description.lower()
+            if "[mobility: distant]" in desc or "distant" in desc:
+                return "distant"
+            if "[mobility: flighted]" in desc or "flighted" in desc:
+                return "flighted"
+            if "[mobility: roaming]" in desc or "roaming" in desc:
+                return "roaming"
+            if "[mobility: standard]" in desc:
+                return "standard"
+    except Exception:
+        pass
+
+    # Fallback by species
+    if pet.species and pet.species.lower() in ("bird", "parrot", "macaw", "cockatoo", "avian"):
+        return "flighted"
+
+    return None
 
 
 def required_similarity(distance_m: float) -> Optional[float]:
@@ -128,13 +162,12 @@ def match_report_against_pets(report: Report) -> MatchSummary:
         if report.created_at < min_allowed_time:
             continue
 
-        # Per-pet radius based on days missing
+        # Per-pet radius based on days missing and user-configured mobility assumption
         days_missing = max(0.0, (report.created_at - pet.missing_since).total_seconds() / 86400.0)
-        pet_allowed_radius = radius_for(days_missing)
+        mobility = _get_pet_mobility(pet)
+        pet_allowed_radius = radius_for(days_missing, mobility=mobility)
 
         dist_m = pet.distance.m if hasattr(pet.distance, "m") else float(pet.distance)
-        if dist_m > pet_allowed_radius:
-            continue
 
         req_sim = required_similarity(dist_m)
         if req_sim is None:
@@ -151,6 +184,15 @@ def match_report_against_pets(report: Report) -> MatchSummary:
             continue
 
         score = cosine(report_embedding.vector, pet_embedding.vector)
+
+        # High-Confidence Visual Override:
+        # If visual similarity is exceptionally high (>= 0.88), allow bypassing the time-based
+        # pet_allowed_radius restriction (up to max configured search distance, e.g. 150 km).
+        # This accounts for flighted pets (birds/macaws), vehicular transit, or pets missing for a long time.
+        high_confidence_override = score >= getattr(settings, "MATCH_HIGH_CONFIDENCE_OVERRIDE_SIMILARITY", 0.88)
+        if dist_m > pet_allowed_radius and not high_confidence_override:
+            continue
+
         if score < req_sim:
             continue
 
@@ -216,8 +258,8 @@ def match_report_against_pets(report: Report) -> MatchSummary:
                     owner_msg = f"🚨 High-Confidence Match ({conf_pct}%): A pet strongly resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)!"
                     reporter_msg = f"🚨 High-Confidence Match ({conf_pct}%): Your {report.animal_type} sighting strongly matches missing pet {pet.name}{loc_context} ({dist_km_msg} km away)!"
                 else:
-                    owner_msg = f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
-                    reporter_msg = f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
+                    owner_msg = f"Potential Match ({conf_pct}%): A pet resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
+                    reporter_msg = f"Potential Match ({conf_pct}%): A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
 
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(
@@ -261,10 +303,14 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
         logger.warning("Pet %s has no embedding; skipping matching.", pet.id)
         return MatchSummary(0, 0, 0)
 
-    # 1. Search radius based on pet's days missing
+    # 1. Search radius based on pet's days missing and user-configured mobility assumption
     now = timezone.now()
     days_missing = _calculate_days_missing(pet, now)
-    search_radius_m = radius_for(days_missing)
+    mobility = _get_pet_mobility(pet)
+    pet_allowed_radius = radius_for(days_missing, mobility=mobility)
+
+    tiers = getattr(settings, "MATCH_DISTANCE_TIERS", [(10_000, 0.00), (50_000, 0.05), (150_000, 0.10)])
+    max_search_radius_m = tiers[-1][0]
 
     # 2. Time window: sightings created >= pet.missing_since - MATCH_SIGHTING_PAD_HOURS
     sighting_pad_hours = getattr(settings, "MATCH_SIGHTING_PAD_HOURS", 24)
@@ -276,7 +322,7 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
             status__in=["stray", "found"],
             analysis_status="done",
             created_at__gte=min_created_at,
-            location__dwithin=(pet.last_known_location, D(m=search_radius_m)),
+            location__dwithin=(pet.last_known_location, D(m=max_search_radius_m)),
         )
         .exclude(reporter_id=pet.owner_id)
         .annotate(distance=Distance("location", pet.last_known_location))
@@ -302,6 +348,14 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
             continue
 
         score = cosine(pet_embedding.vector, report_embedding.vector)
+
+        # High-Confidence Visual Override:
+        # If visual similarity is exceptionally high (>= 0.88), allow bypassing the time-based
+        # pet_allowed_radius restriction (up to max configured search distance, e.g. 150 km).
+        high_confidence_override = score >= getattr(settings, "MATCH_HIGH_CONFIDENCE_OVERRIDE_SIMILARITY", 0.88)
+        if dist_m > pet_allowed_radius and not high_confidence_override:
+            continue
+
         if score < req_sim:
             continue
 
@@ -365,8 +419,8 @@ def match_pet_against_reports(pet: Pet) -> MatchSummary:
                     owner_msg = f"🚨 High-Confidence Match ({conf_pct}%): A pet strongly resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)!"
                     reporter_msg = f"🚨 High-Confidence Match ({conf_pct}%): Your {report.animal_type} sighting strongly matches missing pet {pet.name}{loc_context} ({dist_km_msg} km away)!"
                 else:
-                    owner_msg = f"A pet that looks like {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
-                    reporter_msg = f"A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
+                    owner_msg = f"Potential Match ({conf_pct}%): A pet resembling {pet.name} was reported nearby{loc_context} ({dist_km_msg} km away)."
+                    reporter_msg = f"Potential Match ({conf_pct}%): A potential match was found for your {report.animal_type} sighting{loc_context} ({dist_km_msg} km away)."
 
                 # Notification to pet owner
                 _, owner_notif_created = Notification.objects.get_or_create(

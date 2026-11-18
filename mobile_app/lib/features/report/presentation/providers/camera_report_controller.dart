@@ -12,6 +12,7 @@ import '../../domain/repositories/report_repository.dart';
 import '../../../../core/services/ai_pre_match_service.dart';
 import '../../data/models/ai_match_candidate.dart';
 
+
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
 /// Implements SDD Section 5.8 (CreateReport) & Section 6.1 (5):
@@ -66,6 +67,7 @@ class CameraReportController extends ChangeNotifier {
   bool get isScanningAi => _isScanningAi;
   List<AiMatchCandidate> get aiCandidates => _aiCandidates;
   AiMatchCandidate? get selectedAiCandidate => _selectedAiCandidate;
+  String? get qualityWarning => _preMatchService.lastQualityWarning;
   String get animalType => _animalType;
   String get status => _status;
   bool get isGpsAuto => _isGpsAuto;
@@ -324,10 +326,18 @@ class CameraReportController extends ChangeNotifier {
       double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
       double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
 
+      final matchConfidencePct = _selectedAiCandidate != null
+          ? _selectedAiCandidate!.similarityPercent
+          : null;
+      String descText = descriptionController.text.trim();
+      if (matchConfidencePct != null && !descText.contains('[AI Match:')) {
+        descText = '[AI Match: $matchConfidencePct%] $descText'.trim();
+      }
+
       try {
         final reportId = await _repository.createReport(
           animalType: _animalType.toLowerCase(),
-          description: descriptionController.text.trim(),
+          description: descText,
           photoUrl: photoUrl.isNotEmpty
               ? photoUrl
               : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
@@ -348,10 +358,11 @@ class CameraReportController extends ChangeNotifier {
                   ? 'for ${_linkedThreadPetName!} '
                   : '';
               final locationLabel = _geocodedAddress ?? 'Reported Area';
+              final confLabel = matchConfidencePct != null ? ' (AI Match: $matchConfidencePct%)' : '';
               await client.from('comments').insert({
                 'post_id': _linkedThreadId,
                 'user_id': currentUserId,
-                'content': '🐾 Sighting reported ${petLabel}at $locationLabel!\nhttps://pawsandfound.org/report/$reportId',
+                'content': '🐾 Sighting reported ${petLabel}at $locationLabel!$confLabel\nhttps://pawsandfound.org/report/$reportId',
               });
             }
           } catch (e) {

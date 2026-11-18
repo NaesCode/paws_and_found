@@ -47,13 +47,17 @@ class MockReportRepository implements ReportRepository {
 
 class MockAiPreMatchService implements AiPreMatchService {
   List<AiMatchCandidate> mockCandidates = [];
+  String? mockQualityWarning;
+
+  @override
+  String? get lastQualityWarning => mockQualityWarning;
 
   @override
   Future<List<AiMatchCandidate>> scanForCandidates({
     required Uint8List imageBytes,
     required double lat,
     required double lng,
-    String? animalType,
+    String animalType = 'canine',
   }) async {
     return mockCandidates;
   }
@@ -148,6 +152,12 @@ void main() {
       expect(controller.aiCandidates, isEmpty);
       expect(controller.selectedAiCandidate, isNull);
       expect(controller.linkedThreadId, isNull);
+      expect(controller.qualityWarning, isNull);
+    });
+
+    test('qualityWarning exposes preMatchService lastQualityWarning', () {
+      mockAiService.mockQualityWarning = 'Image is blurry';
+      expect(controller.qualityWarning, equals('Image is blurry'));
     });
 
     test('selectAiCandidate sets linkedThreadId, petName and candidate', () {

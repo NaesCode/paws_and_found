@@ -71,6 +71,10 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
         final hasImage = post.imageUrl.isNotEmpty &&
             (post.imageUrl.startsWith('http://') || post.imageUrl.startsWith('https://'));
 
+        final matchRegex = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false);
+        final match = matchRegex.firstMatch(post.description);
+        final matchConfidence = match != null ? match.group(1) : null;
+
         return Container(
           margin: const EdgeInsets.only(top: 8),
           padding: const EdgeInsets.all(10),
@@ -116,6 +120,45 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                       ],
                     ),
                   ),
+                  if (matchConfidence != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                            ? const Color(0xFFE8F5E9)
+                            : const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                              ? const Color(0xFF81C784)
+                              : const Color(0xFFFFB74D),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 10,
+                            color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFE65100),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$matchConfidence% Match',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Text(
                     post.formattedTime,
                     style: const TextStyle(fontSize: 11, color: AppColors.text3),

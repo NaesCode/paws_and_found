@@ -436,6 +436,11 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         final hasPic = sighting.imageUrl.isNotEmpty &&
             (sighting.imageUrl.startsWith('http://') || sighting.imageUrl.startsWith('https://'));
 
+        final matchRegex = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false);
+        final match = matchRegex.firstMatch(sighting.description);
+        final matchConfidence = match != null ? match.group(1) : null;
+        final cleanDesc = sighting.description.replaceAll(matchRegex, '').trim();
+
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -479,6 +484,46 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (matchConfidence != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                            ? const Color(0xFFE8F5E9)
+                            : const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                              ? const Color(0xFF81C784)
+                              : const Color(0xFFFFB74D),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 10,
+                            color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFE65100),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$matchConfidence% Match',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
@@ -542,10 +587,10 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                             ),
                           ],
                         ),
-                        if (sighting.description.isNotEmpty) ...[
+                        if (cleanDesc.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            sighting.description,
+                            cleanDesc,
                             style: const TextStyle(
                               fontSize: 11.5,
                               color: AppColors.text2,

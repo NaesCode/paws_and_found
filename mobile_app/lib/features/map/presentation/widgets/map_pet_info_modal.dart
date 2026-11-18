@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/utils/description_tag_helper.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/wireframe_status_badge.dart';
 import '../../../../shared/atoms/wireframe_tag.dart';
@@ -185,9 +186,62 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                             ),
                           ),
                           const SizedBox(width: 10),
-                          WireframeStatusBadge(
-                            status: report.status,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              WireframeStatusBadge(
+                                status: report.status,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              ),
+                              if (RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false).hasMatch(report.description)) ...[
+                                const SizedBox(height: 4),
+                                Builder(
+                                  builder: (context) {
+                                    final pct = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false)
+                                        .firstMatch(report.description)
+                                        ?.group(1);
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                      decoration: BoxDecoration(
+                                        color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                            ? const Color(0xFFE8F5E9)
+                                            : const Color(0xFFFFF3E0),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                              ? const Color(0xFF81C784)
+                                              : const Color(0xFFFFB74D),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.auto_awesome,
+                                            size: 11,
+                                            color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                                ? const Color(0xFF2E7D32)
+                                                : const Color(0xFFE65100),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            '$pct% Match',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: int.tryParse(pct ?? '0') != null && int.parse(pct!) >= 85
+                                                  ? const Color(0xFF2E7D32)
+                                                  : const Color(0xFFE65100),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -274,10 +328,10 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
 
   Widget _buildPhotoSection() {
     return Container(
-      height: 170,
+      height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border, width: 1.0),
       ),
@@ -285,7 +339,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
       child: report.photoUrl != null && report.photoUrl!.isNotEmpty
           ? Image.network(
               report.photoUrl!,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               errorBuilder: (_, _, _) => _buildPhotoPlaceholder(),
             )
           : _buildPhotoPlaceholder(),
@@ -395,12 +449,29 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
   }
 
   Widget _buildDescriptionSection() {
+    final isMissing = report.status.toLowerCase() == 'missing';
+    final mobility = DescriptionTagHelper.extractMobility(report.description);
+    final matchPct = DescriptionTagHelper.extractMatchConfidence(report.description);
+    final cleanDesc = DescriptionTagHelper.cleanDescription(report.description);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Last Seen / Sighting Details',
-          style: TextStyle(
+        // If 'missing' report: Show Mobility Assumption card
+        if (isMissing && mobility != null) ...[
+          DescriptionTagHelper.buildMobilityCard(mobility),
+          const SizedBox(height: 12),
+        ],
+
+        // If 'stray' or 'found' report: Show AI Match Similarity card
+        if (!isMissing && matchPct != null) ...[
+          DescriptionTagHelper.buildAiMatchCard(matchPct),
+          const SizedBox(height: 12),
+        ],
+
+        Text(
+          isMissing ? 'Last Seen / Missing Details' : 'Sighting Details',
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
@@ -417,8 +488,8 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
             border: Border.all(color: AppColors.borderLight, width: 1.0),
           ),
           child: Text(
-            report.description.isNotEmpty
-                ? report.description
+            cleanDesc.isNotEmpty
+                ? cleanDesc
                 : 'No additional sighting details provided.',
             style: const TextStyle(
               color: AppColors.darkCharcoal,

@@ -14,11 +14,13 @@ class ReportMissingResult {
   final double latitude;
   final double longitude;
   final String note;
+  final String mobility;
 
   const ReportMissingResult({
     required this.latitude,
     required this.longitude,
     required this.note,
+    this.mobility = 'standard',
   });
 }
 
@@ -70,6 +72,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   double? _longitude;
   bool _isFetchingLocation = true;
   bool _locationFailed = false;
+  String _selectedMobility = 'standard';
 
   // Cebu default fallback coordinates if hardware GPS is unavailable
   static const double _defaultLat = LocationConstants.defaultLatitude;
@@ -79,6 +82,10 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   void initState() {
     super.initState();
     _locationService = widget.locationService ?? const GeolocatorLocationService();
+    final sp = widget.pet.species.toLowerCase();
+    if (sp.contains('bird') || sp.contains('parrot') || sp.contains('macaw') || sp.contains('avian')) {
+      _selectedMobility = 'flighted';
+    }
     _fetchCurrentLocation();
   }
 
@@ -131,13 +138,17 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   void _handleSubmit() {
     final lat = _latitude ?? _defaultLat;
     final lng = _longitude ?? _defaultLng;
-    final note = _noteController.text.trim();
+    final rawNote = _noteController.text.trim();
+    final note = rawNote.isNotEmpty
+        ? '[Mobility: $_selectedMobility] $rawNote'
+        : '[Mobility: $_selectedMobility]';
 
     Navigator.of(context).pop(
       ReportMissingResult(
         latitude: lat,
         longitude: lng,
         note: note,
+        mobility: _selectedMobility,
       ),
     );
   }
@@ -398,6 +409,60 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
             ),
             const SizedBox(height: 18),
 
+            // Mobility & Range Assumption
+            Row(
+              children: [
+                const Icon(Icons.radar_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 6),
+                const Text(
+                  'Mobility & Search Radius Assumption',
+                  style: TextStyle(
+                    fontFamily: 'Nunito Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkCharcoal,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Sets AI matching range and community notification radius',
+              style: TextStyle(
+                fontFamily: 'Ek Mukta',
+                fontSize: 12,
+                color: AppColors.text3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                _buildMobilityChip(
+                  label: '🐕 Limited Roam (≤ 10 km)',
+                  value: 'standard',
+                  subtitle: 'Couldn\'t have gotten far / slow rover',
+                ),
+                _buildMobilityChip(
+                  label: '🏃 Active Roamer (≤ 30 km)',
+                  value: 'roaming',
+                  subtitle: 'High energy or missing for some time',
+                ),
+                _buildMobilityChip(
+                  label: '🦜 Avian / Flighted (≤ 60 km)',
+                  value: 'flighted',
+                  subtitle: 'Winged pet able to travel long distances',
+                ),
+                _buildMobilityChip(
+                  label: '🚗 Suspected Transport (≤ 150 km)',
+                  value: 'distant',
+                  subtitle: 'Suspected vehicular abduction or transit',
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
             // Last Seen Details / Note
             const Text(
               'Last Seen Details (Optional)',
@@ -485,6 +550,68 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobilityChip({
+    required String label,
+    required String value,
+    required String subtitle,
+  }) {
+    final isSelected = _selectedMobility == value;
+    return InkWell(
+      onTap: () => setState(() => _selectedMobility = value),
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.grey.shade300,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  size: 15,
+                  color: isSelected ? AppColors.primary : Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Nunito Sans',
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected ? AppColors.primary : AppColors.darkCharcoal,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsets.only(left: 21),
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontFamily: 'Ek Mukta',
+                  fontSize: 11,
+                  color: isSelected ? AppColors.darkCharcoal : AppColors.text3,
+                ),
+              ),
             ),
           ],
         ),
