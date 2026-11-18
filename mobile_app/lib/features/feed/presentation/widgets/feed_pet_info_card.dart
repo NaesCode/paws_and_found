@@ -104,8 +104,7 @@ class FeedPetInfoCard extends StatelessWidget {
                 height: 146,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.background, 
-                  borderRadius: BorderRadius.circular(4),
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(2),
                 ),
                 clipBehavior: Clip.antiAlias,
