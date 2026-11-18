@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
-import '../../../../shared/atoms/wireframe_status_badge.dart';
-import '../../../../shared/atoms/wireframe_tag.dart';
+import '../../../../shared/atoms/paw_status_badge.dart';
+import '../../../../shared/atoms/paw_tag.dart';
 import '../../domain/entities/map_report_entity.dart';
 
 /// A wireframe popup dialog modal displaying comprehensive details
@@ -184,7 +184,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                             ),
                           ),
                           const SizedBox(width: 10),
-                          WireframeStatusBadge(
+                          PawStatusBadge(
                             status: report.status,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           ),
@@ -197,7 +197,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: report.tags.map((tag) => WireframeTag(label: tag)).toList(),
+                          children: report.tags.map((tag) => PawTag(label: tag)).toList(),
                         ),
                       ],
 

@@ -154,8 +154,3 @@ flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleuse
 > [!NOTE]
 > Every teammate machine and demo build laptop signing debug APKs requires its own registered Android OAuth credential in Google Cloud Console with its machine's SHA-1.
 
-
-*   **[Community Animal Map Testing Guide](MAP_TESTING_GUIDE.md)**: Comprehensive architectural overview, OpenStreetMap tile details, interactive QA checklist, and test commands for the interactive map subsystem.
-*   **[Thread Linking & Sightings Dashboard Guide](THREAD_LINKING_README.md)**: Architectural overview of in-camera real-time AI visual candidate scanning, `linked_report_id` database relationships, deep linking, and the dual-tab Sightings Log dashboard.
-*   **[Sightings Dashboard Proposal & Architecture Spec](SIGHTINGS_DASHBOARD_PROPOSAL.md)**: Product proposal and technical specification for connecting spotted animal reports to missing pet owners.
-
