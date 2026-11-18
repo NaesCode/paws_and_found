@@ -54,14 +54,33 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   // Post timeline filter: 'weekly', 'monthly', 'yearly'
   String _postTimelineFilter = 'weekly';
 
-  // Section filter toggle: 'all', 'users', 'posts'
-  String _activeSectionFilter = 'all';
+  // Section filter toggle: 'users', 'posts'
+  String _activeSectionFilter = 'users';
+
+  // History scanning offsets for users: 0 = current, -1 = 1 period ago, -2 = 2 periods ago, etc.
+  int _userWeekOffset = 0;
+  int _userMonthOffset = 0;
+  int _userYearOffset = 0;
+  final ScrollController _periodScrollController = ScrollController();
+
+  // History scanning offsets for posts: 0 = current, -1 = 1 period ago, etc.
+  int _postWeekOffset = 0;
+  int _postMonthOffset = 0;
+  int _postYearOffset = 0;
+  final ScrollController _postPeriodScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _adminRepository = widget.repository ?? AdminRepositoryImpl();
     _loadAnalytics();
+  }
+
+  @override
+  void dispose() {
+    _periodScrollController.dispose();
+    _postPeriodScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAnalytics() async {
@@ -102,32 +121,112 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   // Metric Calculations
   // ---------------------------------------------------------------------------
 
+  bool get _hasRealTimestamps => _users.any((u) => u.createdAt != null);
+  bool get _hasPostTimestamps => _posts.any((p) => p.createdAt != null);
+
+  int _countUsersInWeek(DateTime monday) {
+    final start = DateTime(monday.year, monday.month, monday.day);
+    final end = start.add(const Duration(days: 7));
+    return _users.where((u) {
+      if (u.createdAt == null) return false;
+      return !u.createdAt!.isBefore(start) && u.createdAt!.isBefore(end);
+    }).length;
+  }
+
+  int _countUsersInMonth(DateTime monthStart) {
+    final monthEnd = (monthStart.month < 12)
+        ? DateTime(monthStart.year, monthStart.month + 1, 1)
+        : DateTime(monthStart.year + 1, 1, 1);
+    return _users.where((u) {
+      if (u.createdAt == null) return false;
+      return !u.createdAt!.isBefore(monthStart) && u.createdAt!.isBefore(monthEnd);
+    }).length;
+  }
+
+  int _countUsersInYear(int year) {
+    final start = DateTime(year, 1, 1);
+    final end = DateTime(year + 1, 1, 1);
+    return _users.where((u) {
+      if (u.createdAt == null) return false;
+      return !u.createdAt!.isBefore(start) && u.createdAt!.isBefore(end);
+    }).length;
+  }
+
+  int _countPostsInWeek(DateTime monday) {
+    final start = DateTime(monday.year, monday.month, monday.day);
+    final end = start.add(const Duration(days: 7));
+    return _posts.where((p) {
+      if (p.createdAt == null) return false;
+      return !p.createdAt!.isBefore(start) && p.createdAt!.isBefore(end);
+    }).length;
+  }
+
+  int _countPostsInMonth(DateTime monthStart) {
+    final monthEnd = (monthStart.month < 12)
+        ? DateTime(monthStart.year, monthStart.month + 1, 1)
+        : DateTime(monthStart.year + 1, 1, 1);
+    return _posts.where((p) {
+      if (p.createdAt == null) return false;
+      return !p.createdAt!.isBefore(monthStart) && p.createdAt!.isBefore(monthEnd);
+    }).length;
+  }
+
+  int _countPostsInYear(int year) {
+    final start = DateTime(year, 1, 1);
+    final end = DateTime(year + 1, 1, 1);
+    return _posts.where((p) {
+      if (p.createdAt == null) return false;
+      return !p.createdAt!.isBefore(start) && p.createdAt!.isBefore(end);
+    }).length;
+  }
+
   List<AdminUserItem> get _newUsersInSelectedTimeframe {
     final now = DateTime.now();
-    DateTime cutoff;
+    DateTime startCutoff;
+    DateTime endCutoff;
+
     if (_userTimeframe == 'yearly' || _userTimeframe == 'year') {
-      cutoff = DateTime(now.year, 1, 1);
+      final targetYear = now.year + _userYearOffset;
+      startCutoff = DateTime(targetYear, 1, 1);
+      endCutoff = DateTime(targetYear + 1, 1, 1);
     } else if (_userTimeframe == 'monthly' || _userTimeframe == 'month') {
-      cutoff = DateTime(now.year, now.month, 1);
+      final totalMonths = (now.year * 12 + (now.month - 1)) + _userMonthOffset;
+      final targetYear = totalMonths ~/ 12;
+      final targetMonth = (totalMonths % 12) + 1;
+      startCutoff = DateTime(targetYear, targetMonth, 1);
+      endCutoff = (targetMonth < 12)
+          ? DateTime(targetYear, targetMonth + 1, 1)
+          : DateTime(targetYear + 1, 1, 1);
     } else {
-      cutoff = now.subtract(const Duration(days: 7));
+      // Weekly
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final targetMonday = currentMonday.add(Duration(days: _userWeekOffset * 7));
+      startCutoff = targetMonday;
+      endCutoff = targetMonday.add(const Duration(days: 7));
     }
 
     final filtered = _users.where((u) {
       if (u.createdAt == null) return false;
-      return !u.createdAt!.isBefore(cutoff);
+      return !u.createdAt!.isBefore(startCutoff) &&
+          u.createdAt!.isBefore(endCutoff);
     }).toList();
 
     // If data items lack exact createdAt timestamps in static mock fixtures,
     // provide a representative subset so visualizations display realistically.
-    if (filtered.isEmpty && _users.isNotEmpty) {
+    // If real timestamps exist, strictly respect the real data (do not fabricate counts).
+    if (!_hasRealTimestamps && filtered.isEmpty && _users.isNotEmpty) {
       int sampleCount;
       if (_userTimeframe == 'yearly' || _userTimeframe == 'year') {
-        sampleCount = _users.length;
+        sampleCount = _userYearOffset < 0
+            ? (_users.length >= 3 ? _users.length - 1 : 1)
+            : _users.length;
       } else if (_userTimeframe == 'monthly' || _userTimeframe == 'month') {
-        sampleCount = (_users.length >= 3 ? 3 : _users.length);
+        sampleCount = _userMonthOffset < 0
+            ? (_users.length >= 2 ? 2 : 1)
+            : (_users.length >= 3 ? 3 : _users.length);
       } else {
-        sampleCount = (_users.length >= 2 ? 2 : 1);
+        sampleCount = _userWeekOffset < 0 ? 1 : (_users.length >= 2 ? 2 : 1);
       }
       return _users.take(sampleCount).toList();
     }
@@ -140,29 +239,34 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
     if (_userTimeframe == 'weekly' || _userTimeframe == 'week') {
       const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       final currentWeekday = now.weekday; // 1 = Mon, 7 = Sun
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final cleanWeekStart =
-          DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final targetMonday = currentMonday.add(Duration(days: _userWeekOffset * 7));
 
       return List.generate(7, (i) {
         final dayIndex = (i + 1); // 1 to 7
-        final isToday = dayIndex == currentWeekday;
-        final isFutureDay = dayIndex > currentWeekday;
+        final dayStart = targetMonday.add(Duration(days: i));
+        final dayEnd = dayStart.add(const Duration(days: 1));
+
+        final isToday = (_userWeekOffset == 0) && dayIndex == currentWeekday;
+        final isFutureDay = (_userWeekOffset == 0) && dayIndex > currentWeekday;
 
         // Count users registered on this weekday
         int count = 0;
         for (final u in _users) {
           if (u.createdAt != null &&
-              !u.createdAt!.isBefore(cleanWeekStart) &&
-              u.createdAt!.weekday == dayIndex) {
+              !u.createdAt!.isBefore(dayStart) &&
+              u.createdAt!.isBefore(dayEnd)) {
             count++;
           }
         }
 
-        // Fallback for static mock data
-        if (count == 0 && _users.isNotEmpty) {
+        // Fallback ONLY for static mock data when NO timestamps exist in the dataset
+        if (!_hasRealTimestamps && count == 0 && _users.isNotEmpty) {
           if (isToday) {
             count = 2;
+          } else if (_userWeekOffset < 0) {
+            count = (i == 1 || i == 4) ? 1 : 0;
           } else if (!isFutureDay && (i == 1 || i == 3)) {
             count = 1;
           } else {
@@ -177,38 +281,44 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         );
       });
     } else if (_userTimeframe == 'monthly' || _userTimeframe == 'month') {
-      // Month view: Weeks 1 to 4 of the current month
-      final currentWeekOfMonth = ((now.day - 1) ~/ 7) + 1;
-      final currentMonthStart = DateTime(now.year, now.month, 1);
-      final nextMonthStart = (now.month < 12)
-          ? DateTime(now.year, now.month + 1, 1)
-          : DateTime(now.year + 1, 1, 1);
+      // Month view: Weeks 1 to 4 of target month
+      final totalMonths = (now.year * 12 + (now.month - 1)) + _userMonthOffset;
+      final targetYear = totalMonths ~/ 12;
+      final targetMonth = (totalMonths % 12) + 1;
 
-      // Bucket real user registrations by week of the current month
+      final currentWeekOfMonth = ((now.day - 1) ~/ 7) + 1;
+      final targetMonthStart = DateTime(targetYear, targetMonth, 1);
+      final targetMonthEnd = (targetMonth < 12)
+          ? DateTime(targetYear, targetMonth + 1, 1)
+          : DateTime(targetYear + 1, 1, 1);
+
+      // Bucket real user registrations by week of target month
       final weekCounts = [0, 0, 0, 0];
       for (final u in _users) {
         if (u.createdAt != null &&
-            !u.createdAt!.isBefore(currentMonthStart) &&
-            u.createdAt!.isBefore(nextMonthStart)) {
+            !u.createdAt!.isBefore(targetMonthStart) &&
+            u.createdAt!.isBefore(targetMonthEnd)) {
           final weekIndex = ((u.createdAt!.day - 1) ~/ 7).clamp(0, 3);
           weekCounts[weekIndex]++;
         }
       }
 
-      final hasRealData = weekCounts.any((c) => c > 0);
-      final totalThisMonth = _newUsersInSelectedTimeframe.length;
+      final totalInPeriod = _newUsersInSelectedTimeframe.length;
 
       return List.generate(4, (i) {
         final weekNum = i + 1;
-        final isCurrentWeek = weekNum == currentWeekOfMonth.clamp(1, 4);
-        final isFutureWeek = weekNum > currentWeekOfMonth;
+        final isCurrentWeek =
+            (_userMonthOffset == 0) && weekNum == currentWeekOfMonth.clamp(1, 4);
+        final isFutureWeek = (_userMonthOffset == 0) && weekNum > currentWeekOfMonth;
 
         int value = 0;
-        if (hasRealData) {
+        if (_hasRealTimestamps) {
           value = weekCounts[i];
         } else {
           if (isCurrentWeek) {
-            value = totalThisMonth > 0 ? totalThisMonth : 2;
+            value = totalInPeriod > 0 ? totalInPeriod : 2;
+          } else if (_userMonthOffset < 0) {
+            value = (i == 0 || i == 2) ? 1 : (i == 1 ? 2 : 0);
           } else if (!isFutureWeek) {
             value = 1;
           } else {
@@ -223,7 +333,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         );
       });
     } else {
-      // Yearly view: 12 months (Jan through Dec) of current year
+      // Yearly view: 12 months (Jan through Dec) of target year
       const months = [
         'Jan',
         'Feb',
@@ -238,14 +348,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         'Nov',
         'Dec'
       ];
-      final currentMonth = now.month; // 1 to 12
-      final currentYearStart = DateTime(now.year, 1, 1);
-      final nextYearStart = DateTime(now.year + 1, 1, 1);
+      final targetYear = now.year + _userYearOffset;
+      final targetYearStart = DateTime(targetYear, 1, 1);
+      final nextYearStart = DateTime(targetYear + 1, 1, 1);
 
       final monthCounts = List.filled(12, 0);
       for (final u in _users) {
         if (u.createdAt != null &&
-            !u.createdAt!.isBefore(currentYearStart) &&
+            !u.createdAt!.isBefore(targetYearStart) &&
             u.createdAt!.isBefore(nextYearStart) &&
             u.createdAt!.month >= 1 &&
             u.createdAt!.month <= 12) {
@@ -253,24 +363,21 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         }
       }
 
-      final hasRealData = monthCounts.any((c) => c > 0);
-      final totalThisYear = _users.length;
-
       return List.generate(12, (i) {
         final monthNum = i + 1;
-        final isCurrentMonth = monthNum == currentMonth;
-        final isFutureMonth = monthNum > currentMonth;
+        final isCurrentMonth = (_userYearOffset == 0) && monthNum == now.month;
+        final isFutureMonth = (_userYearOffset == 0) && monthNum > now.month;
 
         int value = 0;
-        if (hasRealData) {
+        if (_hasRealTimestamps) {
           value = monthCounts[i];
         } else {
           if (isCurrentMonth) {
-            value =
-                totalThisYear > 0 ? (totalThisYear / 3).ceil().clamp(1, 6) : 3;
+            value = 3;
+          } else if (_userYearOffset < 0) {
+            value = (i % 3 == 0) ? 2 : 1;
           } else if (!isFutureMonth) {
-            value =
-                ((totalThisYear / 10) * (1 + (i % 3) * 0.3)).round().clamp(1, 4);
+            value = (i % 2 == 0) ? 2 : 1;
           } else {
             value = 0;
           }
@@ -287,37 +394,51 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
 
   List<AdminPostItem> get _postsInSelectedTimeframe {
     final now = DateTime.now();
-    DateTime cutoff;
-    switch (_postTimeframe) {
-      case 'daily':
-        cutoff = DateTime(now.year, now.month, now.day);
-        break;
-      case 'monthly':
-        cutoff = DateTime(now.year, now.month, 1);
-        break;
-      case 'weekly':
-      default:
-        cutoff = now.subtract(const Duration(days: 7));
-        break;
+    DateTime startCutoff;
+    DateTime endCutoff;
+
+    if (_postTimeframe == 'yearly' || _postTimeframe == 'year') {
+      final targetYear = now.year + _postYearOffset;
+      startCutoff = DateTime(targetYear, 1, 1);
+      endCutoff = DateTime(targetYear + 1, 1, 1);
+    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+      final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
+      final targetYear = totalMonths ~/ 12;
+      final targetMonth = (totalMonths % 12) + 1;
+      startCutoff = DateTime(targetYear, targetMonth, 1);
+      endCutoff = (targetMonth < 12)
+          ? DateTime(targetYear, targetMonth + 1, 1)
+          : DateTime(targetYear + 1, 1, 1);
+    } else {
+      // Weekly (or default)
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final targetMonday = currentMonday.add(Duration(days: _postWeekOffset * 7));
+      startCutoff = targetMonday;
+      endCutoff = targetMonday.add(const Duration(days: 7));
     }
 
     final filtered = _posts.where((p) {
       if (p.createdAt == null) return false;
-      return !p.createdAt!.isBefore(cutoff);
+      return !p.createdAt!.isBefore(startCutoff) &&
+          p.createdAt!.isBefore(endCutoff);
     }).toList();
 
     // Fallback if data items lack createdAt timestamps in mock fixtures
-    if (filtered.isEmpty && _posts.isNotEmpty) {
-      switch (_postTimeframe) {
-        case 'daily':
-          return _posts.take(_posts.isNotEmpty ? 1 : 0).toList();
-        case 'monthly':
-          return _posts;
-        case 'weekly':
-        default:
-          final count = (_posts.length * 0.7).ceil().clamp(1, _posts.length);
-          return _posts.take(count).toList();
+    if (!_hasPostTimestamps && filtered.isEmpty && _posts.isNotEmpty) {
+      int sampleCount;
+      if (_postTimeframe == 'yearly' || _postTimeframe == 'year') {
+        sampleCount = _postYearOffset < 0
+            ? (_posts.length >= 3 ? _posts.length - 1 : 1)
+            : _posts.length;
+      } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+        sampleCount = _postMonthOffset < 0
+            ? (_posts.length >= 2 ? 2 : 1)
+            : (_posts.length >= 3 ? 3 : _posts.length);
+      } else {
+        sampleCount = _postWeekOffset < 0 ? 1 : (_posts.length >= 2 ? 2 : 1);
       }
+      return _posts.take(sampleCount).toList();
     }
     return filtered;
   }
@@ -325,96 +446,89 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   List<BarChartGroup> _generatePostTimelineBars() {
     final now = DateTime.now();
 
-    if (_postTimelineFilter == 'weekly') {
+    if (_postTimeframe == 'weekly' || _postTimeframe == 'week') {
       const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       final currentWeekday = now.weekday; // 1 = Mon, 7 = Sun
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final cleanWeekStart =
-          DateTime(weekStart.year, weekStart.month, weekStart.day);
-      final nextWeekStart = cleanWeekStart.add(const Duration(days: 7));
-
-      final counts = List.filled(7, 0);
-      for (final p in _posts) {
-        if (p.createdAt != null &&
-            !p.createdAt!.isBefore(cleanWeekStart) &&
-            p.createdAt!.isBefore(nextWeekStart) &&
-            p.createdAt!.weekday >= 1 &&
-            p.createdAt!.weekday <= 7) {
-          counts[p.createdAt!.weekday - 1]++;
-        }
-      }
-
-      final hasRealData = counts.any((c) => c > 0);
-      final totalWeek = _posts
-          .where((p) =>
-              p.createdAt != null && !p.createdAt!.isBefore(cleanWeekStart))
-          .length;
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final targetMonday = currentMonday.add(Duration(days: _postWeekOffset * 7));
 
       return List.generate(7, (i) {
-        final dayIndex = i + 1;
-        final isToday = dayIndex == currentWeekday;
-        final isFutureDay = dayIndex > currentWeekday;
-        int val = counts[i];
-        if (!hasRealData) {
-          if (isToday) {
-            val = totalWeek > 0
-                ? (totalWeek / 3).ceil().clamp(1, 4)
-                : (_posts.length / 4).ceil().clamp(1, 4);
-          } else if (!isFutureDay) {
-            val = totalWeek > 0
-                ? (totalWeek / 5).floor().clamp(0, 2)
-                : (_posts.length / 6).floor().clamp(0, 2);
-          } else {
-            val = 0;
+        final dayIndex = (i + 1); // 1 to 7
+        final dayStart = targetMonday.add(Duration(days: i));
+        final dayEnd = dayStart.add(const Duration(days: 1));
+
+        final isToday = (_postWeekOffset == 0) && dayIndex == currentWeekday;
+        final isFutureDay = (_postWeekOffset == 0) && dayIndex > currentWeekday;
+
+        int count = 0;
+        for (final p in _posts) {
+          if (p.createdAt != null &&
+              !p.createdAt!.isBefore(dayStart) &&
+              p.createdAt!.isBefore(dayEnd)) {
+            count++;
           }
         }
+
+        if (!_hasPostTimestamps && count == 0 && _posts.isNotEmpty) {
+          if (isToday) {
+            count = 2;
+          } else if (_postWeekOffset < 0) {
+            count = (i == 1 || i == 4) ? 1 : 0;
+          } else if (!isFutureDay && (i == 1 || i == 3)) {
+            count = 1;
+          } else {
+            count = 0;
+          }
+        }
+
         return BarChartGroup(
           label: weekdays[i],
-          value: val,
+          value: count,
           isHighlight: isToday,
         );
       });
-    } else if (_postTimelineFilter == 'monthly') {
-      // Monthly view: 4 weeks of the current month
+    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+      // Monthly view: 4 weeks of the target month
+      final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
+      final targetYear = totalMonths ~/ 12;
+      final targetMonth = (totalMonths % 12) + 1;
+
       final currentWeekOfMonth = ((now.day - 1) ~/ 7) + 1;
-      final currentMonthStart = DateTime(now.year, now.month, 1);
-      final nextMonthStart = (now.month < 12)
-          ? DateTime(now.year, now.month + 1, 1)
-          : DateTime(now.year + 1, 1, 1);
+      final targetMonthStart = DateTime(targetYear, targetMonth, 1);
+      final targetMonthEnd = (targetMonth < 12)
+          ? DateTime(targetYear, targetMonth + 1, 1)
+          : DateTime(targetYear + 1, 1, 1);
 
       final weekCounts = [0, 0, 0, 0];
       for (final p in _posts) {
         if (p.createdAt != null &&
-            !p.createdAt!.isBefore(currentMonthStart) &&
-            p.createdAt!.isBefore(nextMonthStart)) {
+            !p.createdAt!.isBefore(targetMonthStart) &&
+            p.createdAt!.isBefore(targetMonthEnd)) {
           final weekIndex = ((p.createdAt!.day - 1) ~/ 7).clamp(0, 3);
           weekCounts[weekIndex]++;
         }
       }
 
-      final hasRealData = weekCounts.any((c) => c > 0);
-      final totalMonth = _posts
-          .where((p) =>
-              p.createdAt != null && !p.createdAt!.isBefore(currentMonthStart))
-          .length;
+      final totalInPeriod = _postsInSelectedTimeframe.length;
 
       return List.generate(4, (i) {
         final weekNum = i + 1;
-        final isCurrentWeek = weekNum == currentWeekOfMonth.clamp(1, 4);
-        final isFutureWeek = weekNum > currentWeekOfMonth;
+        final isCurrentWeek =
+            (_postMonthOffset == 0) && weekNum == currentWeekOfMonth.clamp(1, 4);
+        final isFutureWeek =
+            (_postMonthOffset == 0) && weekNum > currentWeekOfMonth;
 
         int value = 0;
-        if (hasRealData) {
+        if (_hasPostTimestamps) {
           value = weekCounts[i];
         } else {
           if (isCurrentWeek) {
-            value = totalMonth > 0
-                ? (totalMonth / 2).ceil().clamp(1, 6)
-                : (_posts.length / 3).ceil().clamp(1, 4);
+            value = totalInPeriod > 0 ? totalInPeriod : 2;
+          } else if (_postMonthOffset < 0) {
+            value = (i == 0 || i == 2) ? 1 : (i == 1 ? 2 : 0);
           } else if (!isFutureWeek) {
-            value = totalMonth > 0
-                ? (totalMonth / 4).floor().clamp(0, 3)
-                : (_posts.length / 5).floor().clamp(1, 3);
+            value = 1;
           } else {
             value = 0;
           }
@@ -427,7 +541,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         );
       });
     } else {
-      // Yearly view: 12 months (Jan through Dec) of current year
+      // Yearly view: 12 months (Jan through Dec) of target year
       const months = [
         'Jan',
         'Feb',
@@ -442,14 +556,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         'Nov',
         'Dec'
       ];
-      final currentMonth = now.month; // 1 to 12
-      final currentYearStart = DateTime(now.year, 1, 1);
-      final nextYearStart = DateTime(now.year + 1, 1, 1);
+      final targetYear = now.year + _postYearOffset;
+      final targetYearStart = DateTime(targetYear, 1, 1);
+      final nextYearStart = DateTime(targetYear + 1, 1, 1);
 
       final monthCounts = List.filled(12, 0);
       for (final p in _posts) {
         if (p.createdAt != null &&
-            !p.createdAt!.isBefore(currentYearStart) &&
+            !p.createdAt!.isBefore(targetYearStart) &&
             p.createdAt!.isBefore(nextYearStart) &&
             p.createdAt!.month >= 1 &&
             p.createdAt!.month <= 12) {
@@ -457,23 +571,21 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         }
       }
 
-      final hasRealData = monthCounts.any((c) => c > 0);
-      final totalYear = _posts.length;
-
       return List.generate(12, (i) {
         final monthNum = i + 1;
-        final isCurrentMonth = monthNum == currentMonth;
-        final isFutureMonth = monthNum > currentMonth;
+        final isCurrentMonth = (_postYearOffset == 0) && monthNum == now.month;
+        final isFutureMonth = (_postYearOffset == 0) && monthNum > now.month;
 
         int value = 0;
-        if (hasRealData) {
+        if (_hasPostTimestamps) {
           value = monthCounts[i];
         } else {
           if (isCurrentMonth) {
-            value = totalYear > 0 ? (totalYear / 3).ceil().clamp(1, 8) : 4;
+            value = 3;
+          } else if (_postYearOffset < 0) {
+            value = (i % 3 == 0) ? 2 : 1;
           } else if (!isFutureMonth) {
-            value =
-                ((totalYear / 10) * (1 + (i % 3) * 0.3)).round().clamp(1, 5);
+            value = (i % 2 == 0) ? 2 : 1;
           } else {
             value = 0;
           }
@@ -607,15 +719,13 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                             const SizedBox(height: 20),
 
                             // 3. User Management Analytics Section
-                            if (_activeSectionFilter == 'all' ||
-                                _activeSectionFilter == 'users') ...[
+                            if (_activeSectionFilter == 'users') ...[
                               _buildUserAnalyticsCard(),
                               const SizedBox(height: 20),
                             ],
 
                             // 4. Post Management Analytics Section (Pie Chart)
-                            if (_activeSectionFilter == 'all' ||
-                                _activeSectionFilter == 'posts') ...[
+                            if (_activeSectionFilter == 'posts') ...[
                               _buildPostAnalyticsCard(),
                               const SizedBox(height: 20),
                             ],
@@ -643,10 +753,8 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   Widget _buildFilterSelector() {
     return Row(
       children: [
-        _buildFilterTab('all', 'All Insights', Icons.auto_graph_rounded),
-        const SizedBox(width: 8),
         _buildFilterTab('users', 'Users', Icons.people_alt_rounded),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         _buildFilterTab('posts', 'Posts', Icons.article_rounded),
       ],
     );
@@ -869,7 +977,11 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+
+          // History Scan Scrollbar: Allows admin to scan any week, month, or year
+          _buildHistoryScanScrollbar(),
+          const SizedBox(height: 12),
 
           // Growth Highlight Metric Box
           Container(
@@ -902,7 +1014,9 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '+$newUsersCount New User${newUsersCount == 1 ? '' : 's'}',
+                        newUsersCount > 0
+                            ? '+$newUsersCount New User${newUsersCount == 1 ? '' : 's'}'
+                            : '0 New Users',
                         style: const TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.w800,
@@ -910,11 +1024,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         ),
                       ),
                       Text(
-                        _userTimeframe == 'yearly' || _userTimeframe == 'year'
-                            ? 'Registered this calendar year out of $totalUsers total'
-                            : (_userTimeframe == 'monthly' || _userTimeframe == 'month'
-                                ? 'Registered this calendar month out of $totalUsers total'
-                                : 'Registered in the last 7 days out of $totalUsers total'),
+                        _getUserTimeframeGrowthSubtitle(totalUsers),
                         style: const TextStyle(
                           fontSize: 11.5,
                           color: WireframeColors.textSecondary,
@@ -1011,6 +1121,748 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
     );
   }
 
+  Widget _buildHistoryScanScrollbar() {
+    final now = DateTime.now();
+    const shortMonths = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final List<Widget> items = [];
+
+    if (_userTimeframe == 'weekly' || _userTimeframe == 'week') {
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+
+      // Display 8 weeks of history: from current week (0) descending to past (-7)
+      for (int offset = 0; offset >= -7; offset--) {
+        final monday = currentMonday.add(Duration(days: offset * 7));
+        final sunday = monday.add(const Duration(days: 6));
+        final isSelected = _userWeekOffset == offset;
+
+        int count = _countUsersInWeek(monday);
+        bool hasData;
+        if (_hasRealTimestamps) {
+          hasData = count > 0;
+        } else {
+          // Static fixture fallback: current week (0), last week (-1), and 2 weeks ago (-2) have mock data
+          if (offset >= -2) {
+            hasData = true;
+            count = offset == 0 ? 2 : 1;
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Week';
+        } else if (offset == -1) {
+          label = 'Last Week';
+        } else {
+          final weekNum = ((monday.day - 1) ~/ 7) + 1;
+          label = 'Wk $weekNum ${shortMonths[monday.month - 1]}';
+        }
+
+        final dateRange =
+            '${shortMonths[monday.month - 1]} ${monday.day} – ${shortMonths[sunday.month - 1]} ${sunday.day}';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_week_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            onTap: () {
+              setState(() {
+                _userWeekOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    } else if (_userTimeframe == 'monthly' || _userTimeframe == 'month') {
+      // Display 6 months of history: from current month (0) descending to past (-5)
+      for (int offset = 0; offset >= -5; offset--) {
+        final totalMonths = (now.year * 12 + (now.month - 1)) + offset;
+        final targetYear = totalMonths ~/ 12;
+        final targetMonth = (totalMonths % 12) + 1;
+        final monthStart = DateTime(targetYear, targetMonth, 1);
+        final isSelected = _userMonthOffset == offset;
+
+        int count = _countUsersInMonth(monthStart);
+        bool hasData;
+        if (_hasRealTimestamps) {
+          hasData = count > 0;
+        } else {
+          if (offset >= -1) {
+            hasData = true;
+            count = offset == 0 ? 3 : 2;
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Month';
+        } else if (offset == -1) {
+          label = 'Last Month';
+        } else {
+          label = '${shortMonths[targetMonth - 1]} $targetYear';
+        }
+
+        final dateRange = '${shortMonths[targetMonth - 1]} $targetYear';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_month_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            onTap: () {
+              setState(() {
+                _userMonthOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    } else {
+      // Yearly: 4 years of history: from current year (0) descending to past (-3)
+      for (int offset = 0; offset >= -3; offset--) {
+        final year = now.year + offset;
+        final isSelected = _userYearOffset == offset;
+
+        int count = _countUsersInYear(year);
+        bool hasData;
+        if (_hasRealTimestamps) {
+          hasData = count > 0;
+        } else {
+          if (offset >= -1) {
+            hasData = true;
+            count = offset == 0
+                ? _users.length
+                : (_users.length >= 2 ? _users.length - 1 : 1);
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Year';
+        } else if (offset == -1) {
+          label = 'Last Year';
+        } else {
+          label = 'Year $year';
+        }
+
+        final dateRange = 'Jan – Dec $year';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_year_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            onTap: () {
+              setState(() {
+                _userYearOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              'SCAN TIMEFRAME HISTORY',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: WireframeColors.textMuted,
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              'Gray = No Data Available',
+              style: TextStyle(
+                fontSize: 10.0,
+                color: WireframeColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Scrollbar(
+          controller: _periodScrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _periodScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: items,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistoryItemCard({
+    required Key key,
+    required String label,
+    required String dateRange,
+    required bool isSelected,
+    required bool hasData,
+    required int count,
+    required VoidCallback? onTap,
+    String unitSingular = 'user',
+    String unitPlural = 'users',
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
+      child: Tooltip(
+        message: hasData
+            ? '$label: $count $unitPlural'
+            : '$label: No data recorded',
+        child: InkWell(
+          key: key,
+          onTap: hasData ? onTap : null, // unclickable when no data!
+          borderRadius: BorderRadius.circular(8.0),
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 104),
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+            decoration: BoxDecoration(
+              color: !hasData
+                  ? const Color(0xFFF1F5F9) // Grayed out
+                  : (isSelected ? WireframeColors.primaryDark : Colors.white),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
+                color: !hasData
+                    ? const Color(0xFFCBD5E1) // Gray border
+                    : (isSelected
+                        ? WireframeColors.primaryDark
+                        : WireframeColors.border),
+                width: isSelected ? 1.6 : 1.0,
+              ),
+              boxShadow: isSelected && hasData
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      !hasData
+                          ? Icons.block_rounded
+                          : (isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.calendar_today_rounded),
+                      size: 11,
+                      color: !hasData
+                          ? const Color(0xFF94A3B8)
+                          : (isSelected ? Colors.white : WireframeColors.primaryDark),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11.0,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: !hasData
+                            ? const Color(0xFF94A3B8) // Gray text
+                            : (isSelected
+                                ? Colors.white
+                                : WireframeColors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  dateRange,
+                  style: TextStyle(
+                    fontSize: 10.0,
+                    color: !hasData
+                        ? const Color(0xFFA0AEC0)
+                        : (isSelected
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : WireframeColors.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: !hasData
+                        ? const Color(0xFFE2E8F0)
+                        : (isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : WireframeColors.primaryDark
+                                .withValues(alpha: 0.08)),
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    !hasData
+                        ? 'No data'
+                        : (count == 1 ? '1 $unitSingular' : '$count $unitPlural'),
+                    style: TextStyle(
+                      fontSize: 9.0,
+                      fontWeight: FontWeight.w700,
+                      color: !hasData
+                          ? const Color(0xFF94A3B8)
+                          : (isSelected
+                              ? Colors.white
+                              : WireframeColors.primaryDark),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getUserTimeframeGrowthSubtitle(int totalUsers) {
+    if (_userTimeframe == 'yearly' || _userTimeframe == 'year') {
+      final targetYear = DateTime.now().year + _userYearOffset;
+      if (_userYearOffset == 0) {
+        return 'Registered this calendar year ($targetYear) out of $totalUsers total';
+      } else if (_userYearOffset == -1) {
+        return 'Registered in previous calendar year ($targetYear) out of $totalUsers total';
+      } else {
+        return 'Registered in calendar year ($targetYear) out of $totalUsers total';
+      }
+    } else if (_userTimeframe == 'monthly' || _userTimeframe == 'month') {
+      if (_userMonthOffset == 0) {
+        return 'Registered this calendar month out of $totalUsers total';
+      } else if (_userMonthOffset == -1) {
+        return 'Registered in previous calendar month out of $totalUsers total';
+      } else {
+        const monthNames = [
+          'January',
+          'February',
+          'March',
+          'April',
+          'May',
+          'June',
+          'July',
+          'August',
+          'September',
+          'October',
+          'November',
+          'December'
+        ];
+        final now = DateTime.now();
+        final totalMonths = (now.year * 12 + (now.month - 1)) + _userMonthOffset;
+        final targetYear = totalMonths ~/ 12;
+        final targetMonth = (totalMonths % 12) + 1;
+        return 'Registered in ${monthNames[targetMonth - 1]} $targetYear out of $totalUsers total';
+      }
+    } else {
+      if (_userWeekOffset == 0) {
+        return 'Registered in current week out of $totalUsers total';
+      } else if (_userWeekOffset == -1) {
+        return 'Registered in previous week out of $totalUsers total';
+      } else {
+        final now = DateTime.now();
+        final currentMonday = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: now.weekday - 1));
+        final targetMonday =
+            currentMonday.add(Duration(days: _userWeekOffset * 7));
+        final targetSunday = targetMonday.add(const Duration(days: 6));
+        const shortMonths = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
+        return 'Registered during week of ${shortMonths[targetMonday.month - 1]} ${targetMonday.day}–${targetSunday.day} out of $totalUsers total';
+      }
+    }
+  }
+
+  Widget _buildPostHistoryScanScrollbar() {
+    final now = DateTime.now();
+    const shortMonths = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final List<Widget> items = [];
+
+    if (_postTimeframe == 'weekly' || _postTimeframe == 'week') {
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+
+      // Display 8 weeks of history: from current week (0) descending to past (-7)
+      for (int offset = 0; offset >= -7; offset--) {
+        final monday = currentMonday.add(Duration(days: offset * 7));
+        final sunday = monday.add(const Duration(days: 6));
+        final isSelected = _postWeekOffset == offset;
+
+        int count = _countPostsInWeek(monday);
+        bool hasData;
+        if (_hasPostTimestamps) {
+          hasData = count > 0;
+        } else {
+          if (offset >= -2) {
+            hasData = true;
+            count = offset == 0 ? 2 : 1;
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Week';
+        } else if (offset == -1) {
+          label = 'Last Week';
+        } else {
+          final weekNum = ((monday.day - 1) ~/ 7) + 1;
+          label = 'Wk $weekNum ${shortMonths[monday.month - 1]}';
+        }
+
+        final dateRange =
+            '${shortMonths[monday.month - 1]} ${monday.day} – ${shortMonths[sunday.month - 1]} ${sunday.day}';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_post_week_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            unitSingular: 'post',
+            unitPlural: 'posts',
+            onTap: () {
+              setState(() {
+                _postWeekOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+      // Display 6 months of history: from current month (0) descending to past (-5)
+      for (int offset = 0; offset >= -5; offset--) {
+        final totalMonths = (now.year * 12 + (now.month - 1)) + offset;
+        final targetYear = totalMonths ~/ 12;
+        final targetMonth = (totalMonths % 12) + 1;
+        final monthStart = DateTime(targetYear, targetMonth, 1);
+        final isSelected = _postMonthOffset == offset;
+
+        int count = _countPostsInMonth(monthStart);
+        bool hasData;
+        if (_hasPostTimestamps) {
+          hasData = count > 0;
+        } else {
+          if (offset >= -1) {
+            hasData = true;
+            count = offset == 0 ? 3 : 2;
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Month';
+        } else if (offset == -1) {
+          label = 'Last Month';
+        } else {
+          label = '${shortMonths[targetMonth - 1]} $targetYear';
+        }
+
+        final dateRange = '${shortMonths[targetMonth - 1]} $targetYear';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_post_month_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            unitSingular: 'post',
+            unitPlural: 'posts',
+            onTap: () {
+              setState(() {
+                _postMonthOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    } else {
+      // Yearly: 4 years of history: from current year (0) descending to past (-3)
+      for (int offset = 0; offset >= -3; offset--) {
+        final year = now.year + offset;
+        final isSelected = _postYearOffset == offset;
+
+        int count = _countPostsInYear(year);
+        bool hasData;
+        if (_hasPostTimestamps) {
+          hasData = count > 0;
+        } else {
+          if (offset >= -1) {
+            hasData = true;
+            count = offset == 0
+                ? _posts.length
+                : (_posts.length >= 2 ? _posts.length - 1 : 1);
+          } else {
+            hasData = false;
+            count = 0;
+          }
+        }
+
+        String label;
+        if (offset == 0) {
+          label = 'This Year';
+        } else if (offset == -1) {
+          label = 'Last Year';
+        } else {
+          label = 'Year $year';
+        }
+
+        final dateRange = 'Jan – Dec $year';
+
+        items.add(
+          _buildHistoryItemCard(
+            key: ValueKey('history_post_year_$offset'),
+            label: label,
+            dateRange: dateRange,
+            isSelected: isSelected,
+            hasData: hasData,
+            count: count,
+            unitSingular: 'post',
+            unitPlural: 'posts',
+            onTap: () {
+              setState(() {
+                _postYearOffset = offset;
+              });
+            },
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              'SCAN TIMEFRAME HISTORY',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: WireframeColors.textMuted,
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              'Gray = No Data Available',
+              style: TextStyle(
+                fontSize: 10.0,
+                color: WireframeColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Scrollbar(
+          controller: _postPeriodScrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _postPeriodScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: items,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getPostTimeframeSubtitle(int totalPosts) {
+    if (_postTimeframe == 'yearly' || _postTimeframe == 'year') {
+      final targetYear = DateTime.now().year + _postYearOffset;
+      if (_postYearOffset == 0) {
+        return 'Recorded this calendar year ($targetYear) out of $totalPosts total posts';
+      } else if (_postYearOffset == -1) {
+        return 'Recorded in previous calendar year ($targetYear) out of $totalPosts total posts';
+      } else {
+        return 'Recorded in calendar year ($targetYear) out of $totalPosts total posts';
+      }
+    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+      if (_postMonthOffset == 0) {
+        return 'Recorded this calendar month out of $totalPosts total posts';
+      } else if (_postMonthOffset == -1) {
+        return 'Recorded in previous calendar month out of $totalPosts total posts';
+      } else {
+        const monthNames = [
+          'January',
+          'February',
+          'March',
+          'April',
+          'May',
+          'June',
+          'July',
+          'August',
+          'September',
+          'October',
+          'November',
+          'December'
+        ];
+        final now = DateTime.now();
+        final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
+        final targetYear = totalMonths ~/ 12;
+        final targetMonth = (totalMonths % 12) + 1;
+        return 'Recorded in ${monthNames[targetMonth - 1]} $targetYear out of $totalPosts total posts';
+      }
+    } else {
+      if (_postWeekOffset == 0) {
+        return 'Recorded in current week out of $totalPosts total posts';
+      } else if (_postWeekOffset == -1) {
+        return 'Recorded in previous week out of $totalPosts total posts';
+      } else {
+        final now = DateTime.now();
+        final currentMonday = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: now.weekday - 1));
+        final targetMonday =
+            currentMonday.add(Duration(days: _postWeekOffset * 7));
+        final targetSunday = targetMonday.add(const Duration(days: 6));
+        const shortMonths = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
+        return 'Recorded during week of ${shortMonths[targetMonday.month - 1]} ${targetMonday.day}–${targetSunday.day} out of $totalPosts total posts';
+      }
+    }
+  }
+
+  String _getPostTimelineLabel() {
+    const shortMonths = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final now = DateTime.now();
+    if (_postTimeframe == 'weekly' || _postTimeframe == 'week') {
+      if (_postWeekOffset == 0) return 'This Week';
+      if (_postWeekOffset == -1) return 'Last Week';
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final targetMonday =
+          currentMonday.add(Duration(days: _postWeekOffset * 7));
+      final weekNum = ((targetMonday.day - 1) ~/ 7) + 1;
+      return 'Wk $weekNum ${shortMonths[targetMonday.month - 1]}';
+    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
+      if (_postMonthOffset == 0) return 'This Month';
+      if (_postMonthOffset == -1) return 'Last Month';
+      final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
+      final targetYear = totalMonths ~/ 12;
+      final targetMonth = (totalMonths % 12) + 1;
+      return '${shortMonths[targetMonth - 1]} $targetYear';
+    } else {
+      if (_postYearOffset == 0) return 'This Year';
+      if (_postYearOffset == -1) return 'Last Year';
+      final targetYear = now.year + _postYearOffset;
+      return 'Year $targetYear';
+    }
+  }
+
   Widget _buildStatusProgressRow(
       String label, int count, int total, Color color) {
     final ratio = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
@@ -1069,20 +1921,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         _posts.where((p) => p.isFlagged || p.isModerationFlagged).length;
     final approvedCount = _posts.where((p) => p.isModerationApproved).length;
 
-    String timeframeDescription;
-    switch (_postTimeframe) {
-      case 'daily':
-        timeframeDescription = 'today';
-        break;
-      case 'monthly':
-        timeframeDescription = 'this calendar month';
-        break;
-      case 'weekly':
-      default:
-        timeframeDescription = 'in the last 7 days';
-        break;
-    }
-
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -1122,7 +1960,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           ),
           const SizedBox(height: 12),
 
-          // Timeline Segmented Selector: Daily, Weekly, Monthly
+          // Timeline Segmented Selector: Weekly, Monthly, Yearly
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF1F5F9),
@@ -1132,13 +1970,17 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             padding: const EdgeInsets.all(3.0),
             child: Row(
               children: [
-                Expanded(child: _buildPostTimeframePill('daily', 'Daily')),
                 Expanded(child: _buildPostTimeframePill('weekly', 'Weekly')),
                 Expanded(child: _buildPostTimeframePill('monthly', 'Monthly')),
+                Expanded(child: _buildPostTimeframePill('yearly', 'Yearly')),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+
+          // History Scan Scrollbar for Posts
+          _buildPostHistoryScanScrollbar(),
+          const SizedBox(height: 12),
 
           // Post Number Analytics Metric Box
           Container(
@@ -1173,7 +2015,9 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '+$totalInPeriod Sighting Post${totalInPeriod == 1 ? '' : 's'}',
+                            totalInPeriod > 0
+                                ? '+$totalInPeriod Sighting Post${totalInPeriod == 1 ? '' : 's'}'
+                                : '0 Sighting Posts',
                             style: const TextStyle(
                               fontSize: 16.0,
                               fontWeight: FontWeight.w800,
@@ -1181,7 +2025,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                             ),
                           ),
                           Text(
-                            'Recorded $timeframeDescription out of ${_posts.length} total posts',
+                            _getPostTimeframeSubtitle(_posts.length),
                             style: const TextStyle(
                               fontSize: 11.5,
                               color: WireframeColors.textSecondary,
@@ -1269,11 +2113,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                 ),
               ),
               Text(
-                _postTimelineFilter == 'weekly'
-                    ? 'This Week'
-                    : (_postTimelineFilter == 'monthly'
-                        ? 'This Month'
-                        : 'This Year'),
+                _getPostTimelineLabel(),
                 style: const TextStyle(
                   fontSize: 11.0,
                   fontWeight: FontWeight.w600,
@@ -1363,10 +2203,18 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   }
 
   Widget _buildPostTimeframePill(String key, String label) {
-    final isSelected = _postTimeframe == key;
+    final isSelected = _postTimeframe == key ||
+        (_postTimeframe == 'week' && key == 'weekly') ||
+        (_postTimeframe == 'month' && key == 'monthly') ||
+        (_postTimeframe == 'year' && key == 'yearly');
     return InkWell(
       key: ValueKey('btn_post_status_$key'),
-      onTap: () => setState(() => _postTimeframe = key),
+      onTap: () {
+        setState(() {
+          _postTimeframe = key;
+          _postTimelineFilter = key;
+        });
+      },
       borderRadius: BorderRadius.circular(6.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
@@ -1401,10 +2249,15 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   }
 
   Widget _buildTimelineFilterPill(String key, String label) {
-    final isSelected = _postTimelineFilter == key;
+    final isSelected = _postTimelineFilter == key || _postTimeframe == key;
     return InkWell(
       key: ValueKey('btn_timeline_$key'),
-      onTap: () => setState(() => _postTimelineFilter = key),
+      onTap: () {
+        setState(() {
+          _postTimelineFilter = key;
+          _postTimeframe = key;
+        });
+      },
       borderRadius: BorderRadius.circular(6.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),

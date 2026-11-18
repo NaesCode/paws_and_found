@@ -83,6 +83,23 @@ class MockNotificationRepository implements NotificationRepository {
   @override
   Future<Map<String, dynamic>?> getPostDetailsForNotification(
       AppNotification notification) async {
+    if (notification.message.contains('Golden')) {
+      return {
+        'id': '#GOLDEN-01',
+        'title': 'canine Sighting',
+        'animalType': 'canine',
+        'status': 'stray',
+        'description': 'Golden Retriever Spotted in our Area',
+        'photoUrl': 'https://example.com/golden.jpg',
+        'locationName': 'Cebu City, Philippines',
+        'latitude': 10.063,
+        'longitude': 123.634,
+        'reporterName': 'Klara',
+        'createdAt': notification.createdAt,
+        'moderationStatus': 'approved',
+        'moderationNotes': null,
+      };
+    }
     if (notification.message.contains('Mingay')) {
       return {
         'id': notification.relatedReportId ?? '#MINGAY-01',
@@ -517,6 +534,60 @@ void main() {
       expect(registered.pinLabel, equals('M'));
       expect(registered.latitude, equals(10.3157));
       expect(registered.longitude, equals(123.8854));
+    });
+
+    testWidgets('PostDetailsBottomSheet renders full picture frame with BoxFit.contain and zoom support', (tester) async {
+      final goldenNotification = AppNotification(
+        id: 'notif-golden',
+        userId: 'user-123',
+        message: '🚨 High-Confidence Match (94%): Your canine sighting for Golden Retriever was spotted nearby!',
+        type: 'match_found',
+        relatedReportId: '#GOLDEN-01',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+
+      mockRepo.currentNotifications = [goldenNotification];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsPage(
+            repository: mockRepo,
+            isActiveTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on the Golden notification
+      await tester.tap(find.textContaining('Golden Retriever'));
+      await tester.pumpAndSettle();
+
+      // Verify post details modal opened
+      expect(find.text('canine Sighting'), findsOneWidget);
+      expect(find.text('Category: canine'), findsOneWidget);
+      expect(find.text('Reported by Klara'), findsOneWidget);
+      expect(find.text('STRAY'), findsOneWidget);
+
+      // Verify Picture Frame has Full Photo badge and BoxFit.contain image
+      expect(find.text('Full Photo'), findsOneWidget);
+      expect(find.byIcon(Icons.zoom_in_rounded), findsOneWidget);
+
+      final images = tester.widgetList<Image>(find.byType(Image));
+      expect(images.any((img) => img.fit == BoxFit.contain), isTrue);
+
+      // Tap the picture frame / Full Photo badge to open fullscreen interactive photo viewer
+      await tester.tap(find.text('Full Photo'));
+      await tester.pumpAndSettle();
+
+      // Verify InteractiveViewer is presented with the full photo
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+
+      // Close the fullscreen viewer
+      await tester.tap(find.byIcon(Icons.close_rounded).last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InteractiveViewer), findsNothing);
     });
 
     test('MapController registerAndSelectReport updates reports and selects pin', () {

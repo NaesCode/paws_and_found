@@ -996,6 +996,15 @@ void main() {
     testWidgets('AdminAnalyticsPage renders KPI metrics, user growth, and post status pie chart', (tester) async {
       setMobileScreen(tester);
 
+      final now = DateTime.now();
+      final currentMonday = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: now.weekday - 1));
+      final lastWeekMid = currentMonday.subtract(const Duration(days: 3));
+      final lastMonthMid = (now.month == 1)
+          ? DateTime(now.year - 1, 12, 15)
+          : DateTime(now.year, now.month - 1, 15);
+      final lastYearMid = DateTime(now.year - 1, 6, 15);
+
       final fakeRepo = FakeAdminRepository(
         users: [
           AdminUserItem(
@@ -1003,37 +1012,62 @@ void main() {
             name: 'Sarah Connor',
             emailMasked: 's..',
             status: 'Active',
-            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+            createdAt: currentMonday.add(const Duration(hours: 12)),
           ),
           AdminUserItem(
             id: 'u-2',
             name: 'Kyle Reese',
             emailMasked: 'k..',
             status: 'Warning',
-            createdAt: DateTime.now().subtract(const Duration(days: 10)),
+            createdAt: lastWeekMid,
+          ),
+          AdminUserItem(
+            id: 'u-3',
+            name: 'John Connor',
+            emailMasked: 'j..',
+            status: 'Active',
+            createdAt: lastMonthMid,
+          ),
+          AdminUserItem(
+            id: 'u-4',
+            name: 'Miles Dyson',
+            emailMasked: 'm..',
+            status: 'Active',
+            createdAt: lastYearMid,
           ),
         ],
         posts: [
-          const AdminPostItem(
+          AdminPostItem(
             id: '#001',
             title: 'Max',
             status: 'missing',
             dateFormatted: 'Nov 1',
             username: 'sarah_c',
+            createdAt: currentMonday.add(const Duration(hours: 10)),
           ),
-          const AdminPostItem(
+          AdminPostItem(
             id: '#002',
             title: 'Bella',
             status: 'stray',
             dateFormatted: 'Nov 2',
             username: 'kyle_r',
+            createdAt: lastWeekMid,
           ),
-          const AdminPostItem(
+          AdminPostItem(
             id: '#003',
             title: 'Charlie',
             status: 'found',
             dateFormatted: 'Nov 3',
             username: 'sarah_c',
+            createdAt: lastMonthMid,
+          ),
+          AdminPostItem(
+            id: '#004',
+            title: 'Rocky',
+            status: 'found',
+            dateFormatted: 'Oct 1',
+            username: 'alex_m',
+            createdAt: lastYearMid,
           ),
         ],
       );
@@ -1045,9 +1079,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Header & Filters
+      // Header & Filters (All Insights removed, only Users and Posts)
       expect(find.text('Analytics & Insights'), findsOneWidget);
-      expect(find.text('All Insights'), findsOneWidget);
+      expect(find.text('All Insights'), findsNothing);
       expect(find.text('Users'), findsOneWidget);
       expect(find.text('Posts'), findsOneWidget);
 
@@ -1060,53 +1094,138 @@ void main() {
       expect(find.byKey(const ValueKey('btn_user_timeframe_weekly')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_user_timeframe_monthly')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_user_timeframe_yearly')), findsOneWidget);
+
+      // Redundant Current/Previous Toggle buttons removed in favor of history scrollbar
+      expect(find.byKey(const ValueKey('btn_user_period_current')), findsNothing);
+      expect(find.byKey(const ValueKey('btn_user_period_previous')), findsNothing);
+      // Details banner card from Picture 3 is removed
+      expect(find.byKey(const ValueKey('label_user_period_details')), findsNothing);
+      expect(find.text('CURRENT'), findsNothing);
+      expect(find.text('+1 New User'), findsOneWidget);
       expect(find.text('REGISTRATION ACTIVITY'), findsOneWidget);
       expect(find.text('ACCOUNT STATUS DISTRIBUTION'), findsOneWidget);
+
+      // Verify History Scanning Scrollbar is present
+      expect(find.text('SCAN TIMEFRAME HISTORY'), findsOneWidget);
+      expect(find.text('Gray = No Data Available'), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_week_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_week_-1')), findsOneWidget);
+
+      // Tapping a historical week with data in the scrollbar selects it
+      await tester.tap(find.byKey(const ValueKey('history_week_-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Registered in previous week out of 4 total'), findsOneWidget);
+
+      // Scroll to view older weeks without data
+      await tester.drag(find.byKey(const ValueKey('history_week_0')), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      // Past weeks without data are unclickable and labeled "No data"
+      expect(find.text('No data'), findsWidgets);
+      final unclickableWeek = find.byKey(const ValueKey('history_week_-7'));
+      expect(unclickableWeek, findsOneWidget);
+      await tester.tap(unclickableWeek);
+      await tester.pumpAndSettle();
+      // Selection did not change to the unclickable week
+      expect(find.text('Registered in previous week out of 4 total'), findsOneWidget);
+
+      // Scroll back to the start
+      await tester.drag(find.byKey(const ValueKey('history_week_-7')), const Offset(400, 0));
+      await tester.pumpAndSettle();
 
       // Default is Weekly: shows weekdays
       expect(find.text('Mon'), findsWidgets);
       expect(find.text('Sun'), findsWidgets);
+
+      // Switch back to Current Week via history scrollbar
+      await tester.tap(find.byKey(const ValueKey('history_week_0')));
+      await tester.pumpAndSettle();
+      expect(find.text('Registered in current week out of 4 total'), findsOneWidget);
 
       // Switch User Timeframe to Monthly: shows weeks (Wk 1, Wk 4)
       await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_monthly')));
       await tester.pumpAndSettle();
       expect(find.text('Wk 1'), findsWidgets);
       expect(find.text('Wk 4'), findsWidgets);
+      expect(find.byKey(const ValueKey('history_month_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_month_-1')), findsOneWidget);
+
+      // Select Previous Month via history scrollbar
+      await tester.tap(find.byKey(const ValueKey('history_month_-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Registered in previous calendar month out of 4 total'), findsOneWidget);
 
       // Switch User Timeframe to Yearly: shows months (Jan, Dec)
       await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_yearly')));
       await tester.pumpAndSettle();
       expect(find.text('Jan'), findsWidgets);
       expect(find.text('Dec'), findsWidgets);
+      expect(find.byKey(const ValueKey('history_year_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_year_-1')), findsOneWidget);
 
-      // Switch back to Weekly
+      // Select Previous Year via history scrollbar
+      await tester.tap(find.byKey(const ValueKey('history_year_-1')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Registered in previous calendar year'), findsOneWidget);
+
+      // Switch back to Weekly and Current
       await tester.tap(find.byKey(const ValueKey('btn_user_timeframe_weekly')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('history_week_0')));
+      await tester.pumpAndSettle();
 
-      // Post Analytics Section (Pie Chart & Timeline)
+      // Switch Tab to Posts Section
+      await tester.tap(find.text('Posts'));
+      await tester.pumpAndSettle();
+
+      // User section is hidden, Post section is shown
+      expect(find.text('User Growth & Velocity'), findsNothing);
       expect(find.text('Post Status Breakdown'), findsOneWidget);
       expect(find.text('Missing Pets'), findsWidgets);
       expect(find.text('Stray Sightings'), findsWidgets);
       expect(find.text('Found / Reunited'), findsWidgets);
-      expect(find.byKey(const ValueKey('btn_post_status_daily')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_post_status_weekly')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_post_status_monthly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('btn_post_status_yearly')), findsOneWidget);
 
       // Verify custom charts are present
       expect(find.byType(AdminPieChart), findsOneWidget);
       expect(find.byType(AdminBarChart), findsWidgets);
 
-      // Toggle Post Status Breakdown to Daily
-      await tester.tap(find.byKey(const ValueKey('btn_post_status_daily')));
-      await tester.pumpAndSettle();
-      expect(find.text('DAILY POSTS'), findsOneWidget);
+      // Verify History Scanning Scrollbar for Posts is present
+      expect(find.byKey(const ValueKey('history_post_week_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_post_week_-1')), findsOneWidget);
 
-      // Toggle Post Status Breakdown to Monthly
+      // Select Previous Week in Posts
+      await tester.tap(find.byKey(const ValueKey('history_post_week_-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Recorded in previous week out of 4 total posts'), findsOneWidget);
+
+      // Switch Post Status Breakdown to Monthly
       await tester.tap(find.byKey(const ValueKey('btn_post_status_monthly')));
       await tester.pumpAndSettle();
       expect(find.text('MONTHLY POSTS'), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_post_month_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_post_month_-1')), findsOneWidget);
 
-      // Toggle Post Status Breakdown back to Weekly
+      // Select Previous Month in Posts
+      await tester.tap(find.byKey(const ValueKey('history_post_month_-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Recorded in previous calendar month out of 4 total posts'), findsOneWidget);
+
+      // Switch Post Status Breakdown to Yearly
+      await tester.tap(find.byKey(const ValueKey('btn_post_status_yearly')));
+      await tester.pumpAndSettle();
+      expect(find.text('YEARLY POSTS'), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_post_year_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('history_post_year_-1')), findsOneWidget);
+
+      // Select Previous Year in Posts
+      await tester.tap(find.byKey(const ValueKey('history_post_year_-1')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Recorded in previous calendar year'), findsOneWidget);
+
+      // Switch back to Weekly
       await tester.tap(find.byKey(const ValueKey('btn_post_status_weekly')));
       await tester.pumpAndSettle();
       expect(find.text('WEEKLY POSTS'), findsOneWidget);
@@ -1124,14 +1243,12 @@ void main() {
       // Toggle Timeline to Monthly: shows weeks (Wk 1, Wk 4)
       await tester.tap(find.byKey(const ValueKey('btn_timeline_monthly')));
       await tester.pumpAndSettle();
-      expect(find.text('This Month'), findsWidgets);
       expect(find.text('Wk 1'), findsWidgets);
       expect(find.text('Wk 4'), findsWidgets);
 
       // Toggle Timeline to Yearly: shows months (Jan, Dec)
       await tester.tap(find.byKey(const ValueKey('btn_timeline_yearly')));
       await tester.pumpAndSettle();
-      expect(find.text('This Year'), findsOneWidget);
       expect(find.text('Jan'), findsOneWidget);
       expect(find.text('Dec'), findsOneWidget);
 
@@ -1141,17 +1258,11 @@ void main() {
       expect(find.text('Mon'), findsWidgets);
       expect(find.text('Sun'), findsWidgets);
 
-      // Filter tabs: click Users -> Post section is hidden
+      // Switch Tab back to Users Section
       await tester.tap(find.text('Users'));
       await tester.pumpAndSettle();
       expect(find.text('User Growth & Velocity'), findsOneWidget);
       expect(find.text('Post Status Breakdown'), findsNothing);
-
-      // Filter tabs: click Posts -> User section is hidden
-      await tester.tap(find.text('Posts'));
-      await tester.pumpAndSettle();
-      expect(find.text('User Growth & Velocity'), findsNothing);
-      expect(find.text('Post Status Breakdown'), findsOneWidget);
     });
 
   });
