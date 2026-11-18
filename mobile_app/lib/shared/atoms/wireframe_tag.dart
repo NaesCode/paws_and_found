@@ -1,40 +1,6 @@
-import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+import 'paw_tag.dart';
 
-/// A subtle border pill tag atom for animal traits (e.g., "Male", "Adult", "Golden").
-///
-/// Adheres to Atomic Design: dumb, stateless UI element relying purely on
-/// passed properties.
-class WireframeTag extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
+export 'paw_tag.dart';
 
-  const WireframeTag({
-    super.key,
-    required this.label,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border, width: 1.0),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.darkCharcoal,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// Backward-compatible alias for [PawTag].
+typedef WireframeTag = PawTag;

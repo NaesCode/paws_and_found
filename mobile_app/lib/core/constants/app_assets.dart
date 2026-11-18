@@ -16,9 +16,11 @@ class AppAssets {
   // Images (Add constants here as image assets are added to assets/images/)
   // ---------------------------------------------------------------------------
   static const String petPlaceholder = '$imagesDir/images.jpg';
+  static const String appLogo = '$imagesDir/app_logo.png';
 
   // ---------------------------------------------------------------------------
   // SVGs (Add constants here as SVG assets are added to assets/svgs/)
   // ---------------------------------------------------------------------------
+  static const String appLogoSvg = '$svgsDir/app_logo.svg';
   // static const String mapPinSvg = '$svgsDir/map_pin.svg';
 }

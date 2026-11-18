@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_post_item.dart';
 import '../../data/models/admin_user_item.dart';
@@ -235,7 +235,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -255,7 +255,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(
-                            color: WireframeColors.primaryDark,
+                            color: AppColors.primary,
                             strokeWidth: 2.8,
                           ),
                           SizedBox(height: 14),
@@ -264,7 +264,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                             style: TextStyle(
                               fontSize: 13.0,
                               fontWeight: FontWeight.w600,
-                              color: WireframeColors.textSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -272,7 +272,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadAnalytics,
-                      color: WireframeColors.primaryDark,
+                      color: AppColors.primary,
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(
@@ -368,13 +368,13 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           padding: const EdgeInsets.symmetric(vertical: 9.0),
           decoration: BoxDecoration(
             color: isSelected
-                ? WireframeColors.primaryDark
+                ? AppColors.primary
                 : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(10.0),
             border: Border.all(
               color: isSelected
-                  ? WireframeColors.primaryDark
-                  : WireframeColors.border,
+                  ? AppColors.primary
+                  : AppColors.border,
             ),
           ),
           child: Row(
@@ -383,7 +383,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               Icon(
                 icon,
                 size: 15,
-                color: isSelected ? Colors.white : WireframeColors.textSecondary,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -391,7 +391,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : WireframeColors.textPrimary,
+                  color: isSelected ? Colors.white : AppColors.darkCharcoal,
                 ),
               ),
             ],
@@ -416,7 +416,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             value: totalUsers.toString(),
             subtitle: '$activeUsers active now',
             icon: Icons.people_alt_rounded,
-            accentColor: WireframeColors.primaryDark,
+            accentColor: AppColors.primary,
           ),
         ),
         const SizedBox(width: 10),
@@ -449,7 +449,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: WireframeColors.border),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -469,7 +469,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                 style: const TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
-                  color: WireframeColors.textMuted,
+                  color: AppColors.textMuted,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -499,7 +499,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             style: const TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
-              color: WireframeColors.textSecondary,
+              color: AppColors.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -525,7 +525,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(color: WireframeColors.border),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,7 +534,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           Row(
             children: const [
               Icon(Icons.people_alt_rounded,
-                  size: 20, color: WireframeColors.primaryDark),
+                  size: 20, color: AppColors.primary),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -542,7 +542,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                   style: TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -554,7 +554,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             'Visualization of registered members and new signups',
             style: TextStyle(
               fontSize: 12.0,
-              color: WireframeColors.textSecondary,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -564,7 +564,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             decoration: BoxDecoration(
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(9.0),
-              border: Border.all(color: WireframeColors.border),
+              border: Border.all(color: AppColors.border),
             ),
             padding: const EdgeInsets.all(3.0),
             child: Row(
@@ -580,10 +580,10 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
             decoration: BoxDecoration(
-              color: WireframeColors.primaryDark.withValues(alpha: 0.05),
+              color: AppColors.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(10.0),
               border: Border.all(
-                color: WireframeColors.primaryDark.withValues(alpha: 0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
               ),
             ),
             child: Row(
@@ -592,7 +592,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   child: const Icon(
@@ -611,14 +611,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         style: const TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.w800,
-                          color: WireframeColors.primaryDark,
+                          color: AppColors.primary,
                         ),
                       ),
                       Text(
                         'Registered ${_userTimeframe == 'week' ? 'in the last 7 days' : 'this calendar month'} out of $totalUsers total',
                         style: const TextStyle(
                           fontSize: 11.5,
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -635,7 +635,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             style: TextStyle(
               fontSize: 11.0,
               fontWeight: FontWeight.w700,
-              color: WireframeColors.textMuted,
+              color: AppColors.textMuted,
               letterSpacing: 0.5,
             ),
           ),
@@ -653,13 +653,13 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             style: TextStyle(
               fontSize: 11.0,
               fontWeight: FontWeight.w700,
-              color: WireframeColors.textMuted,
+              color: AppColors.textMuted,
               letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 10),
           _buildStatusProgressRow('Active Accounts', activeCount, totalUsers,
-              WireframeColors.primaryDark),
+              AppColors.primary),
           const SizedBox(height: 8),
           _buildStatusProgressRow('Accounts with Warnings', warningCount,
               totalUsers, const Color(0xFFF59E0B)),
@@ -698,8 +698,8 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
-                ? WireframeColors.primaryDark
-                : WireframeColors.textMuted,
+                ? AppColors.primary
+                : AppColors.textMuted,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -724,7 +724,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               style: const TextStyle(
                 fontSize: 12.0,
                 fontWeight: FontWeight.w600,
-                color: WireframeColors.textPrimary,
+                color: AppColors.darkCharcoal,
               ),
             ),
             Text(
@@ -766,7 +766,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(color: WireframeColors.border),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,7 +775,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           Row(
             children: const [
               Icon(Icons.article_rounded,
-                  size: 20, color: WireframeColors.primaryDark),
+                  size: 20, color: AppColors.primary),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -783,7 +783,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                   style: TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
-                    color: WireframeColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -795,7 +795,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             'Pie chart visualization of sighting report categories',
             style: TextStyle(
               fontSize: 12.0,
-              color: WireframeColors.textSecondary,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 20),

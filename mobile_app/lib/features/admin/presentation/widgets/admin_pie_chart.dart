@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Represents a single slice / category in the Admin Pie/Donut Chart.
 class PieChartSegment {
@@ -69,9 +69,10 @@ class AdminPieChart extends StatelessWidget {
                   Text(
                     centerLabel.isNotEmpty ? centerLabel : total.toInt().toString(),
                     style: const TextStyle(
+                      fontFamily: 'Nunito Sans',
                       fontSize: 24.0,
                       fontWeight: FontWeight.w800,
-                      color: WireframeColors.primaryDark,
+                      color: AppColors.primary,
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -79,9 +80,10 @@ class AdminPieChart extends StatelessWidget {
                   Text(
                     centerSublabel.toUpperCase(),
                     style: const TextStyle(
+                      fontFamily: 'Nunito Sans',
                       fontSize: 10.0,
                       fontWeight: FontWeight.w700,
-                      color: WireframeColors.textMuted,
+                      color: AppColors.textMuted,
                       letterSpacing: 0.6,
                     ),
                   ),
@@ -97,9 +99,9 @@ class AdminPieChart extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.surfaceMuted,
               borderRadius: BorderRadius.circular(12.0),
-              border: Border.all(color: WireframeColors.border),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: segments.map((seg) {
@@ -126,9 +128,10 @@ class AdminPieChart extends StatelessWidget {
                           child: Text(
                             seg.label,
                             style: const TextStyle(
+                              fontFamily: 'Ek Mukta',
                               fontSize: 13.0,
                               fontWeight: FontWeight.w600,
-                              color: WireframeColors.textPrimary,
+                              color: AppColors.darkCharcoal,
                             ),
                           ),
                         ),
@@ -136,9 +139,10 @@ class AdminPieChart extends StatelessWidget {
                         Text(
                           '${seg.value.toInt()} posts',
                           style: const TextStyle(
+                            fontFamily: 'Ek Mukta',
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: WireframeColors.textSecondary,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -153,6 +157,7 @@ class AdminPieChart extends StatelessWidget {
                           child: Text(
                             '$percentage%',
                             style: TextStyle(
+                              fontFamily: 'Nunito Sans',
                               fontSize: 11.0,
                               fontWeight: FontWeight.w700,
                               color: seg.color,
@@ -161,7 +166,7 @@ class AdminPieChart extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (!isLast) const Divider(height: 14, color: WireframeColors.border),
+                    if (!isLast) const Divider(height: 14, color: AppColors.border),
                   ],
                 );
               }).toList(),
@@ -193,7 +198,7 @@ class _DonutChartPainter extends CustomPainter {
     // Empty state ring
     if (total <= 0) {
       final emptyPaint = Paint()
-        ..color = WireframeColors.border
+        ..color = AppColors.border
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth;
       canvas.drawCircle(center, radius, emptyPaint);

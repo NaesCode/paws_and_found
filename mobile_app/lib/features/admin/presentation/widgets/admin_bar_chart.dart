@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Single bar item representing a period (day or week) in user growth.
 class BarChartGroup {
@@ -37,7 +37,7 @@ class AdminBarChart extends StatelessWidget {
         alignment: Alignment.center,
         child: const Text(
           'No registration activity recorded',
-          style: TextStyle(fontSize: 12.0, color: WireframeColors.textMuted),
+          style: TextStyle(fontFamily: 'Ek Mukta', fontSize: 12.0, color: AppColors.textMuted),
         ),
       );
     }
@@ -66,13 +66,14 @@ class AdminBarChart extends StatelessWidget {
                       Text(
                         g.value.toString(),
                         style: TextStyle(
+                          fontFamily: 'Ek Mukta',
                           fontSize: 11.0,
                           fontWeight: g.isHighlight ? FontWeight.w800 : FontWeight.w600,
                           color: g.isHighlight
-                              ? WireframeColors.primaryDark
+                              ? AppColors.primary
                               : (g.value > 0
-                                  ? WireframeColors.textPrimary
-                                  : WireframeColors.textMuted),
+                                  ? AppColors.darkCharcoal
+                                  : AppColors.textMuted),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -82,10 +83,10 @@ class AdminBarChart extends StatelessWidget {
                         height: barHeight,
                         decoration: BoxDecoration(
                           color: g.isHighlight
-                              ? WireframeColors.primaryDark
+                              ? AppColors.primary
                               : (g.value > 0
-                                  ? WireframeColors.primaryDark.withValues(alpha: 0.65)
-                                  : WireframeColors.border),
+                                  ? AppColors.primary.withValues(alpha: 0.65)
+                                  : AppColors.border),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5.0),
                           ),
@@ -102,7 +103,7 @@ class AdminBarChart extends StatelessWidget {
         // Bottom Axis Line
         Container(
           height: 1.5,
-          color: WireframeColors.border,
+          color: AppColors.border,
         ),
         const SizedBox(height: 6),
 
@@ -114,11 +115,12 @@ class AdminBarChart extends StatelessWidget {
                 child: Text(
                   g.label,
                   style: TextStyle(
+                    fontFamily: 'Ek Mukta',
                     fontSize: 10.5,
                     fontWeight: g.isHighlight ? FontWeight.w700 : FontWeight.w500,
                     color: g.isHighlight
-                        ? WireframeColors.primaryDark
-                        : WireframeColors.textSecondary,
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),

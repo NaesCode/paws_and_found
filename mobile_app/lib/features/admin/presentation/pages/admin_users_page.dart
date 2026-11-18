@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/wireframe_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_user_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
@@ -830,7 +829,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -861,7 +860,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: WireframeColors.border,
+                          color: AppColors.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -881,7 +880,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                 style: TextStyle(
                                   fontSize: 18.0,
                                   fontWeight: FontWeight.w800,
-                                  color: WireframeColors.primaryDark,
+                                  color: AppColors.primary,
                                 ),
                               ),
                               const SizedBox(height: 3),
@@ -889,7 +888,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                 '${targetUsers.length} user record${targetUsers.length == 1 ? '' : 's'} ready to export',
                                 style: const TextStyle(
                                   fontSize: 12.5,
-                                  color: WireframeColors.textSecondary,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -900,7 +899,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                           onPressed: () => Navigator.pop(ctx),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          color: WireframeColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ],
                     ),
@@ -917,7 +916,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
                                 color: selectedFormat == 'PDF'
-                                    ? WireframeColors.primaryDark
+                                    ? AppColors.primary
                                     : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -930,7 +929,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                     size: 16,
                                     color: selectedFormat == 'PDF'
                                         ? Colors.white
-                                        : WireframeColors.textPrimary,
+                                        : AppColors.darkCharcoal,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -940,7 +939,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                       fontWeight: FontWeight.w700,
                                       color: selectedFormat == 'PDF'
                                           ? Colors.white
-                                          : WireframeColors.textPrimary,
+                                          : AppColors.darkCharcoal,
                                     ),
                                   ),
                                 ],
@@ -970,7 +969,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                     size: 16,
                                     color: selectedFormat == 'Excel'
                                         ? Colors.white
-                                        : WireframeColors.textPrimary,
+                                        : AppColors.darkCharcoal,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -980,7 +979,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                       fontWeight: FontWeight.w700,
                                       color: selectedFormat == 'Excel'
                                           ? Colors.white
-                                          : WireframeColors.textPrimary,
+                                          : AppColors.darkCharcoal,
                                     ),
                                   ),
                                 ],
@@ -1016,7 +1015,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       style: TextStyle(
                         fontSize: 11.0,
                         fontWeight: FontWeight.w700,
-                        color: WireframeColors.textMuted,
+                        color: AppColors.textMuted,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -1027,7 +1026,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F172A),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: WireframeColors.border),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: SingleChildScrollView(
                         child: Text(
@@ -1056,7 +1055,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                             ),
                             backgroundColor: selectedFormat == 'Excel'
                                 ? const Color(0xFF166534)
-                                : WireframeColors.primaryDark,
+                                : AppColors.primary,
                             duration: const Duration(seconds: 3),
                           ),
                         );
@@ -1077,7 +1076,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: selectedFormat == 'Excel'
                             ? const Color(0xFF166534)
-                            : WireframeColors.primaryDark,
+                            : AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14.0),
                         shape: RoundedRectangleBorder(
@@ -1092,8 +1091,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     OutlinedButton(
                       onPressed: () => Navigator.pop(ctx),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: WireframeColors.textPrimary,
-                        side: const BorderSide(color: WireframeColors.border),
+                        foregroundColor: AppColors.darkCharcoal,
+                        side: const BorderSide(color: AppColors.border),
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
@@ -1132,7 +1131,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1159,7 +1158,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: WireframeColors.border,
+                            color: AppColors.border,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1179,7 +1178,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                   style: TextStyle(
                                     fontSize: 18.0,
                                     fontWeight: FontWeight.w800,
-                                    color: WireframeColors.primaryDark,
+                                    color: AppColors.primary,
                                   ),
                                 ),
                                 SizedBox(height: 3),
@@ -1187,7 +1186,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                   'Provision a user account from the admin console',
                                   style: TextStyle(
                                     fontSize: 12.0,
-                                    color: WireframeColors.textSecondary,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
                               ],
@@ -1198,7 +1197,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                             onPressed: () => Navigator.pop(ctx),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            color: WireframeColors.textSecondary,
+                            color: AppColors.textSecondary,
                           ),
                         ],
                       ),
@@ -1316,7 +1315,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         style: TextStyle(
                           fontSize: 11.0,
                           fontWeight: FontWeight.w700,
-                          color: WireframeColors.textMuted,
+                          color: AppColors.textMuted,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1331,13 +1330,13 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: selectedRole == 'User'
-                                      ? WireframeColors.primaryDark.withValues(alpha: 0.08)
+                                      ? AppColors.primary.withValues(alpha: 0.08)
                                       : const Color(0xFFF8FAFC),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: selectedRole == 'User'
-                                        ? WireframeColors.primaryDark
-                                        : WireframeColors.border,
+                                        ? AppColors.primary
+                                        : AppColors.border,
                                     width: selectedRole == 'User' ? 1.6 : 1.0,
                                   ),
                                 ),
@@ -1347,8 +1346,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                       Icons.person_rounded,
                                       size: 20,
                                       color: selectedRole == 'User'
-                                          ? WireframeColors.primaryDark
-                                          : WireframeColors.textMuted,
+                                          ? AppColors.primary
+                                          : AppColors.textMuted,
                                     ),
                                     const SizedBox(width: 8),
                                     const Text(
@@ -1378,7 +1377,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                   border: Border.all(
                                     color: selectedRole == 'Admin'
                                         ? const Color(0xFF7C3AED)
-                                        : WireframeColors.border,
+                                        : AppColors.border,
                                     width: selectedRole == 'Admin' ? 1.6 : 1.0,
                                   ),
                                 ),
@@ -1389,7 +1388,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                       size: 20,
                                       color: selectedRole == 'Admin'
                                           ? const Color(0xFF7C3AED)
-                                          : WireframeColors.textMuted,
+                                          : AppColors.textMuted,
                                     ),
                                     const SizedBox(width: 8),
                                     const Text(
@@ -1414,7 +1413,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         style: TextStyle(
                           fontSize: 11.0,
                           fontWeight: FontWeight.w700,
-                          color: WireframeColors.textMuted,
+                          color: AppColors.textMuted,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1475,7 +1474,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                   parentMessenger.showSnackBar(
                                     SnackBar(
                                       content: Text("User '${newUser.name}' created successfully!"),
-                                      backgroundColor: WireframeColors.primaryDark,
+                                      backgroundColor: AppColors.primary,
                                       duration: const Duration(seconds: 3),
                                     ),
                                   );
@@ -1487,7 +1486,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                                 }
                               },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: WireframeColors.primaryDark,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14.0),
                           shape: RoundedRectangleBorder(
@@ -1517,8 +1516,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       OutlinedButton(
                         onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: WireframeColors.textPrimary,
-                          side: const BorderSide(color: WireframeColors.border),
+                          foregroundColor: AppColors.darkCharcoal,
+                          side: const BorderSide(color: AppColors.border),
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
