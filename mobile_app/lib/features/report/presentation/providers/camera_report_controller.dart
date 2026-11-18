@@ -349,7 +349,8 @@ class CameraReportController extends ChangeNotifier {
         );
         _successReportId = reportId;
 
-        if (_linkedThreadId != null) {
+        // removed this because the linked should not be shown inside the chats
+        /*if (_linkedThreadId != null) {
           try {
             final client = Supabase.instance.client;
             final currentUserId = client.auth.currentUser?.id;
@@ -368,7 +369,7 @@ class CameraReportController extends ChangeNotifier {
           } catch (e) {
             debugPrint('[CameraReportController] Failed to auto-link comment: $e');
           }
-        }
+        }*/
 
         // Register in active map reports so it immediately appears on the Community Animal Map
         MapReportModel.addReport(

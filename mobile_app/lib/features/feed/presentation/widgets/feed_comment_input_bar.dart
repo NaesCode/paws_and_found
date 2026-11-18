@@ -4,6 +4,8 @@ import 'reply_indicator_bar.dart';
 
 class FeedCommentInputBar extends StatefulWidget {
   final String? replyingToUser;
+  final String? editingCommentId;
+  final String? editingInitialText;
   final FocusNode focusNode;
   final VoidCallback onCancelReply;
   final Function(String text, String? replyToUser) onCommentSubmitted;
@@ -11,6 +13,8 @@ class FeedCommentInputBar extends StatefulWidget {
   const FeedCommentInputBar({
     super.key,
     required this.replyingToUser,
+    this.editingCommentId,
+    this.editingInitialText,
     required this.focusNode,
     required this.onCancelReply,
     required this.onCommentSubmitted,
@@ -22,6 +26,34 @@ class FeedCommentInputBar extends StatefulWidget {
 
 class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
   final TextEditingController _commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editingInitialText != null) {
+      _setTextAndCursor(widget.editingInitialText!);
+    }
+  }
+
+  void _setTextAndCursor(String text) {
+    _commentController.text = text;
+    _commentController.selection = TextSelection.fromPosition(
+      TextPosition(offset: text.length),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant FeedCommentInputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.editingCommentId != oldWidget.editingCommentId ||
+        widget.editingInitialText != oldWidget.editingInitialText) {
+      if (widget.editingInitialText != null) {
+        _setTextAndCursor(widget.editingInitialText!);
+      } else {
+        _commentController.clear();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -40,6 +72,8 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.editingInitialText != null;
+
     return Container(
       padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0, bottom: 24.0),
       decoration: BoxDecoration(
@@ -55,7 +89,36 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.replyingToUser != null)
+          if (isEditing)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+              margin: const EdgeInsets.only(bottom: 8.0),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_outlined, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6.0),
+                  const Expanded(
+                    child: Text(
+                      'Editing comment',
+                      style: TextStyle(
+                        color: AppColors.text2,
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: widget.onCancelReply,
+                    child: const Icon(Icons.close, size: 16, color: AppColors.text3),
+                  ),
+                ],
+              ),
+            )
+          else if (widget.replyingToUser != null)
             ReplyIndicatorBar(
               username: widget.replyingToUser!,
               onClose: widget.onCancelReply,
@@ -66,11 +129,14 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
                 child: TextField(
                   controller: _commentController,
                   focusNode: widget.focusNode,
-                  maxLines: null,
+                  minLines: 1,
+                  maxLines: 5,
                   keyboardType: TextInputType.multiline,
                   style: const TextStyle(color: AppColors.text2, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: widget.replyingToUser != null ? 'Add a reply...' : 'Add a comment...',
+                    hintText: isEditing
+                        ? 'Edit your comment...'
+                        : (widget.replyingToUser != null ? 'Add a reply...' : 'Add a comment...'),
                     hintStyle: const TextStyle(color: AppColors.text3, fontSize: 14),
                     filled: true,
                     fillColor: Colors.grey.withValues(alpha: 0.1),
@@ -84,7 +150,10 @@ class _FeedCommentInputBarState extends State<FeedCommentInputBar> {
               ),
               const SizedBox(width: 8.0),
               IconButton(
-                icon: const Icon(Icons.send_rounded, color: AppColors.primary),
+                icon: Icon(
+                  isEditing ? Icons.check_circle_rounded : Icons.send_rounded,
+                  color: AppColors.primary,
+                ),
                 onPressed: _handleSubmit,
               ),
             ],

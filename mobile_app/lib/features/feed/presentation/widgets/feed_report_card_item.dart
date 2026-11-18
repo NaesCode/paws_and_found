@@ -11,6 +11,9 @@ class ReportCardItem extends StatelessWidget {
   final String button2Text;
   final VoidCallback onButton1Pressed;
   final VoidCallback onButton2Pressed;
+  final VoidCallback onPetButtonPressed;
+
+  final String petButtonText;
 
   final String petName;
   final String postedBy;
@@ -42,6 +45,8 @@ class ReportCardItem extends StatelessWidget {
     required this.userImageUrl,
     this.onUndoPressed,
     this.isFlagged = false,
+    required this.onPetButtonPressed,
+    required this.petButtonText,
   });
 
   @override
@@ -99,10 +104,12 @@ class ReportCardItem extends StatelessWidget {
               name: petName,
               specie: species,
               description: description,
+              petButtonText: petButtonText,
+              onPetButtonPressed: onPetButtonPressed,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+            padding: const EdgeInsets.only(top: 3.0, bottom: 10.0), 
             child: FeedCardFooter(
               reportId: id,
               petName: petName,
