@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async' show unawaited;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';

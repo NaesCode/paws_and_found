@@ -10,7 +10,6 @@ import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
-import 'package:paws_and_found/core/routes/app_router.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) EXCEPT THE USER'S POST
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-import 'package:paws_and_found/features/feed/presentation/widgets/embedded_sighting_card.dart';
 
 class FeedCardComments extends StatelessWidget {
   final VoidCallback? onReplyTap;
