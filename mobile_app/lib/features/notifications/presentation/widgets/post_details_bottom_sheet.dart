@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/location_constants.dart';
@@ -205,11 +204,23 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                       const SizedBox(height: 8),
 
                       // Post Image or Clean Placeholder
-                      _buildPictureFrame(
-                        context: context,
-                        photoUrl: photoUrl,
-                        title: title,
-                        animalType: animalType,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          height: 180,
+                          width: double.infinity,
+                          color: const Color(0xFFF1F5F9),
+                          child: (photoUrl.isNotEmpty &&
+                                  (photoUrl.startsWith('http://') ||
+                                      photoUrl.startsWith('https://')))
+                              ? Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      _placeholderImage(animalType: animalType),
+                                )
+                              : _placeholderImage(animalType: animalType),
+                        ),
                       ),
                       const SizedBox(height: 14),
 
@@ -485,183 +496,6 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
     } catch (_) {
       // Fallback if router not in widget tree
     }
-  }
-
-  Widget _buildPictureFrame({
-    required BuildContext context,
-    required String photoUrl,
-    required String title,
-    required String animalType,
-  }) {
-    final hasValidPhoto = photoUrl.isNotEmpty &&
-        (photoUrl.startsWith('http://') ||
-            photoUrl.startsWith('https://') ||
-            photoUrl.startsWith('assets/'));
-
-    if (!hasValidPhoto) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          height: 220,
-          width: double.infinity,
-          color: const Color(0xFFF1F5F9),
-          child: _placeholderImage(animalType: animalType),
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 240,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        ),
-        child: GestureDetector(
-          onTap: () => _openFullScreenPhoto(context, photoUrl, title),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Ambient blurred background layer that gracefully fills the frame
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: _buildPhotoImage(photoUrl, fit: BoxFit.cover),
-              ),
-              // Soft dark overlay to enhance contrast and focus
-              Container(
-                color: Colors.black.withValues(alpha: 0.32),
-              ),
-              // Crisp, full, non-truncated photo centered without any cropping
-              Center(
-                child: _buildPhotoImage(
-                  photoUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) =>
-                      _placeholderImage(animalType: animalType),
-                ),
-              ),
-              // Tap to expand / zoom badge
-              Positioned(
-                bottom: 10,
-                right: 10,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.zoom_in_rounded, size: 14, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Full Photo',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhotoImage(
-    String url, {
-    required BoxFit fit,
-    Widget Function(BuildContext, Object, StackTrace?)? errorBuilder,
-  }) {
-    if (url.startsWith('assets/')) {
-      return Image.asset(
-        url,
-        fit: fit,
-        errorBuilder: errorBuilder ?? (_, _, _) => const SizedBox.shrink(),
-      );
-    }
-    return Image.network(
-      url,
-      fit: fit,
-      errorBuilder: errorBuilder ?? (_, _, _) => const SizedBox.shrink(),
-    );
-  }
-
-  void _openFullScreenPhoto(BuildContext context, String url, String title) {
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.92),
-      builder: (dialogCtx) => Dialog(
-        insetPadding: EdgeInsets.zero,
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            InteractiveViewer(
-              minScale: 0.8,
-              maxScale: 4.0,
-              child: Center(
-                child: _buildPhotoImage(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.broken_image_rounded,
-                    color: Colors.white70,
-                    size: 48,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: MediaQuery.of(dialogCtx).padding.top + 12,
-              right: 16,
-              child: CircleAvatar(
-                backgroundColor: Colors.black54,
-                child: IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
-                  onPressed: () => Navigator.of(dialogCtx).pop(),
-                ),
-              ),
-            ),
-            Positioned(
-              top: MediaQuery.of(dialogCtx).padding.top + 18,
-              left: 20,
-              right: 70,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black87,
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _placeholderImage({String? animalType}) {
