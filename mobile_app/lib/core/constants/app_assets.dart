@@ -17,6 +17,7 @@ class AppAssets {
   // ---------------------------------------------------------------------------
   static const String petPlaceholder = '$imagesDir/images.jpg';
   static const String appLogo = '$imagesDir/app_logo.png';
+  static const String appLauncherIconPng = '$imagesDir/app_launcher_icon.png';
 
   // ---------------------------------------------------------------------------
   // SVGs (Add constants here as SVG assets are added to assets/svgs/)
@@ -25,4 +26,6 @@ class AppAssets {
   static const String pawsLogoSvg = '$svgsDir/paws-logo.svg';
   static const String authBackgroundSvg = '$svgsDir/paw-bg.svg';
   static const String pawBackgroundSvg = '$svgsDir/paw-bg.svg';
+  static const String appIconSvg = '$svgsDir/paws-app-icon.svg';
+  static const String appLauncherIconSvg = '$svgsDir/paws-app-icon.svg';
 }
