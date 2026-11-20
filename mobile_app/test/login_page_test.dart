@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:paws_and_found/features/auth/domain/repositories/auth_repository.dart';
 import 'package:paws_and_found/features/auth/presentation/pages/login_page.dart';
+import 'package:paws_and_found/shared/atoms/app_logo.dart';
 import 'package:paws_and_found/shared/atoms/app_logo_placeholder.dart';
 import 'package:paws_and_found/shared/molecules/app_brand_title_placeholder.dart';
 
@@ -47,7 +48,7 @@ class MockAuthRepository implements AuthRepository {
 
 void main() {
   group('LoginPage Branding Overhaul & UI Tests', () {
-    testWidgets('renders brand title placeholder, logo emblem, and auth tray', (tester) async {
+    testWidgets('renders brand title, official SVG logo, and auth tray', (tester) async {
       final mockRepo = MockAuthRepository();
 
       await tester.pumpWidget(
@@ -57,12 +58,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Brand placeholder elements in hero header
+      // Brand hero header with official vector logo
       expect(find.byType(AppBrandTitlePlaceholder), findsOneWidget);
       expect(find.byType(AppLogoPlaceholder), findsOneWidget);
+      expect(find.byType(AppLogo), findsOneWidget);
       expect(find.text('Paws and Found'), findsWidgets);
       expect(find.text('Community Lost & Found Animal Recovery'), findsOneWidget);
-      expect(find.text('LOGO PLACEHOLDER'), findsOneWidget);
 
       // Auth Tray default is Login mode
       expect(find.text('Welcome Back'), findsOneWidget);

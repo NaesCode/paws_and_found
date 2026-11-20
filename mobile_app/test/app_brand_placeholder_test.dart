@@ -1,18 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paws_and_found/shared/atoms/app_logo.dart';
 import 'package:paws_and_found/shared/atoms/app_logo_placeholder.dart';
 import 'package:paws_and_found/shared/atoms/paw_status_badge.dart';
 import 'package:paws_and_found/shared/atoms/paw_tag.dart';
 import 'package:paws_and_found/shared/molecules/app_brand_title_placeholder.dart';
 
 void main() {
-  group('AppLogoPlaceholder Atom Tests', () {
-    testWidgets('renders pet emblem and rescue pin badge', (tester) async {
+  group('AppLogo and AppLogoPlaceholder Atom Tests', () {
+    testWidgets('AppLogo renders official vector logo atom', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
             body: Center(
-              child: AppLogoPlaceholder(size: 80.0, showBadge: true),
+              child: AppLogo(size: 80.0),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AppLogo), findsOneWidget);
+    });
+
+    testWidgets('AppLogoPlaceholder renders pet emblem and rescue pin badge in placeholder mode', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: AppLogoPlaceholder(size: 80.0, showBadge: true, useSvg: false),
             ),
           ),
         ),
@@ -21,6 +36,21 @@ void main() {
       expect(find.byIcon(Icons.pets_rounded), findsOneWidget);
       expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
       expect(find.text('LOGO PLACEHOLDER'), findsOneWidget);
+    });
+
+    testWidgets('AppLogoPlaceholder renders AppLogo when useSvg is true', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: AppLogoPlaceholder(size: 80.0, showBadge: false, useSvg: true),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AppLogo), findsOneWidget);
+      expect(find.text('LOGO PLACEHOLDER'), findsNothing);
     });
 
     testWidgets('hides placeholder text badge when showBadge is false', (tester) async {
@@ -49,6 +79,7 @@ void main() {
                 layoutMode: BrandLayoutMode.vertical,
                 logoSize: 72.0,
                 showBadge: true,
+                useSvgLogo: false,
                 title: 'Paws and Found',
                 subtitle: 'Community Lost & Found Animal Recovery',
               ),
@@ -72,6 +103,7 @@ void main() {
                 layoutMode: BrandLayoutMode.horizontal,
                 logoSize: 48.0,
                 showBadge: false,
+                useSvgLogo: false,
                 title: 'Custom Brand',
                 subtitle: 'Sub-tagline',
               ),
@@ -83,6 +115,29 @@ void main() {
       expect(find.text('Custom Brand'), findsOneWidget);
       expect(find.text('Sub-tagline'), findsOneWidget);
       // Horizontal mode hides badge by default inside logo
+      expect(find.text('LOGO PLACEHOLDER'), findsNothing);
+    });
+
+    testWidgets('renders official SVG logo in brand header when useSvgLogo is true', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: AppBrandTitlePlaceholder(
+                layoutMode: BrandLayoutMode.vertical,
+                logoSize: 76.0,
+                showBadge: false,
+                useSvgLogo: true,
+                title: 'Paws and Found',
+                subtitle: 'Community Lost & Found Animal Recovery',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Paws and Found'), findsOneWidget);
+      expect(find.byType(AppLogo), findsOneWidget);
       expect(find.text('LOGO PLACEHOLDER'), findsNothing);
     });
   });

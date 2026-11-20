@@ -5,10 +5,10 @@ import '../atoms/app_logo_placeholder.dart';
 /// Layout orientation for the brand placeholder header.
 enum BrandLayoutMode { vertical, horizontal }
 
-/// Molecule combining the logo emblem placeholder with the brand name and tagline.
+/// Molecule combining the logo emblem (or official SVG) with the brand name and tagline.
 ///
-/// Designed as a drop-in component that can be replaced in one place once the
-/// finalized typography mark and vector logo are ready.
+/// Designed as a drop-in component that can be configured across auth, onboarding,
+/// and hero screens.
 ///
 /// Adheres strictly to Atomic Design (lib/shared/molecules/).
 /// Pure dumb component.
@@ -16,6 +16,7 @@ class AppBrandTitlePlaceholder extends StatelessWidget {
   final BrandLayoutMode layoutMode;
   final double logoSize;
   final bool showBadge;
+  final bool useSvgLogo;
   final String title;
   final String? subtitle;
   final Color? titleColor;
@@ -25,6 +26,7 @@ class AppBrandTitlePlaceholder extends StatelessWidget {
     this.layoutMode = BrandLayoutMode.vertical,
     this.logoSize = 72.0,
     this.showBadge = true,
+    this.useSvgLogo = false,
     this.title = 'Paws and Found',
     this.subtitle = 'Community Lost & Found Animal Recovery',
     this.titleColor,
@@ -42,6 +44,7 @@ class AppBrandTitlePlaceholder extends StatelessWidget {
           AppLogoPlaceholder(
             size: logoSize,
             showBadge: false,
+            useSvg: useSvgLogo,
           ),
           const SizedBox(width: 12),
           Column(
@@ -84,6 +87,7 @@ class AppBrandTitlePlaceholder extends StatelessWidget {
         AppLogoPlaceholder(
           size: logoSize,
           showBadge: showBadge,
+          useSvg: useSvgLogo,
         ),
         const SizedBox(height: 14),
         Text(

@@ -21,6 +21,8 @@ class AppAssets {
   // ---------------------------------------------------------------------------
   // SVGs (Add constants here as SVG assets are added to assets/svgs/)
   // ---------------------------------------------------------------------------
-  static const String appLogoSvg = '$svgsDir/app_logo.svg';
-  // static const String mapPinSvg = '$svgsDir/map_pin.svg';
+  static const String appLogoSvg = '$svgsDir/paws-logo.svg';
+  static const String pawsLogoSvg = '$svgsDir/paws-logo.svg';
+  static const String authBackgroundSvg = '$svgsDir/paw-bg.svg';
+  static const String pawBackgroundSvg = '$svgsDir/paw-bg.svg';
 }

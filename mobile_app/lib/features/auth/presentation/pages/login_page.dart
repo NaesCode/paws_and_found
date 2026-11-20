@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:paws_and_found/core/constants/app_assets.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/auth/domain/repositories/auth_repository.dart';
 import 'package:paws_and_found/features/auth/presentation/widgets/auth_tray.dart';
@@ -6,9 +8,9 @@ import 'package:paws_and_found/shared/molecules/app_brand_title_placeholder.dart
 
 /// The authentication screen for Paws and Found.
 ///
-/// Features a clinical surface background with soft veterinary branding
-/// and decorative paw accents in the upper hero area, while hosting
-/// the interactive [AuthTray] organism at the bottom.
+/// Features a clinical surface background with the official SVG paw track pattern
+/// watermark in the background, official vector brand logo in the upper hero area,
+/// and the interactive [AuthTray] organism at the bottom.
 class LoginPage extends StatefulWidget {
   final AuthRepository? authRepository;
 
@@ -30,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: AppColors.surfaceMuted,
       body: Stack(
         children: [
-          // 1. Clinical veterinary gradient background with soft paw decorative watermarks
+          // 1. Clinical veterinary gradient background
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -48,26 +50,16 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // 2. Decorative background watermarks (subtle animal rescue motif)
-          Positioned(
-            top: screenHeight * 0.08,
-            right: -24,
+          // 2. Official SVG Paw Background Pattern (Subtle animal rescue motif)
+          Positioned.fill(
             child: IgnorePointer(
-              child: Icon(
-                Icons.pets_rounded,
-                size: 140,
-                color: AppColors.primary.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          Positioned(
-            top: screenHeight * 0.22,
-            left: -32,
-            child: IgnorePointer(
-              child: Icon(
-                Icons.pets_rounded,
-                size: 160,
-                color: AppColors.accentOrange.withValues(alpha: 0.035),
+              child: Opacity(
+                opacity: 0.05,
+                child: SvgPicture.asset(
+                  AppAssets.authBackgroundSvg,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
               ),
             ),
           ),
@@ -80,7 +72,8 @@ class _LoginPageState extends State<LoginPage> {
                 padding: EdgeInsets.only(top: screenHeight * 0.05),
                 child: const AppBrandTitlePlaceholder(
                   logoSize: 76.0,
-                  showBadge: true,
+                  showBadge: false,
+                  useSvgLogo: true,
                   title: 'Paws and Found',
                   subtitle: 'Community Lost & Found Animal Recovery',
                 ),
