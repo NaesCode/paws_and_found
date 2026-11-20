@@ -221,6 +221,15 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           button2Text: isMissing ? "Edit" : "Found",
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
+                          petButtonText: isMissing? "Mark as Found": "View on Map",
+                          onPetButtonPressed: () {
+                            if(isMissing){
+                              context.go('/map?reportId=${report.id}');
+                            }
+                            else{
+
+                            }
+                          },
                           onButton1Pressed: () {
                             if (!isMissing) {
                               _handleEditReport(report);

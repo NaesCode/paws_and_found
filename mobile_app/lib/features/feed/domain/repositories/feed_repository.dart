@@ -25,4 +25,6 @@ abstract class FeedRepository {
       String? specie,
     }
   );
+  Future<FeedComment> updateComment(String commentId, String content);
+  Future<void> deleteComment(String commentId);
 }

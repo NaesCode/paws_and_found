@@ -11,6 +11,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/report/presentation/pages/camera_report_page.dart';
+import '../../features/recovery/presentation/pages/claim_pet_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 
 class AppRouter {
@@ -199,6 +200,19 @@ class AppRouter {
         name: 'adminAnalytics',
         builder: (context, state) => const AdminAnalyticsPage(),
       ),
+
+      GoRoute(
+      path: '/claim-pet',
+      name: 'claimPet',
+      builder: (context, state) {
+        final reportId = state.uri.queryParameters['reportId'] ?? '';
+        final petName = state.uri.queryParameters['petName'] ?? '';
+        return ClaimPetPage(
+          reportId: reportId,
+          petName: petName,
+        );
+      },
+    ),
     ],
   );
 }
