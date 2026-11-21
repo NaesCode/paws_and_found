@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../../../../shared/atoms/app_logo.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../../../shared/molecules/paw_loading.dart';
 import 'dart:async';
@@ -163,18 +164,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppLogo(size: 32),
+            SizedBox(width: 10),
+            Text('Notifications'),
+          ],
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          if (unread > 0)
-            TextButton(
-              onPressed: _markAllRead,
-              child: const Text(
+          if (_notifications.isNotEmpty)
+            TextButton.icon(
+              onPressed: unread > 0 ? _markAllRead : null,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.45),
+              ),
+              icon: Icon(
+                Icons.done_all_rounded,
+                size: 16,
+                color: unread > 0
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.45),
+              ),
+              label: const Text(
                 'Mark all read',
-                style: TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
         ],
