@@ -58,7 +58,9 @@ class AdminBarChart extends StatelessWidget {
 
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: groups.length > 8 ? 1.5 : 4.0,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -114,6 +116,7 @@ class AdminBarChart extends StatelessWidget {
               child: Center(
                 child: Text(
                   g.label,
+                  maxLines: 1,
                   style: TextStyle(
                     fontFamily: 'Ek Mukta',
                     fontSize: 10.5,
