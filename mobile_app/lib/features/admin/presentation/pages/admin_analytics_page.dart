@@ -51,9 +51,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
   // Post timeframe toggle: 'daily', 'weekly', 'monthly'
   String _postTimeframe = 'weekly';
 
-  // Post timeline filter: 'weekly', 'monthly', 'yearly'
-  String _postTimelineFilter = 'weekly';
-
   // Section filter toggle: 'users', 'posts'
   String _activeSectionFilter = 'users';
 
@@ -441,163 +438,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       return _posts.take(sampleCount).toList();
     }
     return filtered;
-  }
-
-  List<BarChartGroup> _generatePostTimelineBars() {
-    final now = DateTime.now();
-
-    if (_postTimeframe == 'weekly' || _postTimeframe == 'week') {
-      const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final currentWeekday = now.weekday; // 1 = Mon, 7 = Sun
-      final currentMonday = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: now.weekday - 1));
-      final targetMonday = currentMonday.add(Duration(days: _postWeekOffset * 7));
-
-      return List.generate(7, (i) {
-        final dayIndex = (i + 1); // 1 to 7
-        final dayStart = targetMonday.add(Duration(days: i));
-        final dayEnd = dayStart.add(const Duration(days: 1));
-
-        final isToday = (_postWeekOffset == 0) && dayIndex == currentWeekday;
-        final isFutureDay = (_postWeekOffset == 0) && dayIndex > currentWeekday;
-
-        int count = 0;
-        for (final p in _posts) {
-          if (p.createdAt != null &&
-              !p.createdAt!.isBefore(dayStart) &&
-              p.createdAt!.isBefore(dayEnd)) {
-            count++;
-          }
-        }
-
-        if (!_hasPostTimestamps && count == 0 && _posts.isNotEmpty) {
-          if (isToday) {
-            count = 2;
-          } else if (_postWeekOffset < 0) {
-            count = (i == 1 || i == 4) ? 1 : 0;
-          } else if (!isFutureDay && (i == 1 || i == 3)) {
-            count = 1;
-          } else {
-            count = 0;
-          }
-        }
-
-        return BarChartGroup(
-          label: weekdays[i],
-          value: count,
-          isHighlight: isToday,
-        );
-      });
-    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
-      // Monthly view: 4 weeks of the target month
-      final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
-      final targetYear = totalMonths ~/ 12;
-      final targetMonth = (totalMonths % 12) + 1;
-
-      final currentWeekOfMonth = ((now.day - 1) ~/ 7) + 1;
-      final targetMonthStart = DateTime(targetYear, targetMonth, 1);
-      final targetMonthEnd = (targetMonth < 12)
-          ? DateTime(targetYear, targetMonth + 1, 1)
-          : DateTime(targetYear + 1, 1, 1);
-
-      final weekCounts = [0, 0, 0, 0];
-      for (final p in _posts) {
-        if (p.createdAt != null &&
-            !p.createdAt!.isBefore(targetMonthStart) &&
-            p.createdAt!.isBefore(targetMonthEnd)) {
-          final weekIndex = ((p.createdAt!.day - 1) ~/ 7).clamp(0, 3);
-          weekCounts[weekIndex]++;
-        }
-      }
-
-      final totalInPeriod = _postsInSelectedTimeframe.length;
-
-      return List.generate(4, (i) {
-        final weekNum = i + 1;
-        final isCurrentWeek =
-            (_postMonthOffset == 0) && weekNum == currentWeekOfMonth.clamp(1, 4);
-        final isFutureWeek =
-            (_postMonthOffset == 0) && weekNum > currentWeekOfMonth;
-
-        int value = 0;
-        if (_hasPostTimestamps) {
-          value = weekCounts[i];
-        } else {
-          if (isCurrentWeek) {
-            value = totalInPeriod > 0 ? totalInPeriod : 2;
-          } else if (_postMonthOffset < 0) {
-            value = (i == 0 || i == 2) ? 1 : (i == 1 ? 2 : 0);
-          } else if (!isFutureWeek) {
-            value = 1;
-          } else {
-            value = 0;
-          }
-        }
-
-        return BarChartGroup(
-          label: 'Wk $weekNum',
-          value: value,
-          isHighlight: isCurrentWeek,
-        );
-      });
-    } else {
-      // Yearly view: 12 months (Jan through Dec) of target year
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-      ];
-      final targetYear = now.year + _postYearOffset;
-      final targetYearStart = DateTime(targetYear, 1, 1);
-      final nextYearStart = DateTime(targetYear + 1, 1, 1);
-
-      final monthCounts = List.filled(12, 0);
-      for (final p in _posts) {
-        if (p.createdAt != null &&
-            !p.createdAt!.isBefore(targetYearStart) &&
-            p.createdAt!.isBefore(nextYearStart) &&
-            p.createdAt!.month >= 1 &&
-            p.createdAt!.month <= 12) {
-          monthCounts[p.createdAt!.month - 1]++;
-        }
-      }
-
-      return List.generate(12, (i) {
-        final monthNum = i + 1;
-        final isCurrentMonth = (_postYearOffset == 0) && monthNum == now.month;
-        final isFutureMonth = (_postYearOffset == 0) && monthNum > now.month;
-
-        int value = 0;
-        if (_hasPostTimestamps) {
-          value = monthCounts[i];
-        } else {
-          if (isCurrentMonth) {
-            value = 3;
-          } else if (_postYearOffset < 0) {
-            value = (i % 3 == 0) ? 2 : 1;
-          } else if (!isFutureMonth) {
-            value = (i % 2 == 0) ? 2 : 1;
-          } else {
-            value = 0;
-          }
-        }
-
-        return BarChartGroup(
-          label: months[i],
-          value: value,
-          isHighlight: isCurrentMonth,
-        );
-      });
-    }
   }
 
   List<PieChartSegment> _generatePostStatusSegments() {
@@ -1823,46 +1663,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
     }
   }
 
-  String _getPostTimelineLabel() {
-    const shortMonths = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    final now = DateTime.now();
-    if (_postTimeframe == 'weekly' || _postTimeframe == 'week') {
-      if (_postWeekOffset == 0) return 'This Week';
-      if (_postWeekOffset == -1) return 'Last Week';
-      final currentMonday = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: now.weekday - 1));
-      final targetMonday =
-          currentMonday.add(Duration(days: _postWeekOffset * 7));
-      final weekNum = ((targetMonday.day - 1) ~/ 7) + 1;
-      return 'Wk $weekNum ${shortMonths[targetMonday.month - 1]}';
-    } else if (_postTimeframe == 'monthly' || _postTimeframe == 'month') {
-      if (_postMonthOffset == 0) return 'This Month';
-      if (_postMonthOffset == -1) return 'Last Month';
-      final totalMonths = (now.year * 12 + (now.month - 1)) + _postMonthOffset;
-      final targetYear = totalMonths ~/ 12;
-      final targetMonth = (totalMonths % 12) + 1;
-      return '${shortMonths[targetMonth - 1]} $targetYear';
-    } else {
-      if (_postYearOffset == 0) return 'This Year';
-      if (_postYearOffset == -1) return 'Last Year';
-      final targetYear = now.year + _postYearOffset;
-      return 'Year $targetYear';
-    }
-  }
-
   Widget _buildStatusProgressRow(
       String label, int count, int total, Color color) {
     final ratio = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
@@ -2099,61 +1899,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           ),
           const SizedBox(height: 20),
 
-          // Post Timeline Activity (Bar Chart)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'POST SUBMISSION TIMELINE',
-                style: TextStyle(
-                  fontSize: 11.0,
-                  fontWeight: FontWeight.w700,
-                  color: WireframeColors.textMuted,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                _getPostTimelineLabel(),
-                style: const TextStyle(
-                  fontSize: 11.0,
-                  fontWeight: FontWeight.w600,
-                  color: WireframeColors.primaryDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Timeline Filter Segmented Control: Weekly | Monthly | Yearly
-          Container(
-            padding: const EdgeInsets.all(3.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: WireframeColors.border),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildTimelineFilterPill('weekly', 'Weekly'),
-                ),
-                Expanded(
-                  child: _buildTimelineFilterPill('monthly', 'Monthly'),
-                ),
-                Expanded(
-                  child: _buildTimelineFilterPill('yearly', 'Yearly'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          AdminBarChart(
-            groups: _generatePostTimelineBars(),
-            height: 130,
-            unitLabel: 'posts',
-          ),
-          const SizedBox(height: 20),
-
           // Moderation Health Banner
           Container(
             padding: const EdgeInsets.all(12.0),
@@ -2211,50 +1956,6 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
       key: ValueKey('btn_post_status_$key'),
       onTap: () {
         setState(() {
-          _postTimeframe = key;
-          _postTimelineFilter = key;
-        });
-      },
-      borderRadius: BorderRadius.circular(6.0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(6.0),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected
-                ? WireframeColors.primaryDark
-                : WireframeColors.textMuted,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimelineFilterPill(String key, String label) {
-    final isSelected = _postTimelineFilter == key || _postTimeframe == key;
-    return InkWell(
-      key: ValueKey('btn_timeline_$key'),
-      onTap: () {
-        setState(() {
-          _postTimelineFilter = key;
           _postTimeframe = key;
         });
       },

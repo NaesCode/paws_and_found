@@ -1103,6 +1103,7 @@ void main() {
       expect(find.text('CURRENT'), findsNothing);
       expect(find.text('+1 New User'), findsOneWidget);
       expect(find.text('REGISTRATION ACTIVITY'), findsOneWidget);
+      expect(find.byType(AdminBarChart), findsOneWidget);
       expect(find.text('ACCOUNT STATUS DISTRIBUTION'), findsOneWidget);
 
       // Verify History Scanning Scrollbar is present
@@ -1190,7 +1191,8 @@ void main() {
 
       // Verify custom charts are present
       expect(find.byType(AdminPieChart), findsOneWidget);
-      expect(find.byType(AdminBarChart), findsWidgets);
+      expect(find.byType(AdminBarChart), findsNothing);
+      expect(find.text('POST SUBMISSION TIMELINE'), findsNothing);
 
       // Verify History Scanning Scrollbar for Posts is present
       expect(find.byKey(const ValueKey('history_post_week_0')), findsOneWidget);
@@ -1229,34 +1231,6 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('btn_post_status_weekly')));
       await tester.pumpAndSettle();
       expect(find.text('WEEKLY POSTS'), findsOneWidget);
-
-      // Post Submission Timeline Section & Timeframe Filters (Weekly, Monthly, Yearly)
-      expect(find.text('POST SUBMISSION TIMELINE'), findsOneWidget);
-      expect(find.byKey(const ValueKey('btn_timeline_weekly')), findsOneWidget);
-      expect(find.byKey(const ValueKey('btn_timeline_monthly')), findsOneWidget);
-      expect(find.byKey(const ValueKey('btn_timeline_yearly')), findsOneWidget);
-
-      // Default is Weekly view: shows weekdays
-      expect(find.text('Mon'), findsWidgets);
-      expect(find.text('Sun'), findsWidgets);
-
-      // Toggle Timeline to Monthly: shows weeks (Wk 1, Wk 4)
-      await tester.tap(find.byKey(const ValueKey('btn_timeline_monthly')));
-      await tester.pumpAndSettle();
-      expect(find.text('Wk 1'), findsWidgets);
-      expect(find.text('Wk 4'), findsWidgets);
-
-      // Toggle Timeline to Yearly: shows months (Jan, Dec)
-      await tester.tap(find.byKey(const ValueKey('btn_timeline_yearly')));
-      await tester.pumpAndSettle();
-      expect(find.text('Jan'), findsOneWidget);
-      expect(find.text('Dec'), findsOneWidget);
-
-      // Toggle Timeline back to Weekly
-      await tester.tap(find.byKey(const ValueKey('btn_timeline_weekly')));
-      await tester.pumpAndSettle();
-      expect(find.text('Mon'), findsWidgets);
-      expect(find.text('Sun'), findsWidgets);
 
       // Switch Tab back to Users Section
       await tester.tap(find.text('Users'));
