@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
-import '../../../../core/theme/wireframe_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/current_location_button.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../data/models/map_report_model.dart';
@@ -205,7 +205,7 @@ class _MapPageState extends State<MapPage> {
   void _showSpeciesFilterDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: WireframeColors.surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -222,16 +222,17 @@ class _MapPageState extends State<MapPage> {
                   child: Text(
                     'Filter by Animal Type',
                     style: TextStyle(
-                      color: WireframeColors.textPrimary,
+                      fontFamily: 'Nunito Sans',
+                      color: AppColors.darkCharcoal,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const Divider(color: WireframeColors.borderLight),
+                const Divider(color: AppColors.borderLight),
                 ListTile(
-                  leading: const Icon(Icons.clear_all_rounded, color: WireframeColors.primaryDark),
-                  title: const Text('All Animal Types'),
+                  leading: const Icon(Icons.clear_all_rounded, color: AppColors.primary),
+                  title: const Text('All Animal Types', style: TextStyle(fontFamily: 'Ek Mukta')),
                   selected: _controller.selectedAnimalType == null,
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -239,8 +240,8 @@ class _MapPageState extends State<MapPage> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.pets, color: WireframeColors.primaryDark),
-                  title: const Text('Canine (Dogs)'),
+                  leading: const Icon(Icons.pets, color: AppColors.primary),
+                  title: const Text('Canine (Dogs)', style: TextStyle(fontFamily: 'Ek Mukta')),
                   selected: _controller.selectedAnimalType == 'Canine',
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -248,8 +249,8 @@ class _MapPageState extends State<MapPage> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.pets, color: WireframeColors.secondarySlate),
-                  title: const Text('Feline (Cats)'),
+                  leading: const Icon(Icons.pets, color: AppColors.textSecondary),
+                  title: const Text('Feline (Cats)', style: TextStyle(fontFamily: 'Ek Mukta')),
                   selected: _controller.selectedAnimalType == 'Feline',
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -257,11 +258,11 @@ class _MapPageState extends State<MapPage> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.category_outlined, color: WireframeColors.textSecondary),
-                  title: const Text('Other Animals'),
+                  leading: const Icon(Icons.category_outlined, color: AppColors.textSecondary),
+                  title: const Text('Other Animals', style: TextStyle(fontFamily: 'Ek Mukta')),
                   subtitle: const Text(
                     'All other species (e.g. Birds, Rabbits, Hamsters, etc.)',
-                    style: TextStyle(fontSize: 11, color: WireframeColors.textSecondary),
+                    style: TextStyle(fontFamily: 'Ek Mukta', fontSize: 11, color: AppColors.textSecondary),
                   ),
                   selected: _controller.selectedAnimalType == 'Other',
                   onTap: () {
@@ -397,7 +398,8 @@ class _MapPageState extends State<MapPage> {
           const Text(
             'Animal Map',
             style: TextStyle(
-              color: WireframeColors.textPrimary,
+              fontFamily: 'Nunito Sans',
+              color: AppColors.darkCharcoal,
               fontSize: 22,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
@@ -412,10 +414,10 @@ class _MapPageState extends State<MapPage> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: WireframeColors.surface,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: WireframeColors.border,
+                  color: AppColors.border,
                   width: 1.2,
                 ),
                 boxShadow: [
@@ -433,7 +435,7 @@ class _MapPageState extends State<MapPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: WireframeColors.secondarySlate,
+                    color: AppColors.textSecondary,
                     width: 2.0,
                   ),
                 ),

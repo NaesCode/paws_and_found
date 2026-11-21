@@ -5,8 +5,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../core/utils/description_tag_helper.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
-import '../../../../shared/atoms/wireframe_status_badge.dart';
-import '../../../../shared/atoms/wireframe_tag.dart';
+import '../../../../shared/atoms/paw_status_badge.dart';
+import '../../../../shared/atoms/paw_tag.dart';
 import '../../domain/entities/map_report_entity.dart';
 
 /// A wireframe popup dialog modal displaying comprehensive details
@@ -103,7 +103,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report details copied to clipboard!'),
-          backgroundColor: WireframeColors.primaryDark,
+          backgroundColor: AppColors.primary,
           duration: Duration(seconds: 2),
         ),
       );
@@ -186,6 +186,9 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                             ),
                           ),
                           const SizedBox(width: 10),
+                          PawStatusBadge(
+                            status: report.status,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
@@ -252,7 +255,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: report.tags.map((tag) => WireframeTag(label: tag)).toList(),
+                          children: report.tags.map((tag) => PawTag(label: tag)).toList(),
                         ),
                       ],
 

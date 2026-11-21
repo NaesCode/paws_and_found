@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
-import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
-import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
+import 'package:paws_and_found/shared/atoms/paw_status_badge.dart';
+import 'package:paws_and_found/shared/atoms/paw_tag.dart';
 
 /// A floating report detail card organism shown at the bottom of the map view.
 ///
@@ -84,7 +84,7 @@ class MapReportCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      WireframeStatusBadge(status: status),
+                      PawStatusBadge(status: status),
                     ],
                   ),
                   const SizedBox(height: 5),
@@ -107,7 +107,7 @@ class MapReportCard extends StatelessWidget {
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
-                      children: tags.map((t) => WireframeTag(label: t)).toList(),
+                      children: tags.map((t) => PawTag(label: t)).toList(),
                     ),
                 ],
               ),

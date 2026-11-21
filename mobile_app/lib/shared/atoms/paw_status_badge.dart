@@ -3,14 +3,14 @@ import '../../core/theme/app_colors.dart';
 
 /// A status badge atom showing "MISSING", "STRAY", or "FOUND" in minimal clinical styling.
 ///
-/// Adheres to Atomic Design: dumb, stateless UI element relying purely on
-/// passed properties.
-class WireframeStatusBadge extends StatelessWidget {
+/// Adheres strictly to Atomic Design (lib/shared/atoms/):
+/// Dumb, stateless UI element relying purely on passed properties.
+class PawStatusBadge extends StatelessWidget {
   final String status;
   final String? label;
   final EdgeInsetsGeometry padding;
 
-  const WireframeStatusBadge({
+  const PawStatusBadge({
     super.key,
     required this.status,
     this.label,
@@ -58,6 +58,7 @@ class WireframeStatusBadge extends StatelessWidget {
       child: Text(
         displayText,
         style: TextStyle(
+          fontFamily: 'Merriweather Sans',
           color: textColor,
           fontSize: 10.5,
           fontWeight: FontWeight.w800,

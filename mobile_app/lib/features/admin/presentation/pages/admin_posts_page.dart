@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/wireframe_colors.dart';
 import '../../data/datasources/admin_static_data.dart';
 import '../../data/models/admin_post_item.dart';
 import '../../data/repositories/admin_repository_impl.dart';
@@ -1334,7 +1333,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Divider(height: 1, color: WireframeColors.border),
+                        const Divider(height: 1, color: AppColors.border),
                         const SizedBox(height: 12),
 
                         // Reporter Identity Row with Profile Picture
@@ -1351,7 +1350,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                     style: const TextStyle(
                                       fontSize: 13.0,
                                       fontWeight: FontWeight.w700,
-                                      color: WireframeColors.textPrimary,
+                                      color: AppColors.darkCharcoal,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1359,13 +1358,13 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                                   Row(
                                     children: [
                                       const Icon(Icons.calendar_today_outlined,
-                                          size: 13, color: WireframeColors.textMuted),
+                                          size: 13, color: AppColors.textMuted),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Posted on ${post.dateFormatted}',
                                         style: const TextStyle(
                                           fontSize: 11.5,
-                                          color: WireframeColors.textMuted,
+                                          color: AppColors.textMuted,
                                         ),
                                       ),
                                     ],
@@ -1520,8 +1519,8 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       height: 38,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: WireframeColors.primaryDark.withValues(alpha: 0.1),
-        border: Border.all(color: WireframeColors.border, width: 1.2),
+        color: AppColors.primary.withValues(alpha: 0.1),
+        border: Border.all(color: AppColors.border, width: 1.2),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasValidUrl
@@ -1539,7 +1538,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: WireframeColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                   ),
                 );
@@ -1556,7 +1555,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
         style: const TextStyle(
           fontSize: 14.5,
           fontWeight: FontWeight.bold,
-          color: WireframeColors.primaryDark,
+          color: AppColors.primary,
         ),
       ),
     );

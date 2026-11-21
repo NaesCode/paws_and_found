@@ -394,13 +394,26 @@ class _AuthTrayState extends State<AuthTray> {
             children: [
               const DragHandle(),
               const SizedBox(height: 20),
-              const Text(
-                'Paws and Found',
-                style: TextStyle(
-                  fontFamily: 'Caveat',
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              Text(
+                widget.isLogin ? 'Welcome Back' : 'Create Account',
+                style: const TextStyle(
+                  fontFamily: 'Nunito Sans',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.darkCharcoal,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.isLogin
+                    ? 'Enter your credentials to continue'
+                    : 'Join the community to help pets find home',
+                style: const TextStyle(
+                  fontFamily: 'Ek Mukta',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -450,9 +463,9 @@ class _AuthTrayState extends State<AuthTray> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: AppColors.statusMissing.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
+                    border: Border.all(color: AppColors.statusMissing.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,14 +473,15 @@ class _AuthTrayState extends State<AuthTray> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          const Icon(Icons.error_outline, color: AppColors.statusMissing, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _generalError!,
-                              style: TextStyle(
-                                color: Colors.red.shade800,
+                              style: const TextStyle(
+                                color: AppColors.statusMissing,
                                 fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -602,19 +616,20 @@ class _AuthTrayState extends State<AuthTray> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'or',
                         style: TextStyle(
-                          color: Colors.grey.shade500,
+                          fontFamily: 'Ek Mukta',
+                          color: AppColors.textSecondary,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+                    const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -626,7 +641,7 @@ class _AuthTrayState extends State<AuthTray> {
                     onPressed: _isLoading ? null : _handleGoogleSignIn,
                     color: Colors.white,
                     textColor: AppColors.darkCharcoal,
-                    borderColor: Colors.grey.shade300,
+                    borderColor: AppColors.border,
                     leading: const GoogleLogo(size: 20),
                   ),
                 ),
@@ -916,10 +931,11 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                             ? 'Verification Code'
                             : 'New Password',
                     style: const TextStyle(
-                      fontFamily: 'Caveat',
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Nunito Sans',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.darkCharcoal,
+                      letterSpacing: -0.3,
                     ),
                   ),
                 ),
@@ -999,19 +1015,23 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: AppColors.statusMissing.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(color: AppColors.statusMissing.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const Icon(Icons.error_outline, color: AppColors.statusMissing, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _error!,
-                        style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                        style: const TextStyle(
+                          color: AppColors.statusMissing,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

@@ -3,13 +3,13 @@ import '../../core/theme/app_colors.dart';
 
 /// A subtle border pill tag atom for animal traits (e.g., "Male", "Adult", "Golden").
 ///
-/// Adheres to Atomic Design: dumb, stateless UI element relying purely on
-/// passed properties.
-class WireframeTag extends StatelessWidget {
+/// Adheres strictly to Atomic Design (lib/shared/atoms/):
+/// Dumb, stateless UI element relying purely on passed properties.
+class PawTag extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
 
-  const WireframeTag({
+  const PawTag({
     super.key,
     required this.label,
     this.onTap,
@@ -29,6 +29,7 @@ class WireframeTag extends StatelessWidget {
         child: Text(
           label,
           style: const TextStyle(
+            fontFamily: 'Ek Mukta',
             color: AppColors.darkCharcoal,
             fontSize: 11.5,
             fontWeight: FontWeight.w500,

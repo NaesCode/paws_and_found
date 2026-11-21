@@ -15,8 +15,8 @@ import 'package:paws_and_found/features/map/presentation/widgets/map_pin_badge.d
 import 'package:paws_and_found/features/map/presentation/widgets/map_report_card.dart';
 import 'package:paws_and_found/features/map/presentation/widgets/user_location_marker.dart';
 import 'package:paws_and_found/shared/atoms/current_location_button.dart';
-import 'package:paws_and_found/shared/atoms/wireframe_status_badge.dart';
-import 'package:paws_and_found/shared/atoms/wireframe_tag.dart';
+import 'package:paws_and_found/shared/atoms/paw_status_badge.dart';
+import 'package:paws_and_found/shared/atoms/paw_tag.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 
 void main() {
@@ -53,11 +53,11 @@ void main() {
       expect(find.byType(UserLocationMarker), findsOneWidget);
     });
 
-    testWidgets('WireframeStatusBadge displays status label correctly', (tester) async {
+    testWidgets('PawStatusBadge displays status label correctly', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: WireframeStatusBadge(status: 'missing'),
+            body: PawStatusBadge(status: 'missing'),
           ),
         ),
       );
@@ -65,11 +65,11 @@ void main() {
       expect(find.text('MISSING'), findsOneWidget);
     });
 
-    testWidgets('WireframeTag renders trait tag', (tester) async {
+    testWidgets('PawTag renders trait tag', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: WireframeTag(label: 'Golden'),
+            body: PawTag(label: 'Golden'),
           ),
         ),
       );
