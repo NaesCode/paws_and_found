@@ -137,13 +137,13 @@ class MapFilterBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary
+              ? AppColors.darkSlate
               : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary
-                : AppColors.border,
+                ? AppColors.border
+                : AppColors.darkSlate,
             width: 1.2,
           ),
           boxShadow: [
@@ -165,7 +165,7 @@ class MapFilterBar extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? Colors.white
+                    ? AppColors.surface
                     : AppColors.darkCharcoal,
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,

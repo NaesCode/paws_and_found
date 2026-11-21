@@ -35,17 +35,22 @@ class MapScreenTemplate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAppBar = header is PreferredSizeWidget;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primary,
+      appBar: isAppBar ? (header as PreferredSizeWidget) : null,
       body: SafeArea(
+        top: !isAppBar,
         bottom: bottomNavigationBar == null,
         child: Column(
           children: [
-            // 1. Header
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-              child: header,
-            ),
+            // 1. Header (rendered here only if not passed as an AppBar/PreferredSizeWidget)
+            if (!isAppBar)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                child: header,
+              ),
 
             // 2. Filter Sub-menu Container
             Padding(

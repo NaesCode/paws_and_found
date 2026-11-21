@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:paws_and_found/features/feed/presentation/pages/general_reports_page.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/shared/atoms/app_logo.dart';
+import 'package:paws_and_found/shared/molecules/app_overflow_menu.dart';
 import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 import 'package:paws_and_found/features/feed/presentation/pages/personal_reports_page.dart';
 import 'package:go_router/go_router.dart';
@@ -50,10 +52,20 @@ class _FeedPageState extends State<FeedPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppLogo(size: 32),
+            SizedBox(width: 10),
+            Text('Reports'),
+          ],
+        ),
         backgroundColor: AppColors.primary,
         elevation: 0,
         automaticallyImplyLeading: false,
+        actions: const [
+          AppOverflowMenu(),
+        ],
       ),
       body: SafeArea(
         bottom: false,

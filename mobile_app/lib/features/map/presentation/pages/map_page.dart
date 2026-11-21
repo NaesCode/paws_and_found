@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/atoms/app_logo.dart';
 import '../../../../shared/atoms/current_location_button.dart';
+import '../../../../shared/molecules/app_overflow_menu.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../data/models/map_report_model.dart';
 import '../widgets/interactive_map_canvas.dart';
@@ -388,62 +390,32 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  PreferredSizeWidget _buildHeader() {
+    return AppBar(
+      title: const Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Screen Title
-          const Text(
+          // App Logo + Screen Title
+          AppLogo(size: 32),
+          SizedBox(width: 10),
+          Text(
             'Animal Map',
             style: TextStyle(
               fontFamily: 'Nunito Sans',
-              color: AppColors.darkCharcoal,
+              color: AppColors.text1,
               fontSize: 22,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
             ),
           ),
-
-          // Re-center target button (circle inside rounded square)
-          InkWell(
-            onTap: _handleRecenter,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.border,
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.textSecondary,
-                    width: 2.0,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
+      backgroundColor: AppColors.primary,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      actions: const [
+        AppOverflowMenu(),
+      ],
     );
   }
 }

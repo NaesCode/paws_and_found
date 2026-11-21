@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/constants/app_assets.dart';
 
-/// An atomic widget for rendering the official Paws and Found vector logo.
+/// An atomic widget for rendering the official Paws and Found brand logo.
 ///
 /// Adheres strictly to Atomic Design (lib/shared/atoms/).
 /// Pure dumb component.
@@ -10,7 +9,7 @@ class AppLogo extends StatelessWidget {
   /// Overall diameter / dimension of the logo.
   final double size;
 
-  /// Sizing / fitting strategy for the vector asset.
+  /// Sizing / fitting strategy for the asset.
   final BoxFit fit;
 
   /// Optional semantic label for accessibility.
@@ -25,12 +24,27 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      AppAssets.pawsLogoSvg,
+    return Image.asset(
+      AppAssets.appLogo,
       width: size,
       height: size,
       fit: fit,
-      semanticsLabel: semanticsLabel,
+      semanticLabel: semanticsLabel,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to app_launcher_icon.png if app_logo.png is not found
+        return Image.asset(
+          AppAssets.appLauncherIconPng,
+          width: size,
+          height: size,
+          fit: fit,
+          semanticLabel: semanticsLabel,
+          errorBuilder: (_, __, ___) => Icon(
+            Icons.pets,
+            size: size * 0.7,
+            color: Colors.white,
+          ),
+        );
+      },
     );
   }
 }

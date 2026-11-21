@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../auth/data/repositories/auth_repository_impl.dart';
+import '../../../../shared/atoms/app_logo.dart';
+import '../../../../shared/molecules/app_overflow_menu.dart';
 
 /// Pinned top header for the Profile screen.
 ///
@@ -28,87 +26,20 @@ class ProfileHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       // Title inherits Nunito Sans 22px bold white from AppBarTheme automatically.
-      title: const Text('Profile Account'),
+      title: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppLogo(size: 32),
+          SizedBox(width: 10),
+          Text('Profile Account'),
+        ],
+      ),
 
-      // Three-dot overflow menu — same pattern as before, now as an action.
+      // Three-dot overflow menu — standardized molecule.
       actions: [
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          onSelected: (value) async {
-            if (value == 'admin') {
-              context.push('/admin');
-            } else if (value == 'edit') {
-              onEditPressed?.call();
-            } else if (value == 'settings') {
-              if (onSettingsPressed != null) {
-                onSettingsPressed!();
-              } else {
-                context.push('/settings');
-              }
-            } else if (value == 'logout') {
-              await AuthRepositoryImpl().signOut();
-              if (context.mounted) {
-                context.go('/login');
-              }
-            }
-          },
-          itemBuilder: (context) {
-            User? user;
-            try {
-              user = Supabase.instance.client.auth.currentUser;
-            } catch (_) {}
-            final isAdmin = user != null &&
-                (user.appMetadata['is_admin'] == true ||
-                 user.appMetadata['role'] == 'admin' ||
-                 user.appMetadata['role'] == 'ADMIN');
-
-            return [
-              if (isAdmin)
-                const PopupMenuItem(
-                  value: 'admin',
-                  child: Row(
-                    children: [
-                      Icon(Icons.admin_panel_settings_outlined, size: 18, color: AppColors.primary),
-                      SizedBox(width: 10),
-                      Text('Admin Console', style: TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                ),
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                    SizedBox(width: 10),
-                    Text('Edit Profile', style: TextStyle(fontSize: 14)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings_outlined, size: 18, color: AppColors.primary),
-                    SizedBox(width: 10),
-                    Text('Settings', style: TextStyle(fontSize: 14)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, size: 18, color: AppColors.contrast2),
-                    SizedBox(width: 10),
-                    Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
-                  ],
-                ),
-              ),
-            ];
-          },
+        AppOverflowMenu(
+          onEditPressed: onEditPressed,
+          onSettingsPressed: onSettingsPressed,
         ),
       ],
     );

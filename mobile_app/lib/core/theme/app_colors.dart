@@ -11,6 +11,7 @@ class AppColors {
   // Core Palette
   static const Color primary = Color(0xFF428475); // Teal / Green
   static const Color darkCharcoal = Color(0xFF2C302E);
+  static const Color darkSlate = Color(0xFF364152);
   static const Color accentOrange = Color(0xFFFF8552);
   static const Color contrast1 = Color(0xFFFF8552);
   static const Color accentMaroon = Color(0xFF80383A);
