@@ -10,6 +10,9 @@ import 'package:paws_and_found/features/feed/domain/repositories/feed_repository
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_comments.dart';
 import 'feed_comment_input_bar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+enum CommentSortFilter { all, newest, oldest }
 
 class FeedCommentsModal extends StatefulWidget {
   final String? reportId;
@@ -33,9 +36,13 @@ class FeedCommentsModal extends StatefulWidget {
 
 class _FeedCommentsModalState extends State<FeedCommentsModal> {
   final FeedRepository _repository = FeedRepositoryImpl();
+  CommentSortFilter _selectedFilter = CommentSortFilter.all;
   String? _replyingToUser;
   String? _replyingToParentId;
   final FocusNode _commentFocusNode = FocusNode();
+  FeedComment? _editingComment;
+  final Set<String> _expandedCommentIds = {};
+  static const int _initialVisibleReplies = 2;
 
   List<FeedComment> _comments = [];
   List<FeedPost> _sightings = [];
@@ -83,31 +90,11 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
     }
   }
 
-  Future<void> _handleCommentSubmit(String text, String? replyTo) async {
-    if (widget.reportId == null || text.trim().isEmpty) return;
-
-    try {
-      final newComment = await _repository.addComment(
-        widget.reportId!,
-        text.trim(),
-        parentId: _replyingToParentId,
-      );
-
-      if (mounted) {
-        setState(() {
-          _comments.add(newComment);
-          _replyingToUser = null;
-          _replyingToParentId = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to post comment: $e')),
-        );
-      }
-    }
-  }
+  List<FeedComment> get _generalComments => _comments.where((c) {
+        final isSightingLink = c.linkedReportId != null && c.linkedReportId!.isNotEmpty;
+        final isAutoSightingText = c.cleanContent.startsWith('🐾 Sighting reported');
+        return !isSightingLink && !isAutoSightingText;
+      }).toList();
 
   @override
   void dispose() {
@@ -166,7 +153,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                   ),
                 ),
 
-                // Contact / Case Lead Banner (Option C)
+                // Contact / Case Lead Banner
                 _buildContactBanner(),
 
                 // Dual-Tab Switcher: Sightings Dashboard vs. Community Chat
@@ -189,7 +176,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                         ),
                         Expanded(
                           child: _buildTabButton(
-                            title: '💬 Chat (${_comments.length})',
+                            title: '💬 Chat (${_generalComments.length})',
                             isSelected: _selectedTab == 1,
                             onTap: () => setState(() => _selectedTab = 1),
                           ),
@@ -222,11 +209,14 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 if (_selectedTab == 1)
                   FeedCommentInputBar(
                     replyingToUser: _replyingToUser,
+                    editingCommentId: _editingComment?.id,
+                    editingInitialText: _editingComment?.cleanContent,
                     focusNode: _commentFocusNode,
                     onCancelReply: () {
                       setState(() {
                         _replyingToUser = null;
                         _replyingToParentId = null;
+                        _editingComment = null;
                       });
                     },
                     onCommentSubmitted: (text, replyToUser) => _handleCommentSubmit(text, replyToUser),
@@ -242,7 +232,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
   Widget _buildContactBanner() {
     final ownerName = widget.reporterName ?? _reportPost?.postedBy ?? 'Pet Owner';
 
-    // Look for phone in widget.contactInfo first, then regex search in report description
     String? phone = widget.contactInfo;
     if ((phone == null || phone.isEmpty) && _reportPost != null && _reportPost!.description.isNotEmpty) {
       final phoneRegex = RegExp(r'(\+?63\s?|0)9\d{2}[\s\-]?\d{3}[\s\-]?\d{4}|\b\d{3}[\s\-]?\d{4}\b');
@@ -436,6 +425,11 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         final hasPic = sighting.imageUrl.isNotEmpty &&
             (sighting.imageUrl.startsWith('http://') || sighting.imageUrl.startsWith('https://'));
 
+        final matchRegex = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false);
+        final match = matchRegex.firstMatch(sighting.description);
+        final matchConfidence = match != null ? match.group(1) : null;
+        final cleanDesc = sighting.description.replaceAll(matchRegex, '').trim();
+
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -453,7 +447,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Spotter info & time
               Row(
                 children: [
                   CircleAvatar(
@@ -479,6 +472,46 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (matchConfidence != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                            ? const Color(0xFFE8F5E9)
+                            : const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                              ? const Color(0xFF81C784)
+                              : const Color(0xFFFFB74D),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 10,
+                            color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFE65100),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$matchConfidence% Match',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
@@ -497,8 +530,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 ],
               ),
               const SizedBox(height: 10),
-
-              // Photo & Location
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -542,10 +573,10 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                             ),
                           ],
                         ),
-                        if (sighting.description.isNotEmpty) ...[
+                        if (cleanDesc.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            sighting.description,
+                            cleanDesc,
                             style: const TextStyle(
                               fontSize: 11.5,
                               color: AppColors.text2,
@@ -561,8 +592,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 ],
               ),
               const SizedBox(height: 10),
-
-              // Action button to map
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -590,49 +619,343 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
     );
   }
 
+  Future<void> _handleCommentSubmit(String text, String? replyTo) async {
+    if (widget.reportId == null || text.trim().isEmpty) return;
+
+    try {
+      if (_editingComment != null) {
+        final updated = await _repository.updateComment(_editingComment!.id, text.trim());
+        if (mounted) {
+          setState(() {
+            final index = _comments.indexWhere((c) => c.id == updated.id);
+            if (index != -1) _comments[index] = updated;
+            _editingComment = null;
+          });
+        }
+        return;
+      }
+
+      final newComment = await _repository.addComment(
+        widget.reportId!,
+        text.trim(),
+        parentId: _replyingToParentId,
+      );
+
+      if (mounted) {
+        setState(() {
+          _comments.add(newComment);
+          if (_replyingToParentId != null) {
+            _expandedCommentIds.add(_replyingToParentId!);
+          }
+          _replyingToUser = null;
+          _replyingToParentId = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Action failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmAndDeleteComment(FeedComment comment) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Comment?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _repository.deleteComment(comment.id);
+      if (mounted) {
+        setState(() {
+          _comments.removeWhere((c) => c.id == comment.id || c.parentId == comment.id);
+          if (_editingComment?.id == comment.id) _editingComment = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete comment: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildCommentsFeed(ScrollController scrollController) {
-    if (_comments.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline_rounded, size: 40, color: AppColors.text3),
-            SizedBox(height: 8),
-            Text(
-              'No community messages yet.',
-              style: TextStyle(color: AppColors.text3, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Leave an encouraging message or search update below!',
-              style: TextStyle(fontSize: 12, color: AppColors.text3),
-            ),
-          ],
+    final generalComments = _generalComments;
+
+    if (generalComments.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chat_bubble_outline_rounded, size: 40, color: AppColors.text3),
+              SizedBox(height: 8),
+              Text(
+                'No community messages yet.',
+                style: TextStyle(color: AppColors.text3, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Leave an encouraging message or search update below!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.text3),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _comments.length,
-      itemBuilder: (context, index) {
-        final comment = _comments[index];
-        return FeedCardComments(
-          commentText: comment.cleanContent,
-          username: comment.authorName,
-          timeAgo: comment.timeAgo,
-          userPhotoUrl: comment.authorPhotoUrl.isNotEmpty ? comment.authorPhotoUrl : null,
-          linkedReportId: comment.linkedReportId,
-          onReplyTap: () {
-            setState(() {
-              _replyingToUser = comment.authorName;
-              _replyingToParentId = comment.id;
-            });
-            _commentFocusNode.requestFocus();
-          },
-        );
-      },
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    final topLevel = generalComments
+        .where((c) => c.parentId == null || c.parentId!.isEmpty)
+        .toList();
+    final Map<String, List<FeedComment>> repliesMap = {};
+    for (final c in generalComments) {
+      if (c.parentId != null && c.parentId!.isNotEmpty) {
+        repliesMap.putIfAbsent(c.parentId!, () => []).add(c);
+      }
+    }
+
+    switch (_selectedFilter) {
+      case CommentSortFilter.newest:
+        topLevel.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case CommentSortFilter.oldest:
+      case CommentSortFilter.all:
+        topLevel.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+    }
+
+    // Build mixed list of comments + retractable "See more / Hide" rows
+    final List<_CommentListRow> displayRows = [];
+    for (final parent in topLevel) {
+      displayRows.add(_CommentListRow.comment(parent, isReply: false));
+
+      final replies = repliesMap[parent.id] ?? [];
+      if (replies.isNotEmpty) {
+        final isExpanded = _expandedCommentIds.contains(parent.id);
+        final visibleReplies = (!isExpanded && replies.length > _initialVisibleReplies)
+            ? replies.take(_initialVisibleReplies).toList()
+            : replies;
+
+        for (final reply in visibleReplies) {
+          displayRows.add(_CommentListRow.comment(reply, isReply: true));
+        }
+
+        if (replies.length > _initialVisibleReplies) {
+          final hiddenCount = replies.length - visibleReplies.length;
+          displayRows.add(
+            _CommentListRow.toggle(
+              parentId: parent.id,
+              hiddenCount: hiddenCount,
+              isExpanded: isExpanded,
+            ),
+          );
+        }
+      }
+    }
+
+    return Column(
+      children: [
+        // Compact filter bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+          child: Row(
+            children: [
+              Text(
+                '${topLevel.length} ${topLevel.length == 1 ? 'thread' : 'threads'}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text3,
+                ),
+              ),
+              const Spacer(),
+              PopupMenuButton<CommentSortFilter>(
+                initialValue: _selectedFilter,
+                onSelected: (filter) => setState(() => _selectedFilter = filter),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: CommentSortFilter.all, child: Text('All')),
+                  PopupMenuItem(value: CommentSortFilter.newest, child: Text('Newest')),
+                  PopupMenuItem(value: CommentSortFilter.oldest, child: Text('Oldest')),
+                ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.background2,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sort_rounded, size: 14, color: AppColors.text2),
+                      const SizedBox(width: 4),
+                      Text(
+                        _filterLabel(_selectedFilter),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.text2,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, size: 16, color: AppColors.text2),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: displayRows.length,
+            itemBuilder: (context, index) {
+              final row = displayRows[index];
+
+              if (row.isToggle) {
+                return Padding(
+                  padding: const EdgeInsets.only(left: 48.0, top: 2.0, bottom: 10.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (row.isExpanded) {
+                          _expandedCommentIds.remove(row.parentId!);
+                        } else {
+                          _expandedCommentIds.add(row.parentId!);
+                        }
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 1.5,
+                          color: AppColors.text3.withValues(alpha: 0.4),
+                          margin: const EdgeInsets.only(right: 8.0),
+                        ),
+                        Text(
+                          row.isExpanded
+                              ? 'Hide replies'
+                              : 'See ${row.hiddenCount} more ${row.hiddenCount == 1 ? 'reply' : 'replies'}',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          row.isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final comment = row.comment!;
+              return FeedCardComments(
+                commentText: comment.cleanContent,
+                username: comment.authorName,
+                timeAgo: comment.timeAgo,
+                userPhotoUrl: comment.authorPhotoUrl.isNotEmpty ? comment.authorPhotoUrl : null,
+                isReply: row.isReply,
+                isCurrentUser: currentUserId != null && comment.userId == currentUserId,
+                onReplyTap: () {
+                  setState(() {
+                    _editingComment = null;
+                    _replyingToUser = comment.authorName;
+                    _replyingToParentId = row.isReply ? comment.parentId : comment.id;
+                  });
+                  _commentFocusNode.requestFocus();
+                },
+                onEditTap: () {
+                  setState(() {
+                    _replyingToUser = null;
+                    _replyingToParentId = null;
+                    _editingComment = comment;
+                  });
+                  _commentFocusNode.requestFocus();
+                },
+                onDeleteTap: () => _confirmAndDeleteComment(comment),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _filterLabel(CommentSortFilter filter) {
+    switch (filter) {
+      case CommentSortFilter.all:
+        return 'All';
+      case CommentSortFilter.newest:
+        return 'Newest';
+      case CommentSortFilter.oldest:
+        return 'Oldest';
+    }
+  }
+}
+
+class _CommentListRow {
+  final FeedComment? comment;
+  final bool isReply;
+  final bool isToggle;
+  final String? parentId;
+  final int hiddenCount;
+  final bool isExpanded;
+
+  const _CommentListRow._({
+    this.comment,
+    this.isReply = false,
+    this.isToggle = false,
+    this.parentId,
+    this.hiddenCount = 0,
+    this.isExpanded = false,
+  });
+
+  factory _CommentListRow.comment(FeedComment comment, {required bool isReply}) {
+    return _CommentListRow._(comment: comment, isReply: isReply);
+  }
+
+  factory _CommentListRow.toggle({
+    required String parentId,
+    required int hiddenCount,
+    required bool isExpanded,
+  }) {
+    return _CommentListRow._(
+      isToggle: true,
+      parentId: parentId,
+      hiddenCount: hiddenCount,
+      isExpanded: isExpanded,
     );
   }
 }

@@ -58,9 +58,8 @@ class _EditPetSheetState extends State<EditPetSheet> {
   late String _selectedSpecies;
   final List<String> _speciesOptions = ['Dog', 'Cat', 'Bird', 'Rabbit', 'Other'];
 
-  Uint8List? _newImageBytes;
-  String _imageExtension = 'jpg';
-  bool _removePhoto = false;
+  late List<String> _existingPhotoUrls;
+  final List<({Uint8List bytes, String extension})> _newPhotos = [];
   final ImagePicker _picker = ImagePicker();
 
   String? _nameError;
@@ -71,6 +70,7 @@ class _EditPetSheetState extends State<EditPetSheet> {
   @override
   void initState() {
     super.initState();
+    _existingPhotoUrls = List<String>.from(widget.pet.photoURLs);
     _nameController = TextEditingController(text: widget.pet.name);
     _breedController = TextEditingController(text: widget.pet.breed ?? '');
     _colorController = TextEditingController(text: widget.pet.color ?? '');
@@ -103,23 +103,44 @@ class _EditPetSheetState extends State<EditPetSheet> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? file = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+    final currentTotal = _existingPhotoUrls.length + _newPhotos.length;
+    final remaining = 5 - currentTotal;
+    if (remaining <= 0) return;
 
-      if (file != null) {
-        final bytes = await file.readAsBytes();
-        final ext = file.name.split('.').last.toLowerCase();
-        setState(() {
-          _newImageBytes = bytes;
-          _imageExtension = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
-          _removePhoto = false;
-          _generalError = null;
-        });
+    try {
+      if (source == ImageSource.gallery) {
+        final List<XFile> files = await _picker.pickMultiImage(
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        if (files.isNotEmpty) {
+          final toAdd = files.take(remaining);
+          for (final f in toAdd) {
+            final bytes = await f.readAsBytes();
+            final ext = f.name.split('.').last.toLowerCase();
+            final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
+            _newPhotos.add((bytes: bytes, extension: cleanExt));
+          }
+          setState(() => _generalError = null);
+        }
+      } else {
+        final XFile? file = await _picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+
+        if (file != null) {
+          final bytes = await file.readAsBytes();
+          final ext = file.name.split('.').last.toLowerCase();
+          final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
+          setState(() {
+            _newPhotos.add((bytes: bytes, extension: cleanExt));
+            _generalError = null;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -211,18 +232,16 @@ class _EditPetSheetState extends State<EditPetSheet> {
           ? _customSpeciesController.text.trim()
           : _selectedSpecies;
 
-      List<String>? photoUrls;
-
-      // 1. Upload new photo if user picked one
-      if (_newImageBytes != null) {
+      // 1. Upload new photos to Supabase Storage
+      List<String> uploadedUrls = [];
+      for (final p in _newPhotos) {
         final publicUrl = await widget.repository.uploadPetPhoto(
-          _newImageBytes!,
-          extension: _imageExtension,
+          p.bytes,
+          extension: p.extension,
         );
-        photoUrls = [publicUrl];
-      } else if (_removePhoto) {
-        photoUrls = [];
+        uploadedUrls.add(publicUrl);
       }
+      final finalPhotoUrls = [..._existingPhotoUrls, ...uploadedUrls];
 
       // 2. Commit update to repository
       final updatedPet = await widget.repository.updatePet(
@@ -232,7 +251,7 @@ class _EditPetSheetState extends State<EditPetSheet> {
         breed: breed,
         color: color,
         description: description,
-        photoUrls: photoUrls,
+        photoUrls: finalPhotoUrls,
       );
 
       if (mounted) {
@@ -251,8 +270,6 @@ class _EditPetSheetState extends State<EditPetSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final existingPhoto = widget.pet.photoURLs.isNotEmpty ? widget.pet.photoURLs.first : null;
-    final hasExistingPhoto = !_removePhoto && existingPhoto != null && existingPhoto.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -333,97 +350,167 @@ class _EditPetSheetState extends State<EditPetSheet> {
                   const SizedBox(height: 16),
                 ],
 
-                // Pet Photo Picker Avatar
-                Center(
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      GestureDetector(
-                        onTap: _showImageSourcePicker,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: AppColors.background2,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              width: 2.0,
+                // Pet Photos (Up to 5 photos for multi-angle AI centroid embeddings)
+                Builder(
+                  builder: (context) {
+                    final totalPhotos = _existingPhotoUrls.length + _newPhotos.length;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Pet Photos (Up to 5)',
+                              style: TextStyle(
+                                fontFamily: 'Nunito Sans',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkCharcoal,
+                              ),
                             ),
+                            Text(
+                              '$totalPhotos/5 photos',
+                              style: const TextStyle(
+                                fontFamily: 'Ek Mukta',
+                                fontSize: 12,
+                                color: AppColors.text3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Adding multiple angles (face, body, side profile) trains AI to recognize your pet reliably.',
+                          style: TextStyle(
+                            fontFamily: 'Ek Mukta',
+                            fontSize: 11.5,
+                            color: AppColors.text3,
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _newImageBytes != null
-                              ? Image.memory(
-                                  _newImageBytes!,
-                                  fit: BoxFit.cover,
-                                )
-                              : hasExistingPhoto
-                                  ? Image.network(
-                                      existingPhoto,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Image.asset(
-                                        AppAssets.petPlaceholder,
-                                        fit: BoxFit.cover,
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 90,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              // Existing photos
+                              ..._existingPhotoUrls.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final url = entry.value;
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      width: 86,
+                                      height: 86,
+                                      margin: const EdgeInsets.only(right: 10),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
                                       ),
-                                    )
-                                  : const Column(
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.network(
+                                        url,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Image.asset(
+                                          AppAssets.petPlaceholder,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 2,
+                                      right: 12,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _existingPhotoUrls.removeAt(idx)),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.black54,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+
+                              // Newly picked photos
+                              ..._newPhotos.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final photo = entry.value;
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      width: 86,
+                                      height: 86,
+                                      margin: const EdgeInsets.only(right: 10),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.memory(photo.bytes, fit: BoxFit.cover),
+                                    ),
+                                    Positioned(
+                                      top: 2,
+                                      right: 12,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _newPhotos.removeAt(idx)),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.black54,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+
+                              // Add more photo button
+                              if (totalPhotos < 5)
+                                GestureDetector(
+                                  onTap: _showImageSourcePicker,
+                                  child: Container(
+                                    width: 86,
+                                    height: 86,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background2,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.4),
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primary),
-                                        SizedBox(height: 4),
+                                        const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 24),
+                                        const SizedBox(height: 4),
                                         Text(
-                                          'Add Photo',
-                                          style: AppTypography.pillText,
+                                          totalPhotos == 0 ? 'Add Photo' : 'Add More',
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
                                         ),
                                       ],
                                     ),
-                        ),
-                      ),
-                      // Edit badge pill
-                      Positioned(
-                        bottom: 6,
-                        right: 6,
-                        child: GestureDetector(
-                          onTap: _showImageSourcePicker,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.camera_alt, size: 12, color: Colors.white),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _newImageBytes != null ? 'Replace' : 'Change',
-                                  style: AppTypography.pillText.copyWith(color: Colors.white, fontSize: 10),
+                                  ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
-                      ),
-                      // Reset / Clear new image
-                      if (_newImageBytes != null)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _newImageBytes = null),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 20),
 

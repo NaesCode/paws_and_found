@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/core/utils/description_tag_helper.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 
 import '../../domain/entities/app_notification.dart';
@@ -207,15 +208,15 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
                         child: Container(
-                          height: 180,
+                          height: 220,
                           width: double.infinity,
-                          color: const Color(0xFFF1F5F9),
+                          color: const Color(0xFF0F172A),
                           child: (photoUrl.isNotEmpty &&
                                   (photoUrl.startsWith('http://') ||
                                       photoUrl.startsWith('https://')))
                               ? Image.network(
                                   photoUrl,
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
                                   errorBuilder: (_, _, _) =>
                                       _placeholderImage(animalType: animalType),
                                 )
@@ -373,6 +374,22 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                         const SizedBox(height: 14),
                       ],
 
+                      // Mobility Assumption (if present, e.g. for Missing Reports)
+                      if (DescriptionTagHelper.extractMobility(description) != null) ...[
+                        DescriptionTagHelper.buildMobilityCard(
+                          DescriptionTagHelper.extractMobility(description)!,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // AI Visual Match Confidence (if present, e.g. for Sightings)
+                      if (DescriptionTagHelper.extractMatchConfidence(description) != null) ...[
+                        DescriptionTagHelper.buildAiMatchCard(
+                          DescriptionTagHelper.extractMatchConfidence(description)!,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
                       // Description Section
                       const Text(
                         'Full Description',
@@ -385,6 +402,7 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                       ),
                       const SizedBox(height: 6),
                       Container(
+                        width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
@@ -392,8 +410,8 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Text(
-                          description.isNotEmpty
-                              ? description
+                          DescriptionTagHelper.cleanDescription(description).isNotEmpty
+                              ? DescriptionTagHelper.cleanDescription(description)
                               : 'No description provided.',
                           style: const TextStyle(
                             fontSize: 13.5,

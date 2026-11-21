@@ -53,8 +53,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
   String _selectedSpecies = 'Dog';
   final List<String> _speciesOptions = ['Dog', 'Cat', 'Bird', 'Rabbit', 'Other'];
 
-  Uint8List? _selectedImageBytes;
-  String? _imageExtension = 'jpg';
+  final List<({Uint8List bytes, String extension})> _photos = [];
   final ImagePicker _picker = ImagePicker();
 
   String? _nameError;
@@ -74,21 +73,40 @@ class _AddPetSheetState extends State<AddPetSheet> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? file = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+      if (source == ImageSource.gallery) {
+        final List<XFile> files = await _picker.pickMultiImage(
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        if (files.isNotEmpty) {
+          final remaining = 5 - _photos.length;
+          final toAdd = files.take(remaining);
+          for (final f in toAdd) {
+            final bytes = await f.readAsBytes();
+            final ext = f.name.split('.').last.toLowerCase();
+            final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
+            _photos.add((bytes: bytes, extension: cleanExt));
+          }
+          setState(() => _generalError = null);
+        }
+      } else {
+        final XFile? file = await _picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
 
-      if (file != null) {
-        final bytes = await file.readAsBytes();
-        final ext = file.name.split('.').last.toLowerCase();
-        setState(() {
-          _selectedImageBytes = bytes;
-          _imageExtension = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
-          _generalError = null;
-        });
+        if (file != null && _photos.length < 5) {
+          final bytes = await file.readAsBytes();
+          final ext = file.name.split('.').last.toLowerCase();
+          final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
+          setState(() {
+            _photos.add((bytes: bytes, extension: cleanExt));
+            _generalError = null;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -186,11 +204,11 @@ class _AddPetSheetState extends State<AddPetSheet> {
 
       List<String> photoUrls = [];
 
-      // 1. Upload photo to Supabase Storage if user selected an image
-      if (_selectedImageBytes != null) {
+      // 1. Upload photos to Supabase Storage (up to 5 for multi-angle AI embeddings)
+      for (final photo in _photos) {
         final publicUrl = await widget.repository.uploadPetPhoto(
-          _selectedImageBytes!,
-          extension: _imageExtension ?? 'jpg',
+          photo.bytes,
+          extension: photo.extension,
         );
         photoUrls.add(publicUrl);
       }
@@ -289,61 +307,116 @@ class _AddPetSheetState extends State<AddPetSheet> {
                   const SizedBox(height: 16),
                 ],
 
-                // Pet Photo Picker Avatar
-                Center(
-                  child: Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: _showImageSourcePicker,
-                        child: Container(
-                          width: 104,
-                          height: 104,
-                          decoration: BoxDecoration(
-                            color: AppColors.background2,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+                // Pet Photos (Up to 5 photos for multi-angle AI centroid embeddings)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pet Photos (Up to 5)',
+                          style: TextStyle(
+                            fontFamily: 'Nunito Sans',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.darkCharcoal,
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _selectedImageBytes != null
-                              ? Image.memory(
-                                  _selectedImageBytes!,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Column(
+                        ),
+                        Text(
+                          '${_photos.length}/5 photos',
+                          style: const TextStyle(
+                            fontFamily: 'Ek Mukta',
+                            fontSize: 12,
+                            color: AppColors.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Adding multiple photos (face, body, side profile) trains AI to recognize your pet reliably.',
+                      style: TextStyle(
+                        fontFamily: 'Ek Mukta',
+                        fontSize: 11.5,
+                        color: AppColors.text3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 90,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          ..._photos.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final photo = entry.value;
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 86,
+                                  height: 86,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.memory(photo.bytes, fit: BoxFit.cover),
+                                ),
+                                Positioned(
+                                  top: 2,
+                                  right: 12,
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _photos.removeAt(idx)),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
+                          if (_photos.length < 5)
+                            GestureDetector(
+                              onTap: _showImageSourcePicker,
+                              child: Container(
+                                width: 86,
+                                height: 86,
+                                decoration: BoxDecoration(
+                                  color: AppColors.background2,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primary),
-                                    SizedBox(height: 4),
+                                    const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 24),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      'Add Photo',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
+                                      _photos.isEmpty ? 'Add Photo' : 'Add More',
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
                                         color: AppColors.primary,
                                       ),
                                     ),
                                   ],
                                 ),
-                        ),
-                      ),
-                      if (_selectedImageBytes != null)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedImageBytes = null),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, size: 14, color: Colors.white),
                             ),
-                          ),
-                        ),
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
 

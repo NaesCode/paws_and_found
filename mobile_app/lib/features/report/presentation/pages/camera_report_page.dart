@@ -630,7 +630,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               ),
 
               // AI Visual Pre-Match Scanner / Thread Link
-              if (_controller.selectedImageBytes != null)
+              if (_controller.selectedImageBytes != null) ...[
                 AiMatchScannerCard(
                   isScanning: _controller.isScanningAi,
                   candidates: _controller.aiCandidates,
@@ -639,7 +639,34 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                   onClearSelection: _controller.clearAiCandidate,
                   onViewAllCandidates: _handleViewAllCandidates,
                   onManualSearch: _handlePickThread,
-                )
+                ),
+                if (_controller.qualityWarning != null)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFFD54F)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFF57F17)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _controller.qualityWarning!,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFFE65100),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ]
               else if (_controller.linkedThreadId != null)
                 Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 6),

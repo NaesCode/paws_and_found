@@ -11,6 +11,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from .ai.features import average_embeddings, embed_image
+from .ai.preprocessor import check_image_blur, decode_and_preprocess
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -275,6 +276,58 @@ class PetAnalyzeView(APIView):
                 # Centroid average and re-normalize across photos
                 final_vector = average_embeddings(vectors)
 
+                # Poser & Duplicate Moderation: Prevent malicious users from registering or claiming
+                # a pet using photos stolen from another user's registered pet
+                for photo_url in candidate_urls:
+                    dup_pet = Pet.objects.filter(
+                        photo_urls__contains=[photo_url]
+                    ).exclude(owner_id=pet.owner_id).exclude(id=pet.id).first()
+                    if dup_pet:
+                        logger.warning("Duplicate pet photo detected: Pet %s reused photo from Pet %s", pet.id, dup_pet.id)
+                        Notification.objects.create(
+                            user_id=pet.owner_id,
+                            type="warning",
+                            message=(
+                                f"Duplicate Photo Alert: The photo uploaded for '{pet.name}' matches another registered pet "
+                                f"('{dup_pet.name}'). Please verify ownership or use your own original photos."
+                            ),
+                        )
+                        return Response(
+                            {
+                                "status": "flagged_duplicate",
+                                "error": f"Photo matches another registered pet '{dup_pet.name}'. Please upload original photos of your pet.",
+                            },
+                            status=status.HTTP_409_CONFLICT,
+                        )
+
+                # Visual cosine similarity check (>= 0.98) across other users' pets
+                try:
+                    other_pet_embeddings = PetEmbedding.objects.exclude(
+                        pet__owner_id=pet.owner_id
+                    ).exclude(pet_id=pet.id).select_related("pet")
+                    for oe in other_pet_embeddings:
+                        if oe.model_version == current_version:
+                            sim = cosine(final_vector, oe.vector)
+                            if sim >= 0.98:
+                                logger.warning("Poser pet detected: Pet %s visually identical (%.2f) to Pet %s", pet.id, sim, oe.pet.id)
+                                Notification.objects.create(
+                                    user_id=pet.owner_id,
+                                    type="warning",
+                                    message=(
+                                        f"Duplicate Pet Profile Alert: '{pet.name}' was flagged as the photos are visually identical "
+                                        f"to an existing pet ('{oe.pet.name}') registered by another user."
+                                    ),
+                                )
+                                return Response(
+                                    {
+                                        "status": "flagged_poser",
+                                        "error": f"Photo visually identical to an existing pet ('{oe.pet.name}') belonging to another user.",
+                                    },
+                                    status=status.HTTP_409_CONFLICT,
+                                )
+                except Exception as ex:
+                    logger.warning("Error checking other pet cosine similarity in PetAnalyzeView: %s", ex)
+
                 PetEmbedding.objects.update_or_create(
                     pet=pet,
                     defaults={
@@ -467,13 +520,23 @@ class MatchCandidatesView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # Check image blur / clarity
+        quality_warning = None
+        try:
+            arr = decode_and_preprocess(image_bytes)
+            is_blurry, var = check_image_blur(arr, threshold=50.0)
+            if is_blurry:
+                quality_warning = "Photo appears blurry or out of focus. For better AI matching, consider retaking a clearer photo."
+        except Exception:
+            pass
+
         # Gate: Do not suggest missing pet matches if no animal was detected in the photo
         if not emb_result.used_crop and emb_result.detector_score < 0.25:
             logger.info(
                 "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
                 emb_result.detector_score,
             )
-            return Response({"candidates": []})
+            return Response({"candidates": [], "quality_warning": quality_warning})
 
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
@@ -567,4 +630,7 @@ class MatchCandidatesView(APIView):
             reverse=True,
         )
 
-        return Response({"candidates": candidates[:5]})
+        return Response({
+            "candidates": candidates[:5],
+            "quality_warning": quality_warning,
+        })

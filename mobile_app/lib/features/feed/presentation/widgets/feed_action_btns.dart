@@ -18,7 +18,7 @@ class FeedActionBtns extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: SizedBox(
-        height: 38,
+        height: 40.0,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: backgroundColor,
@@ -35,7 +35,7 @@ class FeedActionBtns extends StatelessWidget {
             child: Text(
               text,
               maxLines: 1, 
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500),
             ),
           ),
         ),

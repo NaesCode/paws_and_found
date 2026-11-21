@@ -53,6 +53,40 @@ class FeedRepositoryImpl implements FeedRepository {
     }
   }
 
+  @override
+  Future<FeedComment> updateComment(String commentId, String content) async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) throw Exception('Must be logged in to edit');
+
+    final updated = await _supabase
+        .from('comments')
+        .update({'content': content.trim()})
+        .eq('id', commentId)
+        .eq('user_id', currentUserId)
+        .select()
+        .single();
+
+    final profile = await _supabase
+        .from('profiles')
+        .select('name, profile_photo_url')
+        .eq('id', currentUserId)
+        .maybeSingle();
+
+    return FeedComment.fromJson(updated, profile: profile);
+  }
+
+  @override
+  Future<void> deleteComment(String commentId) async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) throw Exception('Must be logged in to delete');
+
+    await _supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', currentUserId);
+  }
+
   @override 
   Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}) async {
     try {
