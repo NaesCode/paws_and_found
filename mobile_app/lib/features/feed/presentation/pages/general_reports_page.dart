@@ -10,6 +10,7 @@ import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../widgets/claim_confirm_dialog.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) EXCEPT THE USER'S POST
 
@@ -176,7 +177,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           button2Text: "Found",
                           petButtonText: "This is my Pet!",
                           onPetButtonPressed: () {
-                            _confirmMyPet(report);
+                            showConfirmMyPetDialog(context, report);
                           },
                           onButton1Pressed: () {
                             context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray');
@@ -195,52 +196,5 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
         ],
       ),
     );
-  }
-
-  Future<void> _confirmMyPet(FeedPost report) async {
-    final rawName = report.petName.trim();
-    final isUnknown = rawName.isEmpty || rawName.toLowerCase() == 'unknown pet';
-    final petLabel = isUnknown ? 'this unknown pet' : rawName;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Claim This Pet?',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Are you sure $petLabel is yours? You will be redirected to verify ownership.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentOrange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Yes, My Pet'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true && mounted) {
-      context.push(
-        '/claim-pet?reportId=${report.id}&petName=${Uri.encodeComponent(report.petName)}',
-      );
-    }
   }
 }

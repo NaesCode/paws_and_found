@@ -39,21 +39,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
     if (profilePhotoURL != null) {
       fields['profile_photo_url'] = profilePhotoURL;
       try {
-        // Fetch the user's current profile data to check for an existing photo
         final currentProfile = await remoteDataSource.getProfile();
         final String? oldUrl = currentProfile.profilePhotoURL;
 
-        // Only run deletion if a photo existed and it is actually changing
         if (oldUrl != null && oldUrl.isNotEmpty && oldUrl != profilePhotoURL) {
-          // Token matches the 'user-profile-photo' storage path structure
-          final String storageUrlMatchToken = '/storage/v1/object/public/user-profile-photo/';
+          const String storageUrlMatchToken = '/storage/v1/object/public/user-profile-photo/';
 
           if (oldUrl.contains(storageUrlMatchToken)) {
             final relativePath = oldUrl.split(storageUrlMatchToken).last;
-
             final supabase = Supabase.instance.client;
 
-            // Security Check: Enforce that users can only delete out of their own folder
             if (relativePath.startsWith('${currentProfile.userID}/')) {
               await supabase.storage
                   .from('user-profile-photo')
@@ -66,7 +61,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
         debugPrint('[ProfileRepositoryImpl] Profile photo storage cleanup deferred: $storageError');
       }
     }
-    // if (profilePhotoURL != null) fields['profile_photo_url'] = profilePhotoURL;
     return await remoteDataSource.updateProfile(fields);
   }
 
@@ -103,7 +97,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       photoUrls: photoUrls,
     );
 
-    // Asynchronously dispatch AI pet embedding extraction to Django orchestrator
     if (pet.photoURLs.isNotEmpty && !pet.petID.startsWith('mock-')) {
       unawaited(_requestPetAnalysis(pet.petID));
     }
@@ -121,7 +114,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? description,
     List<String>? photoUrls,
   }) async {
-    // 1. Delete-before-upload logic if photoUrls changed (including when removed)
     if (photoUrls != null) {
       try {
         final currentPets = await remoteDataSource.getPets();
@@ -150,7 +142,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       }
     }
 
-    // 2. Commit update to Supabase
     final updatedPet = await remoteDataSource.updatePet(
       petId,
       name: name,
@@ -161,9 +152,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       photoUrls: photoUrls,
     );
 
-    // 3. AI re-embedding & reverse matching dispatch:
-    // If the photo was updated, force-refresh the embedding vector on the Django orchestrator.
-    // Also if the pet is currently missing, the orchestrator's PetAnalyzeView re-runs reverse matching.
     if (!petId.startsWith('mock-')) {
       final photoWasUpdated = photoUrls != null && photoUrls.isNotEmpty;
       unawaited(_requestPetAnalysis(petId, refresh: photoWasUpdated));
@@ -193,7 +181,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       missingSince: missingSince,
     );
 
-    // Ensure pet visual embedding is up to date in private.pet_embeddings for reverse matching
     if (!petId.startsWith('mock-')) {
       unawaited(_requestPetAnalysis(petId));
     }
@@ -204,8 +191,193 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return await remoteDataSource.markPetSafe(petId);
   }
 
-  /// Dispatches a request to Django's /api/pets/{id}/analyze/ to compute
-  /// and upsert visual embeddings into private.pet_embeddings.
+  @override
+  Stream<List<dynamic>> watchPendingMeetups() async* {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id ?? '';
+    if (userId.isEmpty) {
+      yield [];
+      return;
+    }
+
+    Future<List<dynamic>> fetchActive() async {
+      final rows = await client
+          .from('pet_claims')
+          .select()
+          .or('finder_id.eq.$userId,claimer_id.eq.$userId')
+          .neq('status', 'completed')
+          .neq('status', 'declined')
+          .order('updated_at', ascending: false);
+
+      final List<dynamic> items = [];
+      for (final row in rows) {
+        final reportId = row['report_id']?.toString() ?? '';
+        final isFinder = row['finder_id'] == userId;
+        final otherUserId = isFinder
+            ? (row['claimer_id']?.toString() ?? '')
+            : (row['finder_id']?.toString() ?? '');
+
+        Map<String, dynamic>? report;
+        if (reportId.isNotEmpty) {
+          report = await client
+              .from('reports')
+              .select()
+              .eq('id', reportId)
+              .maybeSingle();
+        }
+
+        Map<String, dynamic>? otherProfile;
+        if (otherUserId.isNotEmpty) {
+          otherProfile = await client
+              .from('profiles')
+              .select()
+              .eq('id', otherUserId)
+              .maybeSingle();
+        }
+
+        final rawName = (report?['animal_name'] ?? '').toString().trim();
+        final animalType = (report?['animal_type'] ?? 'Pet').toString().trim();
+        final petTitle = rawName.isNotEmpty ? rawName : 'Spotted $animalType';
+
+        // Support both photo_url (text) and photo_urls (list)
+        String photoUrl = (report?['photo_url'] ?? '').toString();
+        if (photoUrl.isEmpty && report?['photo_urls'] is List) {
+          final list = report!['photo_urls'] as List;
+          if (list.isNotEmpty) photoUrl = list.first.toString();
+        }
+
+        final otherName = (otherProfile?['name'] ??
+                otherProfile?['username'] ??
+                (isFinder ? 'Claimant' : 'Finder'))
+            .toString();
+
+        items.add({
+          'claimId': row['id']?.toString() ?? '',
+          'reportId': reportId,
+          'isFinder': isFinder,
+          'currentStage': row['current_stage'] ?? 1,
+          'petTitle': petTitle,
+          'photoUrl': photoUrl,
+          'otherPartyName': otherName,
+          'meetupPlace': row['meetup_place']?.toString(),
+          'meetupTime': row['meetup_time']?.toString(),
+          'meetupAgreed': (row['meetup_confirmed_by_finder'] == true) &&
+              (row['meetup_confirmed_by_claimer'] == true),
+          'myHandoverConfirmed': isFinder
+              ? (row['finder_confirmed_handover'] == true)
+              : (row['claimer_confirmed_handover'] == true),
+        });
+      }
+      return items;
+    }
+
+    // 1. Emit immediately on load
+    yield await fetchActive();
+
+    // 2. Re-emit whenever pet_claims changes in Realtime (if enabled)
+    yield* client
+        .from('pet_claims')
+        .stream(primaryKey: ['id'])
+        .asyncMap((_) => fetchActive());
+  }
+
+  @override
+  Stream<List<dynamic>> watchCompletedReunions() async* {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id ?? '';
+    if (userId.isEmpty) {
+      yield [];
+      return;
+    }
+
+    Future<List<dynamic>> fetchCompleted() async {
+      final rows = await client
+          .from('pet_claims')
+          .select()
+          .or('finder_id.eq.$userId,claimer_id.eq.$userId')
+          .eq('status', 'completed')
+          .order('updated_at', ascending: false);
+
+      return _mapClaimRows(client, rows, userId);
+    }
+
+    // 1. Emit immediately on load
+    yield await fetchCompleted();
+
+    // 2. Re-emit whenever pet_claims updates in Realtime
+    yield* client
+        .from('pet_claims')
+        .stream(primaryKey: ['id'])
+        .asyncMap((_) => fetchCompleted());
+  }
+
+  Future<List<dynamic>> _mapClaimRows(
+    SupabaseClient client,
+    List<dynamic> rows,
+    String userId,
+  ) async {
+    final List<dynamic> items = [];
+    for (final row in rows) {
+      final reportId = row['report_id']?.toString() ?? '';
+      final isFinder = row['finder_id'] == userId;
+      final otherUserId = isFinder
+          ? (row['claimer_id']?.toString() ?? '')
+          : (row['finder_id']?.toString() ?? '');
+
+      Map<String, dynamic>? report;
+      if (reportId.isNotEmpty) {
+        report = await client
+            .from('reports')
+            .select()
+            .eq('id', reportId)
+            .maybeSingle();
+      }
+
+      Map<String, dynamic>? otherProfile;
+      if (otherUserId.isNotEmpty) {
+        otherProfile = await client
+            .from('profiles')
+            .select()
+            .eq('id', otherUserId)
+            .maybeSingle();
+      }
+
+      final rawName = (report?['animal_name'] ?? '').toString().trim();
+      final animalType = (report?['animal_type'] ?? 'Pet').toString().trim();
+      final petTitle = rawName.isNotEmpty ? rawName : 'Spotted $animalType';
+
+      String photoUrl = (report?['photo_url'] ?? '').toString();
+      if (photoUrl.isEmpty && report?['photo_urls'] is List) {
+        final list = report!['photo_urls'] as List;
+        if (list.isNotEmpty) photoUrl = list.first.toString();
+      }
+
+      final otherName = (otherProfile?['name'] ??
+              otherProfile?['username'] ??
+              (isFinder ? 'Claimant' : 'Finder'))
+          .toString();
+
+      items.add({
+        'claimId': row['id']?.toString() ?? '',
+        'reportId': reportId,
+        'isFinder': isFinder,
+        'currentStage': row['current_stage'] ?? 1,
+        'petTitle': petTitle,
+        'photoUrl': photoUrl,
+        'otherPartyName': otherName,
+        'meetupPlace': row['meetup_place']?.toString(),
+        'meetupTime': row['meetup_time']?.toString(),
+        'updatedAt': row['updated_at']?.toString(),
+        'meetupAgreed': (row['meetup_confirmed_by_finder'] == true) &&
+            (row['meetup_confirmed_by_claimer'] == true),
+        'myHandoverConfirmed': isFinder
+            ? (row['finder_confirmed_handover'] == true)
+            : (row['claimer_confirmed_handover'] == true),
+      });
+    }
+    return items;
+  }
+
   Future<void> _requestPetAnalysis(String petId, {bool refresh = false}) async {
     try {
       await _orchestratorClient.post(
@@ -214,7 +386,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       );
       debugPrint('[ProfileRepositoryImpl] AI analysis requested for pet: $petId (refresh=$refresh)');
     } catch (e) {
-      // Non-fatal: if orchestrator is offline, the pet is still safely saved in Supabase
       debugPrint('[ProfileRepositoryImpl] Pet AI analysis dispatch deferred: $e');
     }
   }
