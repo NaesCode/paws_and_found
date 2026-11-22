@@ -159,8 +159,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
       } catch (_) {}
     }
 
-    // 2. Fetch directly from feed_reports view by reportId
+    // 2. Fetch directly from feed_reports view by reportId.
+    // Also queries the raw reports table as a fallback so that flagged/unavailable
+    // posts (which may be excluded from the feed_reports view) are still resolved
+    // for the post owner (e.g. warning notifications about their own flagged post).
     if (reportId != null && reportId.isNotEmpty) {
+      // 2A. Try feed_reports view (active/available posts)
       try {
         final row = await _supabase
             .from('feed_reports')
@@ -172,6 +176,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
         }
       } catch (_) {}
 
+      // 2B. Fallback: raw reports table (catches flagged posts excluded from view)
       try {
         final row = await _supabase
             .from('reports')
@@ -191,15 +196,98 @@ class NotificationRepositoryImpl implements NotificationRepository {
     // 3. Try to query by extracted post ID (e.g. short ID #9B2A or UUID)
     final shortId = notification.extractedPostId;
     if (shortId != null && shortId.isNotEmpty) {
+      // 3A. If shortId is a full UUID, query directly using equality
+      if (RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(shortId)) {
+        try {
+          final row = await _supabase
+              .from('feed_reports')
+              .select()
+              .eq('id', shortId)
+              .maybeSingle();
+          if (row != null) {
+            return await _enrichFeedReportRow(row);
+          }
+        } catch (_) {}
+
+        try {
+          final row = await _supabase
+              .from('reports')
+              .select('*, profiles:reporter_id(name), pets:pet_id(name, species, breed, photo_urls)')
+              .eq('id', shortId)
+              .maybeSingle();
+          if (row != null) {
+            final petMap = row['pets'] as Map<String, dynamic>?;
+            return await _mapReportWithPet(row, petMap);
+          }
+        } catch (_) {}
+      }
+
+      // 3B. Short hex prefix matching (e.g. #BDC2 or #BDC29A) in client memory
+      // (Avoids PostgreSQL error: operator does not exist: uuid ~~* text when using ilike on UUID)
+      final cleanShortId = shortId.replaceAll('-', '').toLowerCase();
+
+      // Check current user's own reports first (covers user's own flagged/warning posts)
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser != null) {
+        try {
+          final userReports = await _supabase
+              .from('feed_reports')
+              .select()
+              .eq('reporter_id', currentUser.id)
+              .order('created_at', ascending: false)
+              .limit(50);
+          for (final row in userReports) {
+            final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+            if (rowId.startsWith(cleanShortId)) {
+              return await _enrichFeedReportRow(row);
+            }
+          }
+        } catch (_) {}
+
+        try {
+          final userReports = await _supabase
+              .from('reports')
+              .select('*, profiles:reporter_id(name), pets:pet_id(name, species, breed, photo_urls)')
+              .eq('reporter_id', currentUser.id)
+              .order('created_at', ascending: false)
+              .limit(50);
+          for (final row in userReports) {
+            final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+            if (rowId.startsWith(cleanShortId)) {
+              final petMap = row['pets'] as Map<String, dynamic>?;
+              return await _mapReportWithPet(row, petMap);
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Check general recent reports by short ID prefix
       try {
-        final row = await _supabase
+        final recentReports = await _supabase
             .from('feed_reports')
             .select()
-            .ilike('id', '$shortId%')
-            .limit(1)
-            .maybeSingle();
-        if (row != null) {
-          return await _enrichFeedReportRow(row);
+            .order('created_at', ascending: false)
+            .limit(50);
+        for (final row in recentReports) {
+          final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+          if (rowId.startsWith(cleanShortId)) {
+            return await _enrichFeedReportRow(row);
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final recentReports = await _supabase
+            .from('reports')
+            .select('*, profiles:reporter_id(name), pets:pet_id(name, species, breed, photo_urls)')
+            .order('created_at', ascending: false)
+            .limit(50);
+        for (final row in recentReports) {
+          final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+          if (rowId.startsWith(cleanShortId)) {
+            final petMap = row['pets'] as Map<String, dynamic>?;
+            return await _mapReportWithPet(row, petMap);
+          }
         }
       } catch (_) {}
     }

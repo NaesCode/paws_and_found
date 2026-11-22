@@ -40,6 +40,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   String? _selectedMapReportId;
   LatLng? _selectedMapCenter;
+  String? _selectedFeedReportId;
 
   // Notification badge count — fetched once on mount and kept in sync via stream.
   int _unreadCount = 0;
@@ -194,7 +195,14 @@ class _DashboardPageState extends State<DashboardPage> {
           initialCenter: _selectedMapCenter,
         );
       case 1:
-        return const FeedPage();
+        return FeedPage(
+          isolatedReportId: _selectedFeedReportId,
+          onClearIsolation: () {
+            setState(() {
+              _selectedFeedReportId = null;
+            });
+          },
+        );
       case 2:
         return CameraReportPage(
           showBottomNavPlaceholder: false,
@@ -214,6 +222,13 @@ class _DashboardPageState extends State<DashboardPage> {
                 _selectedMapCenter = LatLng(lat, lng);
               }
               _currentIndex = 0;
+            });
+          },
+          onViewInFeed: (reportId) {
+            // Switch to Feed tab and isolate the specific post
+            setState(() {
+              _selectedFeedReportId = reportId;
+              _currentIndex = 1;
             });
           },
         );

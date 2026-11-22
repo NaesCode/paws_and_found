@@ -11,11 +11,16 @@ import 'package:go_router/go_router.dart';
 class FeedPage extends StatefulWidget {
   final Widget? generalReportsView;
   final Widget? personalReportsView;
+  final String? isolatedReportId;
+  final VoidCallback? onClearIsolation;
+
   const FeedPage({
     super.key,
     this.generalReportsView,
     this.personalReportsView,
-    });
+    this.isolatedReportId,
+    this.onClearIsolation,
+  });
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -25,6 +30,36 @@ class _FeedPageState extends State<FeedPage> {
   bool _isGeneralSelected = true;
   bool _isFabExtended = true;
   bool _isFabVisible = true;
+  String? _isolatedReportId;
+
+  @override
+  void initState() {
+    super.initState();
+    _isolatedReportId = widget.isolatedReportId;
+    if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
+      _isGeneralSelected = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isolatedReportId != oldWidget.isolatedReportId) {
+      setState(() {
+        _isolatedReportId = widget.isolatedReportId;
+        if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
+          _isGeneralSelected = true;
+        }
+      });
+    }
+  }
+
+  void _clearIsolation() {
+    setState(() {
+      _isolatedReportId = null;
+    });
+    widget.onClearIsolation?.call();
+  }
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification is UserScrollNotification) {
@@ -90,7 +125,11 @@ class _FeedPageState extends State<FeedPage> {
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrollNotification,
                   child: _isGeneralSelected
-                      ? (widget.generalReportsView ?? const GeneralReportsPage())
+                      ? (widget.generalReportsView ??
+                          GeneralReportsPage(
+                            isolatedReportId: _isolatedReportId,
+                            onClearIsolation: _clearIsolation,
+                          ))
                       : (widget.personalReportsView ?? const PersonalReportsPage()),
                 ),
               ),

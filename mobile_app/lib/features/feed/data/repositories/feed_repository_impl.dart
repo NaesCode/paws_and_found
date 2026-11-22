@@ -133,25 +133,59 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Future<FeedPost?> getReportById(String reportId) async {
     try {
-      final response = await _supabase.from('reports').select('''
-        id, 
-        reporter_id, 
-        pet_id, 
-        animal_type, 
-        description, 
-        photo_url, 
-        location_name, 
-        status, 
-        animal_name,
-        analysis_status, 
-        moderation_status,
-        created_at,
-        profiles(name, profile_photo_url),
-        pets(name)
-      ''').eq('id', reportId).maybeSingle();
+      final cleanId = reportId.replaceFirst('#', '').trim();
+      final isUuid = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      ).hasMatch(cleanId);
 
-      if (response == null) return null;
-      return FeedPost.fromJson(response);
+      if (isUuid) {
+        final response = await _supabase.from('reports').select('''
+          id, 
+          reporter_id, 
+          pet_id, 
+          animal_type, 
+          description, 
+          photo_url, 
+          location_name, 
+          status, 
+          animal_name,
+          analysis_status, 
+          moderation_status,
+          created_at,
+          profiles(name, profile_photo_url),
+          pets(name)
+        ''').eq('id', cleanId).maybeSingle();
+
+        if (response != null) return FeedPost.fromJson(response);
+      } else {
+        // Fallback for short hex prefixes (e.g. #BDC2 or BDC2)
+        final cleanShort = cleanId.replaceAll('-', '').toLowerCase();
+        final response = await _supabase.from('reports').select('''
+          id, 
+          reporter_id, 
+          pet_id, 
+          animal_type, 
+          description, 
+          photo_url, 
+          location_name, 
+          status, 
+          animal_name,
+          analysis_status, 
+          moderation_status,
+          created_at,
+          profiles(name, profile_photo_url),
+          pets(name)
+        ''').order('created_at', ascending: false).limit(50);
+
+        for (final row in response) {
+          final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+          if (rowId.startsWith(cleanShort)) {
+            return FeedPost.fromJson(row);
+          }
+        }
+      }
+
+      return null;
     } catch (e) {
       return null;
     }

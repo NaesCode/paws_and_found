@@ -96,6 +96,7 @@ class Notification(models.Model):
     type = models.TextField()
     message = models.TextField()
     related_match = models.ForeignKey(Match, null=True, on_delete=models.DO_NOTHING, db_constraint=False)
+    related_report = models.ForeignKey(Report, null=True, on_delete=models.DO_NOTHING, db_constraint=False, db_column="related_report_id")
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(db_default=Now(), editable=False)
 

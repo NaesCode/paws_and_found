@@ -16,6 +16,7 @@ import '../widgets/delete_pet_sheet.dart';
 import '../../../../core/services/location_service.dart';
 import '../widgets/paws_profile_section.dart';
 import '../widgets/pending_meetup_section.dart';
+import '../widgets/pet_photo_gallery_modal.dart';
 import '../widgets/report_missing_sheet.dart';
 import '../widgets/reunion_history_section.dart';
 
@@ -333,6 +334,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
+  void _showPetPhotoGallery(Pet pet) {
+    PetPhotoGalleryModal.show(
+      context: context,
+      pet: pet,
+      onEditPressed: pet.status == PetStatus.safe ? () => _showEditPetSheet(pet) : null,
+    );
+  }
+
   Future<void> _showAddPetSheet() async {
     final newPet = await AddPetSheet.show(
       context: context,
@@ -477,7 +486,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       onEditPet: _showEditPetSheet,
                       onDeletePet: _showDeletePetSheet,
                       onAddPetPressed: _showAddPetSheet,
-                      onPetTap: _showEditPetSheet,
+                      onPhotoTap: _showPetPhotoGallery,
+                      onPetTap: _showPetPhotoGallery,
                     ),
                   ),
                 ],

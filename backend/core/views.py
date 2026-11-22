@@ -149,6 +149,7 @@ class ReportAnalyzeView(APIView):
                     Notification.objects.create(
                         user_id=report.reporter_id,
                         type="warning",
+                        related_report=report,
                         message=(
                             f"Post Under Review: Sighting #{report_short_id} was flagged by AI as no clear animal was detected. "
                             f"If this was a mistake, an admin will review and verify it shortly."
