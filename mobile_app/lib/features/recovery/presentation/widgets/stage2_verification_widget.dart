@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_cached_pdfview/flutter_cached_pdfview.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/core/services/profanity_filter_service.dart';
 import '../../data/repositories/recovery_repository_impl.dart';
 
 class Stage2VerificationWidget extends StatefulWidget {
@@ -188,7 +189,7 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                     child: Image.network(
                       urls[idx],
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Padding(
+                      errorBuilder: (_, _, _) => const Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(
                           'Failed to load image.',
@@ -357,9 +358,20 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
               backgroundColor: AppColors.accentOrange,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: () {
+            onPressed: () async {
               final text = controller.text.trim();
               if (text.isNotEmpty) {
+                final badWords = ProfanityFilterService.findProfanities(text);
+                if (badWords.isNotEmpty) {
+                  final result = await ProfanityFilterService.instance.recordInfraction(badWords);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
+                  if (mounted) {
+                    _showProfanityBlockedDialog(badWords, result);
+                  }
+                  return;
+                }
                 Navigator.pop(ctx, text);
               }
             },
@@ -377,6 +389,72 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
         );
       }
     }
+  }
+
+  void _showProfanityBlockedDialog(List<String> badWords, ProfanityInfractionResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              result.isSuspended ? Icons.block_rounded : Icons.warning_amber_rounded,
+              color: result.isSuspended ? AppColors.error : AppColors.accentOrange,
+              size: 26,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                result.isSuspended
+                    ? 'Account Suspended'
+                    : result.isWarned
+                        ? 'Community Warning'
+                        : 'Language Prohibited',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              result.message,
+              style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppColors.darkCharcoal),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                'Detected: ${badWords.map((w) => '"$w"').join(', ')}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Understand', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -500,7 +578,7 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _draftProofUrls.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final url = _draftProofUrls[index];
                   return GestureDetector(
@@ -516,7 +594,7 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                             Image.network(
                               url,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 color: AppColors.background,
                                 child: const Icon(Icons.image_outlined, color: AppColors.text3),
                               ),
@@ -671,10 +749,20 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                 ),
                 onPressed: canSubmit
                     ? () async {
+                        final note = _featuresController.text.trim();
+                        final badWords = ProfanityFilterService.findProfanities(note);
+                        if (badWords.isNotEmpty) {
+                          final result = await ProfanityFilterService.instance.recordInfraction(badWords);
+                          if (mounted) {
+                            _showProfanityBlockedDialog(badWords, result);
+                          }
+                          return;
+                        }
+
                         setState(() => _isSubmitting = true);
                         try {
                           await widget.onSubmitVerification(
-                            _featuresController.text.trim(),
+                            note,
                             List.from(_draftProofUrls),
                             List.from(_draftDocUrls),
                           );
@@ -761,7 +849,7 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.uploadedProofLabels.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final url = widget.uploadedProofLabels[index];
                   return GestureDetector(
@@ -790,7 +878,7 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                                   ),
                                 );
                               },
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 color: AppColors.background,
                                 child: const Icon(Icons.broken_image_outlined, color: AppColors.text3),
                               ),

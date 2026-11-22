@@ -124,12 +124,46 @@ class AudioAlertService {
           try {
             final reportData = await _supabase
                 .from('reports')
-                .select('pets(alert_sound)')
+                .select('pet_id, pets(alert_sound)')
                 .eq('id', reportId)
                 .maybeSingle();
 
             if (reportData != null && reportData['pets'] != null) {
               petSound = reportData['pets']['alert_sound'] as String?;
+            }
+          } catch (_) {}
+        }
+
+        // 3. For pet recovery / claim updates, resolve pet's sound via pet_claims
+        if (petSound == null &&
+            (notification.type == 'claim_request' || notification.type == 'claim_update') &&
+            reportId != null &&
+            reportId.isNotEmpty) {
+          try {
+            final currentUserId = _supabase.auth.currentUser?.id;
+            if (currentUserId != null) {
+              // Resolve the claim associated with this report
+              final claimData = await _supabase
+                  .from('pet_claims')
+                  .select('claimer_id, finder_id')
+                  .eq('report_id', reportId)
+                  .or('finder_id.eq.$currentUserId,claimer_id.eq.$currentUserId')
+                  .maybeSingle();
+
+              if (claimData != null) {
+                final claimerId = claimData['claimer_id']?.toString() ?? currentUserId;
+                final petData = await _supabase
+                    .from('pets')
+                    .select('alert_sound')
+                    .eq('owner_id', claimerId)
+                    .not('alert_sound', 'is', null)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (petData != null) {
+                  petSound = petData['alert_sound'] as String?;
+                }
+              }
             }
           } catch (_) {}
         }

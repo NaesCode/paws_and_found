@@ -19,6 +19,7 @@ import '../widgets/post_details_bottom_sheet.dart';
 enum _NotifFilter {
   all,
   unread,
+  claims,
   matches,
   nearby,
   updates,
@@ -32,6 +33,8 @@ extension _NotifFilterExt on _NotifFilter {
         return 'All';
       case _NotifFilter.unread:
         return 'Unread';
+      case _NotifFilter.claims:
+        return 'Claims';
       case _NotifFilter.matches:
         return 'Matches';
       case _NotifFilter.nearby:
@@ -49,6 +52,8 @@ extension _NotifFilterExt on _NotifFilter {
         return Icons.notifications_rounded;
       case _NotifFilter.unread:
         return Icons.mark_chat_unread_rounded;
+      case _NotifFilter.claims:
+        return Icons.handshake_rounded;
       case _NotifFilter.matches:
         return Icons.favorite_rounded;
       case _NotifFilter.nearby:
@@ -66,6 +71,8 @@ extension _NotifFilterExt on _NotifFilter {
         return true;
       case _NotifFilter.unread:
         return !n.isRead;
+      case _NotifFilter.claims:
+        return n.type == 'claim_request' || n.type == 'claim_update';
       case _NotifFilter.matches:
         return n.type == 'match_found' || n.type == 'match_confirmed';
       case _NotifFilter.nearby:
@@ -875,7 +882,7 @@ class _NotificationTile extends StatelessWidget {
                         _timeAgo(notification.createdAt),
                         style: const TextStyle(fontSize: 12, color: AppColors.text3),
                       ),
-                      // 1. ADD THIS BLOCK FIRST:
+                      // Action pill button
                       if (notification.type == 'claim_request' ||
                           notification.type == 'claim_update') ...[
                         const SizedBox(width: 10),
@@ -890,32 +897,6 @@ class _NotificationTile extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.pets_outlined,
-                                  size: 11.5, color: color),
-                              const SizedBox(width: 3.5),
-                              Text(
-                                'Open Claim',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else if (notification.isPostRelated) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.visibility_outlined,
                                   size: 11.5, color: color),
                               const SizedBox(width: 3.5),
                               Text(

@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:paws_and_found/core/services/audio_alert_service.dart';
 import 'package:paws_and_found/core/services/local_notification_service.dart';
@@ -66,8 +67,12 @@ class _DashboardPageState extends State<DashboardPage> {
   void _onNativeNotificationTapped() {
     final payload = LocalNotificationService.instance.onNotificationTapped.value;
     if (payload != null && mounted) {
-      // Direct navigation to notifications tab upon tapping native heads-up banner
-      setState(() => _currentIndex = 4);
+      if (payload.startsWith('/claim')) {
+        context.push(payload);
+      } else {
+        // Direct navigation to notifications tab upon tapping native heads-up banner
+        setState(() => _currentIndex = 4);
+      }
     }
   }
 

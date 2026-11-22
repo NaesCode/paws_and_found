@@ -118,9 +118,13 @@ class LocalNotificationService {
     try {
       final title = _resolveTitle(notification.type);
       final body = notification.message;
-      final payload = notification.relatedReportId ??
-          notification.relatedMatchId ??
-          notification.id;
+      final payload = (notification.type == 'claim_request' || notification.type == 'claim_update') &&
+              notification.relatedReportId != null &&
+              notification.relatedReportId!.isNotEmpty
+          ? '/claim?reportId=${notification.relatedReportId}'
+          : (notification.relatedReportId ??
+              notification.relatedMatchId ??
+              notification.id);
 
       // Deterministic non-negative notification ID from UUID
       final id = notification.id.hashCode & 0x7FFFFFFF;
@@ -175,6 +179,10 @@ class LocalNotificationService {
         return 'Account Status Update ℹ️';
       case 'welcome':
         return 'Welcome to Paws and Found! 🐾';
+      case 'claim_request':
+        return 'Pet Claim Request Received 🤝';
+      case 'claim_update':
+        return 'Recovery Pipeline Update 🐾';
       default:
         return 'Paws and Found Notification 🐾';
     }
