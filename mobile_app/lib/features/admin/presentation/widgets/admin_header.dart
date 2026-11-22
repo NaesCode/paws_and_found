@@ -46,6 +46,8 @@ class AdminHeader extends StatelessWidget {
           InkWell(
             key: const Key('admin_exit_button'),
             borderRadius: BorderRadius.circular(8.0),
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
             onTap: () {
               if (onExitAdmin != null) {
                 onExitAdmin!();

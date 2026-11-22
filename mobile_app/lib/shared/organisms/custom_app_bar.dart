@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../molecules/camerafound_icon.dart';
 import '../molecules/fyp_icon.dart';
 import '../molecules/map_icon.dart';
@@ -35,6 +36,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       bottom: true,
       child: Container(
         height: preferredSize.height,
+        color: AppColors.surface, // Explicit white — prevents theme BottomAppBar teal bleed
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         // Using Row with spaceBetween to evenly distribute the molecules
         child: Row(

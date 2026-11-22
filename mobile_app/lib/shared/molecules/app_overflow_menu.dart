@@ -89,17 +89,10 @@ class AppOverflowMenu extends StatelessWidget {
       },
       itemBuilder: (context) {
         if (isAdminPage) {
+          // Note: 'Exit Admin' is intentionally omitted here because AdminHeader
+          // already provides a dedicated ← back button for exiting the admin console.
+          // Duplicating it in the overflow menu caused a confusing double-exit UX.
           return [
-            const PopupMenuItem(
-              value: 'exit_admin',
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.primary),
-                  SizedBox(width: 10),
-                  Text('Exit Admin', style: TextStyle(fontSize: 14)),
-                ],
-              ),
-            ),
             const PopupMenuItem(
               value: 'settings',
               child: Row(
