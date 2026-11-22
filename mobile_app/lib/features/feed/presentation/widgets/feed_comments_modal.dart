@@ -807,12 +807,28 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
           isSuspended: violation.isSuspended,
         );
       }
+      return; // Stop submission immediately
     }
     // Bad words / profanity validation across English, Filipino, and Bisaya
     final badWords = ProfanityFilterService.findProfanities(text);
     if (badWords.isNotEmpty) {
+      String? uid;
+      try {
+        uid = Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {}
+      final targetUid = uid ?? 'current_user';
+
+      // Keep UserRestrictionService strike count synchronized with profanity infractions
+      final violation = await _restrictionService.recordViolation(
+        userId: targetUid,
+        prohibitedWord: badWords.first,
+      );
+
       final result = await ProfanityFilterService.instance.recordInfraction(badWords);
       if (mounted) {
+        if (violation.isSuspended) {
+          setState(() => _isUserSuspended = true);
+        }
         _showProfanityBlockedDialog(badWords, result);
       }
       return; // Stop submission
@@ -1320,6 +1336,17 @@ class _EmptyFeedRepository implements FeedRepository {
 
   @override
   Future<void> deleteComment(String commentId) async {}
+
+  @override
+  Future<void> markReportAsFound(String reportId) async {}
+
+  @override
+  Future<List<FeedPost>> getGeneralReportsNearMe(
+    String userId, {
+    required double lat,
+    required double lng,
+    double? radiusMeters = 5000,
+  }) async => [];
 
   @override
   Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}) async => [];
