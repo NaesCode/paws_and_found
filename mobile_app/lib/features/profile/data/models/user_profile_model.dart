@@ -10,6 +10,7 @@ class UserProfileModel extends UserProfile {
     super.bio,
     super.profilePhotoURL,
     super.dateRegistered,
+    super.status = 'Active',
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +25,7 @@ class UserProfileModel extends UserProfile {
       dateRegistered: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : (json['dateRegistered'] != null ? DateTime.tryParse(json['dateRegistered'] as String) : null),
+      status: (json['status'] as String?) ?? 'Active',
     );
   }
 
