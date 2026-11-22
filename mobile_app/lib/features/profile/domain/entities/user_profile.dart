@@ -8,6 +8,7 @@ class UserProfile {
   final String? bio;
   final String? profilePhotoURL;
   final DateTime? dateRegistered;
+  final String status;
 
   const UserProfile({
     required this.userID,
@@ -18,7 +19,14 @@ class UserProfile {
     this.bio,
     this.profilePhotoURL,
     this.dateRegistered,
+    this.status = 'Active',
   });
+
+  /// Whether the user account has been suspended.
+  bool get isSuspended => status.toLowerCase().contains('suspend');
+
+  /// Whether the user account is currently under a warning status.
+  bool get isWarning => status.toLowerCase() == 'warning';
 
   /// Evaluates whether the onboarding/profile setup is completed.
   /// Requires both contact/phone number and address to be set.
@@ -37,6 +45,7 @@ class UserProfile {
     String? bio,
     String? profilePhotoURL,
     DateTime? dateRegistered,
+    String? status,
   }) {
     return UserProfile(
       userID: userID ?? this.userID,
@@ -47,6 +56,7 @@ class UserProfile {
       bio: bio ?? this.bio,
       profilePhotoURL: profilePhotoURL ?? this.profilePhotoURL,
       dateRegistered: dateRegistered ?? this.dateRegistered,
+      status: status ?? this.status,
     );
   }
 }
