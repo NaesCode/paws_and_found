@@ -92,8 +92,8 @@ void main() {
       // Google sign-in is hidden in Register mode
       expect(find.text('Continue with Google'), findsNothing);
 
-      // Tap back to Login
-      await tester.tap(find.text('Login'));
+      // Tap back to Login (Sign In tab)
+      await tester.tap(find.text('Sign In'));
       await tester.pumpAndSettle();
 
       expect(find.text('Welcome Back'), findsOneWidget);

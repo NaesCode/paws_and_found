@@ -93,7 +93,7 @@ class AdminBottomNavBar extends StatelessWidget {
   }) {
     final isSelected = currentIndex == index;
     final color =
-        isSelected ? AppColors.primary : AppColors.textMuted;
+        isSelected ? AppColors.darkSlate : AppColors.textMuted;
 
     return InkWell(
       key: key,
