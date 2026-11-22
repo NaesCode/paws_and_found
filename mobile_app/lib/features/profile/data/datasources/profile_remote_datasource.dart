@@ -1,6 +1,8 @@
 import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
 import '../models/user_profile_model.dart';
 import '../models/pet_model.dart';
 import '../../domain/entities/pet.dart';
@@ -10,7 +12,10 @@ abstract class ProfileRemoteDataSource {
   Future<UserProfileModel> updateProfile(Map<String, dynamic> fields);
   Future<List<PetModel>> getPets();
   Future<String> uploadPetPhoto(Uint8List bytes, {String extension = 'jpg'});
-  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'});
+  Future<String> uploadProfilePhoto(
+    Uint8List bytes, {
+    String extension = 'jpg',
+  });
   Future<PetModel> addPet({
     required String name,
     required String species,
@@ -45,7 +50,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final SupabaseClient supabase;
 
   ProfileRemoteDataSourceImpl({SupabaseClient? supabaseClient})
-      : supabase = supabaseClient ?? Supabase.instance.client;
+    : supabase = supabaseClient ?? Supabase.instance.client;
 
   String? get _currentUserId => supabase.auth.currentUser?.id;
 
@@ -74,12 +79,17 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
     final updatePayload = <String, dynamic>{};
     if (fields.containsKey('name')) updatePayload['name'] = fields['name'];
-    if (fields.containsKey('phoneNumber')) updatePayload['phone_number'] = fields['phoneNumber'];
-    if (fields.containsKey('phone_number')) updatePayload['phone_number'] = fields['phone_number'];
-    if (fields.containsKey('address')) updatePayload['address'] = fields['address'];
+    if (fields.containsKey('phoneNumber'))
+      updatePayload['phone_number'] = fields['phoneNumber'];
+    if (fields.containsKey('phone_number'))
+      updatePayload['phone_number'] = fields['phone_number'];
+    if (fields.containsKey('address'))
+      updatePayload['address'] = fields['address'];
     if (fields.containsKey('bio')) updatePayload['bio'] = fields['bio'];
-    if (fields.containsKey('profilePhotoURL')) updatePayload['profile_photo_url'] = fields['profilePhotoURL'];
-    if (fields.containsKey('profile_photo_url')) updatePayload['profile_photo_url'] = fields['profile_photo_url'];
+    if (fields.containsKey('profilePhotoURL'))
+      updatePayload['profile_photo_url'] = fields['profilePhotoURL'];
+    if (fields.containsKey('profile_photo_url'))
+      updatePayload['profile_photo_url'] = fields['profile_photo_url'];
 
     final data = await supabase
         .from('profiles')
@@ -92,7 +102,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<String> uploadPetPhoto(Uint8List bytes, {String extension = 'jpg'}) async {
+  Future<String> uploadPetPhoto(
+    Uint8List bytes, {
+    String extension = 'jpg',
+  }) async {
     final uid = _currentUserId;
     if (uid == null) {
       throw Exception('User is not authenticated');
@@ -101,17 +114,22 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final fileUuid = const Uuid().v4();
     final path = '$uid/$fileUuid.$extension';
 
-    await supabase.storage.from('animal-photos').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: 'image/$extension'),
-    );
+    await supabase.storage
+        .from('animal-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: 'image/$extension'),
+        );
 
     return supabase.storage.from('animal-photos').getPublicUrl(path);
   }
 
   @override
-  Future<String> uploadProfilePhoto(Uint8List bytes, {String extension = 'jpg'}) async {
+  Future<String> uploadProfilePhoto(
+    Uint8List bytes, {
+    String extension = 'jpg',
+  }) async {
     final uid = _currentUserId;
     if (uid == null) {
       throw Exception('User is not authenticated');
@@ -120,11 +138,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final fileUuid = const Uuid().v4();
     final path = '$uid/$fileUuid.$extension';
 
-    await supabase.storage.from('user-profile-photo').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: 'image/$extension', upsert: true),
-    );
+    await supabase.storage
+        .from('user-profile-photo')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: 'image/$extension',
+            upsert: true,
+          ),
+        );
 
     return supabase.storage.from('user-profile-photo').getPublicUrl(path);
   }
@@ -150,7 +173,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       'species': species,
       if (breed != null && breed.trim().isNotEmpty) 'breed': breed.trim(),
       if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
-      if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
       'photo_urls': photoUrls,
       'alert_sound': alertSound,
     };
@@ -223,7 +247,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> deletePet(String petId, {String? reason, String? details}) async {
+  Future<void> deletePet(
+    String petId, {
+    String? reason,
+    String? details,
+  }) async {
     final uid = _currentUserId;
     if (uid == null) {
       throw Exception('User is not authenticated');
@@ -235,11 +263,15 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     }
 
     try {
-      await supabase.rpc('delete_pet', params: {
-        'p_pet_id': petId,
-        'p_reason': reason ?? 'User requested removal',
-        if (details != null && details.trim().isNotEmpty) 'p_details': details.trim(),
-      });
+      await supabase.rpc(
+        'delete_pet',
+        params: {
+          'p_pet_id': petId,
+          'p_reason': reason ?? 'User requested removal',
+          if (details != null && details.trim().isNotEmpty)
+            'p_details': details.trim(),
+        },
+      );
     } catch (_) {
       // Fallback in case RPC hasn't been migrated yet in cloud
       await supabase.from('reports').delete().eq('pet_id', petId);
@@ -256,9 +288,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       species: 'Cat',
       breed: 'Tabby',
       color: 'Orange',
-      description:
-          'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
-      photoURLs: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'],
+      description: 'The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.',
+      photoURLs: [
+        'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80',
+      ],
       status: PetStatus.safe,
     ),
     const PetModel(
@@ -267,9 +300,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       species: 'Cat',
       breed: 'Calico',
       color: 'White & Brown',
-      description:
-          'A gentle calico cat with distinct white and brown markings. Loves napping in sunny spots.',
-      photoURLs: ['https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80'],
+      description: 'A gentle calico cat with distinct white and brown markings. Loves napping in sunny spots.',
+      photoURLs: [
+        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80',
+      ],
       status: PetStatus.safe,
     ),
   ];
@@ -288,7 +322,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
           .eq('owner_id', uid)
           .order('created_at', ascending: false);
 
-      return data.map((json) => PetModel.fromJson(json as Map<String, dynamic>)).toList();
+      return data
+          .map((json) => PetModel.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return [];
     }
@@ -305,22 +341,30 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     if (petId.startsWith('mock-')) {
       final index = _mockPets.indexWhere((p) => p.petID == petId);
       if (index != -1) {
-        _mockPets[index] = _mockPets[index].copyWith(status: PetStatus.missing) as PetModel;
+        _mockPets[index] =
+            _mockPets[index].copyWith(status: PetStatus.missing) as PetModel;
       }
       return;
     }
 
     if (lat == null || lng == null) {
-      throw ArgumentError('Real GPS coordinates (lat, lng) are required to report a pet missing.');
+      throw ArgumentError(
+        'Real GPS coordinates (lat, lng) are required to report a pet missing.',
+      );
     }
 
-    await supabase.rpc('report_pet_missing', params: {
-      'p_pet_id': petId,
-      'p_lat': lat,
-      'p_lng': lng,
-      'p_note': note ?? '',
-      'p_missing_since': (missingSince ?? DateTime.now()).toUtc().toIso8601String(),
-    });
+    await supabase.rpc(
+      'report_pet_missing',
+      params: {
+        'p_pet_id': petId,
+        'p_lat': lat,
+        'p_lng': lng,
+        'p_note': note ?? '',
+        'p_missing_since': (missingSince ?? DateTime.now())
+            .toUtc()
+            .toIso8601String(),
+      },
+    );
   }
 
   @override
@@ -328,13 +372,12 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     if (petId.startsWith('mock-')) {
       final index = _mockPets.indexWhere((p) => p.petID == petId);
       if (index != -1) {
-        _mockPets[index] = _mockPets[index].copyWith(status: PetStatus.safe) as PetModel;
+        _mockPets[index] =
+            _mockPets[index].copyWith(status: PetStatus.safe) as PetModel;
       }
       return;
     }
 
-    await supabase.rpc('mark_pet_safe', params: {
-      'p_pet_id': petId,
-    });
+    await supabase.rpc('mark_pet_safe', params: {'p_pet_id': petId});
   }
 }

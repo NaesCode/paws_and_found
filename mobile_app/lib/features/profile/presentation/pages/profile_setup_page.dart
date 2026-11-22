@@ -15,7 +15,9 @@ import '../widgets/edit_pet_sheet.dart';
 import '../widgets/delete_pet_sheet.dart';
 import '../../../../core/services/location_service.dart';
 import '../widgets/paws_profile_section.dart';
+import '../widgets/pending_meetup_section.dart';
 import '../widgets/report_missing_sheet.dart';
+import '../widgets/reunion_history_section.dart';
 
 /// The Profile Account screen.
 /// Serves as both the user's permanent profile screen and the onboarding
@@ -338,7 +340,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     );
 
     if (newPet != null && mounted) {
-      // Re-fetch pet list directly from Supabase
       final updatedPets = await _repository.getPets();
       if (!mounted) return;
       setState(() {
@@ -442,6 +443,25 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           user: _user!,
                           registeredPetsCount: _pets.length,
                           onAddPetPressed: _showAddPetSheet,
+                        ),
+
+                        // Active / Pending Meetups & Claims (Auto-hides once status = 'completed')
+                        StreamBuilder<List<dynamic>>(
+                          stream: _repository.watchPendingMeetups(),
+                          builder: (context, snapshot) {
+                            final meetups = (snapshot.data ?? []).cast<Map<String, dynamic>>();
+                            return PendingMeetupsSection(meetups: meetups);
+                          },
+                        ),
+
+                        StreamBuilder<List<dynamic>>(
+                          stream: _repository.watchCompletedReunions(),
+                          builder: (context, snapshot) {
+                            final history = (snapshot.data ?? [])
+                                .map((e) => Map<String, dynamic>.from(e))
+                                .toList();
+                            return ReunionHistorySection(history: history);
+                          },
                         ),
                       ],
                     ),

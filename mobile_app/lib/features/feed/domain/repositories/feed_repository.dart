@@ -27,4 +27,5 @@ abstract class FeedRepository {
   );
   Future<FeedComment> updateComment(String commentId, String content);
   Future<void> deleteComment(String commentId);
+  Future<void> markReportAsFound(String reportId);
 }

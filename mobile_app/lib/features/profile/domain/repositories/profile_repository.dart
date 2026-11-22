@@ -61,4 +61,9 @@ abstract class ProfileRepository {
 
   /// Marks a missing pet as safe.
   Future<void> markPetSafe(String petId);
+
+  /// Watches active/pending pet claims and meetups involving the current user
+  /// until they are marked completed or declined.
+  Stream<List<dynamic>> watchPendingMeetups();
+  Stream<List<dynamic>> watchCompletedReunions();
 }
