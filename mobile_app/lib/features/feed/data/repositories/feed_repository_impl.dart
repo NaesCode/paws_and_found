@@ -76,6 +76,14 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
+  Future<void> markReportAsFound(String reportId) async {
+    await Supabase.instance.client
+        .from('reports')
+        .update({'status': 'found'})
+        .eq('id', reportId);
+  }
+
+  @override
   Future<void> deleteComment(String commentId) async {
     final currentUserId = _supabase.auth.currentUser?.id;
     if (currentUserId == null) throw Exception('Must be logged in to delete');

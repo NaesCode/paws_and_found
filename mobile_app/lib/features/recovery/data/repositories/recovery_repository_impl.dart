@@ -78,21 +78,24 @@ class ClaimRepository {
 
   /// Stage 3: Confirm handover & auto-close report if both confirmed
   Future<void> confirmHandover(PetClaim claim, {required bool isFinder}) async {
-    final newFinderConfirmed = isFinder ? true : claim.finderConfirmedHandover;
-    final newClaimerConfirmed = !isFinder ? true : claim.claimerConfirmedHandover;
-    final bothConfirmed = newFinderConfirmed && newClaimerConfirmed;
+    final nowBothConfirmed = isFinder
+        ? claim.claimerConfirmedHandover
+        : claim.finderConfirmedHandover;
 
-    await _client.from('pet_claims').update({
-      'finder_confirmed_handover': newFinderConfirmed,
-      'claimer_confirmed_handover': newClaimerConfirmed,
-      if (bothConfirmed) 'status': 'completed',
+    final Map<String, dynamic> updates = {
+      if (isFinder) 'finder_confirmed_handover': true,
+      if (!isFinder) 'claimer_confirmed_handover': true,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', claim.id);
+    };
 
-    if (bothConfirmed) {
-      await _client.from('reports').update({'status': 'found'}).eq('id', claim.reportId);
-      await cleanupClaimProofFiles(claim);
+    if (nowBothConfirmed) {
+      updates['status'] = 'completed';
     }
+
+    await _client
+        .from('pet_claims')
+        .update(updates)
+        .eq('id', claim.id);
   }
 
   /// Fetches the reporter/owner ID of a report
