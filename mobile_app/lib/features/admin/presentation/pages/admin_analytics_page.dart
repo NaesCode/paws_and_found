@@ -1146,7 +1146,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: WireframeColors.textMuted,
+                color: AppColors.textMuted,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1154,7 +1154,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               'Gray = No Data Available',
               style: TextStyle(
                 fontSize: 10.0,
-                color: WireframeColors.textMuted,
+                color: AppColors.textMuted,
               ),
             ),
           ],
@@ -1205,14 +1205,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             decoration: BoxDecoration(
               color: !hasData
                   ? const Color(0xFFF1F5F9) // Grayed out
-                  : (isSelected ? WireframeColors.primaryDark : Colors.white),
+                  : (isSelected ? AppColors.primary : Colors.white),
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(
                 color: !hasData
                     ? const Color(0xFFCBD5E1) // Gray border
                     : (isSelected
-                        ? WireframeColors.primaryDark
-                        : WireframeColors.border),
+                        ? AppColors.primary
+                        : AppColors.border),
                 width: isSelected ? 1.6 : 1.0,
               ),
               boxShadow: isSelected && hasData
@@ -1241,7 +1241,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                       size: 11,
                       color: !hasData
                           ? const Color(0xFF94A3B8)
-                          : (isSelected ? Colors.white : WireframeColors.primaryDark),
+                          : (isSelected ? Colors.white : AppColors.primary),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -1254,7 +1254,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                             ? const Color(0xFF94A3B8) // Gray text
                             : (isSelected
                                 ? Colors.white
-                                : WireframeColors.textPrimary),
+                                : AppColors.darkCharcoal),
                       ),
                     ),
                   ],
@@ -1268,7 +1268,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         ? const Color(0xFFA0AEC0)
                         : (isSelected
                             ? Colors.white.withValues(alpha: 0.85)
-                            : WireframeColors.textSecondary),
+                            : AppColors.textSecondary),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1280,7 +1280,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         ? const Color(0xFFE2E8F0)
                         : (isSelected
                             ? Colors.white.withValues(alpha: 0.2)
-                            : WireframeColors.primaryDark
+                            : AppColors.primary
                                 .withValues(alpha: 0.08)),
                     borderRadius: BorderRadius.circular(4.0),
                   ),
@@ -1295,7 +1295,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                           ? const Color(0xFF94A3B8)
                           : (isSelected
                               ? Colors.white
-                              : WireframeColors.primaryDark),
+                              : AppColors.primary),
                     ),
                   ),
                 ),
@@ -1564,7 +1564,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: WireframeColors.textMuted,
+                color: AppColors.textMuted,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1572,7 +1572,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
               'Gray = No Data Available',
               style: TextStyle(
                 fontSize: 10.0,
-                color: WireframeColors.textMuted,
+                color: AppColors.textMuted,
               ),
             ),
           ],
@@ -1765,7 +1765,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             decoration: BoxDecoration(
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(9.0),
-              border: Border.all(color: WireframeColors.border),
+              border: Border.all(color: AppColors.border),
             ),
             padding: const EdgeInsets.all(3.0),
             child: Row(
@@ -1786,10 +1786,10 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           Container(
             padding: const EdgeInsets.all(14.0),
             decoration: BoxDecoration(
-              color: WireframeColors.primaryDark.withValues(alpha: 0.05),
+              color: AppColors.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: WireframeColors.primaryDark.withValues(alpha: 0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -1800,7 +1800,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: WireframeColors.primaryDark,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: const Icon(
@@ -1821,14 +1821,14 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                             style: const TextStyle(
                               fontSize: 16.0,
                               fontWeight: FontWeight.w800,
-                              color: WireframeColors.primaryDark,
+                              color: AppColors.primary,
                             ),
                           ),
                           Text(
                             _getPostTimeframeSubtitle(_posts.length),
                             style: const TextStyle(
                               fontSize: 11.5,
-                              color: WireframeColors.textSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -1872,7 +1872,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             style: TextStyle(
               fontSize: 11.0,
               fontWeight: FontWeight.w700,
-              color: WireframeColors.textMuted,
+              color: AppColors.textMuted,
               letterSpacing: 0.5,
             ),
           ),
@@ -1982,8 +1982,8 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
-                ? WireframeColors.primaryDark
-                : WireframeColors.textMuted,
+                ? AppColors.primary
+                : AppColors.textMuted,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

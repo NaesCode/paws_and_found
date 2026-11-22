@@ -419,7 +419,7 @@ class _AuthTrayState extends State<AuthTray> {
               const SizedBox(height: 20),
               PawSegmentedControl(
                 isFirstOptionSelected: widget.isLogin,
-                firstOptionText: 'Login',
+                firstOptionText: 'Sign In',
                 secondOptionText: 'Register',
                 onOptionChanged: widget.onModeChanged,
               ),

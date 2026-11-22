@@ -2063,11 +2063,11 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? WireframeColors.primaryDark
-              : WireframeColors.surfaceSecondary,
+              ? AppColors.primary
+              : const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(8.0),
           border: Border.all(
-            color: isSelected ? WireframeColors.primaryDark : WireframeColors.border,
+            color: isSelected ? AppColors.primary : AppColors.border,
             width: 1.0,
           ),
         ),
@@ -2079,7 +2079,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                 icon,
                 size: 13.0,
                 color:
-                    isSelected ? Colors.white : WireframeColors.textSecondary,
+                    isSelected ? Colors.white : AppColors.textSecondary,
               ),
               const SizedBox(width: 4),
             ],
@@ -2087,7 +2087,7 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
               label,
               style: TextStyle(
                 color:
-                    isSelected ? Colors.white : WireframeColors.textSecondary,
+                    isSelected ? Colors.white : AppColors.textSecondary,
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -2117,11 +2117,11 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? WireframeColors.primaryDark
-              : WireframeColors.surfaceSecondary,
+              ? AppColors.primary
+              : const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(8.0),
           border: Border.all(
-            color: isSelected ? WireframeColors.primaryDark : WireframeColors.border,
+            color: isSelected ? AppColors.primary : AppColors.border,
             width: 1.0,
           ),
         ),
@@ -2131,14 +2131,14 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
             Icon(
               icon,
               size: 13.0,
-              color: isSelected ? Colors.white : WireframeColors.textSecondary,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
             ),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 color:
-                    isSelected ? Colors.white : WireframeColors.textSecondary,
+                    isSelected ? Colors.white : AppColors.textSecondary,
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 
 class MapIcon extends StatelessWidget {
   final VoidCallback onPressed;
@@ -12,7 +13,7 @@ class MapIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF374151); // Dark slate color from reference
+    const activeColor = AppColors.darkSlate;
 
     return GestureDetector(
       onTap: onPressed,

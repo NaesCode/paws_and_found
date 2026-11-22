@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/wireframe_colors.dart';
 import '../../../../core/utils/description_tag_helper.dart';
 import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
 import '../../../../shared/atoms/paw_status_badge.dart';
@@ -186,13 +185,10 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                             ),
                           ),
                           const SizedBox(width: 10),
-                          PawStatusBadge(
-                            status: report.status,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              WireframeStatusBadge(
+                              PawStatusBadge(
                                 status: report.status,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               ),
