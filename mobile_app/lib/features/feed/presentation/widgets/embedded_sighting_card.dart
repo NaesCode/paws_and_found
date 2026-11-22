@@ -12,10 +12,7 @@ import 'package:paws_and_found/features/feed/data/repositories/feed_repository_i
 class EmbeddedSightingCard extends StatefulWidget {
   final String reportId;
 
-  const EmbeddedSightingCard({
-    super.key,
-    required this.reportId,
-  });
+  const EmbeddedSightingCard({super.key, required this.reportId});
 
   @override
   State<EmbeddedSightingCard> createState() => _EmbeddedSightingCardState();
@@ -51,7 +48,10 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                 SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
                 ),
                 SizedBox(width: 8),
                 Text(
@@ -68,12 +68,17 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
           return const SizedBox.shrink(); // Gracefully omit if deleted or not found
         }
 
-        final hasImage = post.imageUrl.isNotEmpty &&
-            (post.imageUrl.startsWith('http://') || post.imageUrl.startsWith('https://'));
+        final hasImage =
+            post.imageUrl.isNotEmpty &&
+            (post.imageUrl.startsWith('http://') ||
+                post.imageUrl.startsWith('https://'));
 
-        final matchRegex = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false);
+        final matchRegex = RegExp(
+          r'\[AI Match:\s*(\d+)%?\]',
+          caseSensitive: false,
+        );
         final match = matchRegex.firstMatch(post.description);
-        final matchConfidence = match != null ? match.group(1) : null;
+        final matchConfidence = match?.group(1);
 
         return Container(
           margin: const EdgeInsets.only(top: 8),
@@ -98,7 +103,10 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2.5,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.contrast1,
                       borderRadius: BorderRadius.circular(4),
@@ -106,7 +114,11 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
+                        const Icon(
+                          Icons.remove_red_eye_rounded,
+                          size: 12,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'SIGHTING • ${post.status.toUpperCase()}',
@@ -122,14 +134,21 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                   ),
                   if (matchConfidence != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                        color:
+                            int.tryParse(matchConfidence) != null &&
+                                int.parse(matchConfidence) >= 85
                             ? const Color(0xFFE8F5E9)
                             : const Color(0xFFFFF3E0),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                          color:
+                              int.tryParse(matchConfidence) != null &&
+                                  int.parse(matchConfidence) >= 85
                               ? const Color(0xFF81C784)
                               : const Color(0xFFFFB74D),
                           width: 0.8,
@@ -141,7 +160,9 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                           Icon(
                             Icons.auto_awesome,
                             size: 10,
-                            color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                            color:
+                                int.tryParse(matchConfidence) != null &&
+                                    int.parse(matchConfidence) >= 85
                                 ? const Color(0xFF2E7D32)
                                 : const Color(0xFFE65100),
                           ),
@@ -151,7 +172,9 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: int.tryParse(matchConfidence) != null && int.parse(matchConfidence) >= 85
+                              color:
+                                  int.tryParse(matchConfidence) != null &&
+                                      int.parse(matchConfidence) >= 85
                                   ? const Color(0xFF2E7D32)
                                   : const Color(0xFFE65100),
                             ),
@@ -161,7 +184,10 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                     ),
                   Text(
                     post.formattedTime,
-                    style: const TextStyle(fontSize: 11, color: AppColors.text3),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.text3,
+                    ),
                   ),
                 ],
               ),
@@ -179,10 +205,11 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                           ? Image.network(
                               post.imageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Image.asset(
-                                AppAssets.petPlaceholder,
-                                fit: BoxFit.cover,
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Image.asset(
+                                    AppAssets.petPlaceholder,
+                                    fit: BoxFit.cover,
+                                  ),
                             )
                           : Image.asset(
                               AppAssets.petPlaceholder,
@@ -216,10 +243,15 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                             const SizedBox(width: 2),
                             Expanded(
                               child: Text(
-                                post.location.isNotEmpty ? post.location : 'Pinned Area',
+                                post.location.isNotEmpty
+                                    ? post.location
+                                    : 'Pinned Area',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11.5, color: AppColors.text2),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.text2,
+                                ),
                               ),
                             ),
                           ],
@@ -239,7 +271,10 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                 },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.contrast1.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(6),
@@ -256,7 +291,11 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                         ),
                       ),
                       SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.contrast1),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 14,
+                        color: AppColors.contrast1,
+                      ),
                     ],
                   ),
                 ),

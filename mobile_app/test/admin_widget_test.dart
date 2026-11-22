@@ -13,6 +13,8 @@ import 'package:paws_and_found/features/admin/presentation/widgets/admin_moderat
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_pie_chart.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_post_status_pill.dart';
 import 'package:paws_and_found/features/admin/presentation/widgets/admin_user_status_pill.dart';
+import 'package:paws_and_found/shared/atoms/app_logo.dart';
+import 'package:paws_and_found/shared/molecules/app_overflow_menu.dart';
 
 class FakeAdminRepository implements AdminRepository {
   final List<AdminUserItem> users;
@@ -144,8 +146,9 @@ void main() {
   }
 
   group('Admin Functions & Static UI Tests (SDD Screens 09 & 10)', () {
-    testWidgets('AdminHeader renders title and direct Logout button', (tester) async {
+    testWidgets('AdminHeader renders title, AppLogo, ADMIN badge, exit button, and logout via overflow menu', (tester) async {
       bool loggedOut = false;
+      bool exitedAdmin = false;
       int selectedTab = 0;
 
       await tester.pumpWidget(
@@ -156,20 +159,29 @@ void main() {
               selectedTabIndex: selectedTab,
               onTabChanged: (index) => selectedTab = index,
               onLogout: () => loggedOut = true,
+              onExitAdmin: () => exitedAdmin = true,
             ),
           ),
         ),
       );
 
-      // Verify 'A' badge and title
-      expect(find.text('A'), findsOneWidget);
+      // Verify AppLogo, ADMIN badge, and title
+      expect(find.byType(AppLogo), findsOneWidget);
+      expect(find.text('ADMIN'), findsOneWidget);
       expect(find.text('User Management'), findsOneWidget);
 
-      // Verify direct Logout button
-      expect(find.text('Log Out'), findsOneWidget);
-      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+      // Verify Exit button
+      expect(find.byKey(const Key('admin_exit_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('admin_exit_button')));
+      await tester.pumpAndSettle();
+      expect(exitedAdmin, isTrue);
 
-      // Tap 'Log Out' directly
+      // Verify AppOverflowMenu is present and triggers logout
+      expect(find.byKey(const Key('admin_overflow_menu')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('admin_overflow_menu')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log Out'), findsOneWidget);
       await tester.tap(find.text('Log Out'));
       await tester.pumpAndSettle();
 
@@ -251,7 +263,8 @@ void main() {
 
       // Verify Header & Columns
       expect(find.text('User Management'), findsOneWidget);
-      expect(find.text('Log Out'), findsOneWidget);
+      expect(find.text('ADMIN'), findsOneWidget);
+      expect(find.byType(AppOverflowMenu), findsOneWidget);
       expect(find.text('Search users...'), findsOneWidget);
       expect(find.text('NAME'), findsOneWidget);
       expect(find.text('STATUS'), findsOneWidget);

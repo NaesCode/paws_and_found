@@ -38,7 +38,7 @@ class AppLogo extends StatelessWidget {
           height: size,
           fit: fit,
           semanticLabel: semanticsLabel,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.pets,
             size: size * 0.7,
             color: Colors.white,

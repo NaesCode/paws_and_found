@@ -13,6 +13,7 @@ class AppOverflowMenu extends StatelessWidget {
   final VoidCallback? onSettingsPressed;
   final VoidCallback? onAdminPressed;
   final VoidCallback? onLogoutPressed;
+  final VoidCallback? onExitPressed;
 
   /// Whether to display the 'Edit Profile' option in the menu.
   ///
@@ -20,19 +21,29 @@ class AppOverflowMenu extends StatelessWidget {
   /// and `false` elsewhere (e.g. Map, Reports headers).
   final bool? showEditProfile;
 
+  /// Whether this menu is displayed on an Admin page.
+  /// When true, offers 'Exit Admin' instead of 'Admin Console'.
+  final bool isAdminPage;
+
+  /// Custom icon color for the three-dot button (defaults to theme icon color).
+  final Color? iconColor;
+
   const AppOverflowMenu({
     super.key,
     this.onEditPressed,
     this.onSettingsPressed,
     this.onAdminPressed,
     this.onLogoutPressed,
+    this.onExitPressed,
     this.showEditProfile,
+    this.isAdminPage = false,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: Icon(Icons.more_vert, color: iconColor),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -42,6 +53,16 @@ class AppOverflowMenu extends StatelessWidget {
             onAdminPressed!();
           } else {
             context.push('/admin');
+          }
+        } else if (value == 'exit_admin') {
+          if (onExitPressed != null) {
+            onExitPressed!();
+          } else if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            try {
+              context.go('/map');
+            } catch (_) {}
           }
         } else if (value == 'edit') {
           if (onEditPressed != null) {
@@ -67,6 +88,40 @@ class AppOverflowMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) {
+        if (isAdminPage) {
+          return [
+            const PopupMenuItem(
+              value: 'exit_admin',
+              child: Row(
+                children: [
+                  Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.primary),
+                  SizedBox(width: 10),
+                  Text('Exit Admin', style: TextStyle(fontSize: 14)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Icons.settings_outlined, size: 18, color: AppColors.primary),
+                  SizedBox(width: 10),
+                  Text('Settings', style: TextStyle(fontSize: 14)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, size: 18, color: AppColors.contrast2),
+                  SizedBox(width: 10),
+                  Text('Log Out', style: TextStyle(fontSize: 14, color: AppColors.contrast2)),
+                ],
+              ),
+            ),
+          ];
+        }
         User? user;
         try {
           user = Supabase.instance.client.auth.currentUser;
