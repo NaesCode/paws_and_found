@@ -65,7 +65,7 @@ void main() {
       expect(find.textContaining('Reported 2h ago'), findsOneWidget);
 
       // Verify Sighting Notes
-      expect(find.text('Last Seen / Sighting Details'), findsOneWidget);
+      expect(find.text('Last Seen / Missing Details'), findsOneWidget);
       expect(
         find.text('Last seen outside gate in Lawaan. Moggy / Domestic Shorthair, Gray with white spots and paws.'),
         findsOneWidget,

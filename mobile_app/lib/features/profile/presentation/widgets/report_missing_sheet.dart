@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/services/content_moderation_service.dart';
+import '../../../../core/services/user_restriction_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
@@ -36,11 +38,13 @@ class ReportMissingResult {
 class ReportMissingSheet extends StatefulWidget {
   final Pet pet;
   final LocationService? locationService;
+  final UserRestrictionService? restrictionService;
 
   const ReportMissingSheet({
     super.key,
     required this.pet,
     this.locationService,
+    this.restrictionService,
   });
 
   /// Helper static method to present the modal bottom sheet.
@@ -68,6 +72,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   final TextEditingController _noteController = TextEditingController();
 
   late final LocationService _locationService;
+  late final UserRestrictionService _restrictionService;
   double? _latitude;
   double? _longitude;
   bool _isFetchingLocation = true;
@@ -82,6 +87,7 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
   void initState() {
     super.initState();
     _locationService = widget.locationService ?? const GeolocatorLocationService();
+    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
     final sp = widget.pet.species.toLowerCase();
     if (sp.contains('bird') || sp.contains('parrot') || sp.contains('macaw') || sp.contains('avian')) {
       _selectedMobility = 'flighted';
@@ -135,14 +141,69 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
     }
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    final isSuspended = await _restrictionService.isUserSuspended();
+    if (isSuspended) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.block_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Account Suspended'),
+            ],
+          ),
+          content: const Text(
+            'Your account has been suspended by administration. Suspended accounts cannot broadcast missing pet alerts.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final rawNote = _noteController.text.trim();
+    final modResult = const ContentModerationService().checkContent(rawNote);
+    if (modResult.isBlocked) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Community Guidelines'),
+            ],
+          ),
+          content: Text(
+            'Your report note contains prohibited language ("${modResult.detectedWord}"). Please remove it to proceed.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final lat = _latitude ?? _defaultLat;
     final lng = _longitude ?? _defaultLng;
-    final rawNote = _noteController.text.trim();
     final note = rawNote.isNotEmpty
         ? '[Mobility: $_selectedMobility] $rawNote'
         : '[Mobility: $_selectedMobility]';
 
+    if (!mounted) return;
     Navigator.of(context).pop(
       ReportMissingResult(
         latitude: lat,

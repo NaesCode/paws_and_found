@@ -11,6 +11,9 @@ import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_comments.dart';
 import 'feed_comment_input_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:paws_and_found/core/services/content_moderation_service.dart';
+import 'package:paws_and_found/core/services/user_restriction_service.dart';
+import 'package:paws_and_found/shared/molecules/community_warning_dialog.dart';
 
 enum CommentSortFilter { all, newest, oldest }
 
@@ -20,6 +23,8 @@ class FeedCommentsModal extends StatefulWidget {
   final int initialTab;
   final String? reporterName;
   final String? contactInfo;
+  final FeedRepository? repository;
+  final UserRestrictionService? restrictionService;
 
   const FeedCommentsModal({
     super.key,
@@ -28,6 +33,8 @@ class FeedCommentsModal extends StatefulWidget {
     this.initialTab = 0,
     this.reporterName,
     this.contactInfo,
+    this.repository,
+    this.restrictionService,
   });
 
   @override
@@ -35,7 +42,7 @@ class FeedCommentsModal extends StatefulWidget {
 }
 
 class _FeedCommentsModalState extends State<FeedCommentsModal> {
-  final FeedRepository _repository = FeedRepositoryImpl();
+  late final FeedRepository _repository;
   CommentSortFilter _selectedFilter = CommentSortFilter.all;
   String? _replyingToUser;
   String? _replyingToParentId;
@@ -50,12 +57,25 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
   bool _isLoading = false;
   String? _errorMessage;
   late int _selectedTab;
+  bool _isUserSuspended = false;
+  final ContentModerationService _moderationService = const ContentModerationService();
+  late final UserRestrictionService _restrictionService;
 
   @override
   void initState() {
     super.initState();
     _selectedTab = widget.initialTab;
+    _repository = widget.repository ?? _getSafeRepository();
+    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
     _loadData();
+  }
+
+  static FeedRepository _getSafeRepository() {
+    try {
+      return FeedRepositoryImpl();
+    } catch (_) {
+      return _EmptyFeedRepository();
+    }
   }
 
   Future<void> _loadData() async {
@@ -66,10 +86,12 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
     });
 
     try {
+      final isSuspendedFuture = _restrictionService.isUserSuspended();
       final results = await Future.wait([
         _repository.getComments(widget.reportId!),
         _repository.getLinkedSightings(widget.reportId!),
         _repository.getReportById(widget.reportId!),
+        isSuspendedFuture,
       ]);
 
       if (mounted) {
@@ -77,6 +99,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
           _comments = results[0] as List<FeedComment>;
           _sightings = results[1] as List<FeedPost>;
           _reportPost = results[2] as FeedPost?;
+          _isUserSuspended = results[3] as bool;
           _isLoading = false;
         });
       }
@@ -207,20 +230,50 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
 
                 // Only render comment input bar on Chat tab
                 if (_selectedTab == 1)
-                  FeedCommentInputBar(
-                    replyingToUser: _replyingToUser,
-                    editingCommentId: _editingComment?.id,
-                    editingInitialText: _editingComment?.cleanContent,
-                    focusNode: _commentFocusNode,
-                    onCancelReply: () {
-                      setState(() {
-                        _replyingToUser = null;
-                        _replyingToParentId = null;
-                        _editingComment = null;
-                      });
-                    },
-                    onCommentSubmitted: (text, replyToUser) => _handleCommentSubmit(text, replyToUser),
-                  ),
+                  if (_isUserSuspended)
+                    Container(
+                      key: const Key('feed_comment_suspended_banner'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        border: Border(
+                          top: BorderSide(color: Colors.red.shade200, width: 1.0),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.block_rounded, color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Your account is suspended. You cannot post or edit comments.',
+                              style: TextStyle(
+                                fontFamily: 'Ek Mukta',
+                                color: Colors.red.shade900,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    FeedCommentInputBar(
+                      replyingToUser: _replyingToUser,
+                      editingCommentId: _editingComment?.id,
+                      editingInitialText: _editingComment?.cleanContent,
+                      focusNode: _commentFocusNode,
+                      onCancelReply: () {
+                        setState(() {
+                          _replyingToUser = null;
+                          _replyingToParentId = null;
+                          _editingComment = null;
+                        });
+                      },
+                      onCommentSubmitted: (text, replyToUser) => _handleCommentSubmit(text, replyToUser),
+                    ),
               ],
             ),
           ),
@@ -622,6 +675,49 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
   Future<void> _handleCommentSubmit(String text, String? replyTo) async {
     if (widget.reportId == null || text.trim().isEmpty) return;
 
+    // 1. Guard against suspended account
+    final isSuspended = await _restrictionService.isUserSuspended();
+    if (isSuspended) {
+      if (mounted) {
+        setState(() => _isUserSuspended = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your account has been suspended by administration. Comments are disabled.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Lexical content moderation scan
+    final modResult = _moderationService.checkContent(text);
+    if (modResult.isBlocked) {
+      String? uid;
+      try {
+        uid = Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {}
+      final targetUid = uid ?? 'current_user';
+
+      final violation = await _restrictionService.recordViolation(
+        userId: targetUid,
+        prohibitedWord: modResult.detectedWord ?? 'prohibited term',
+      );
+
+      if (mounted) {
+        if (violation.isSuspended) {
+          setState(() => _isUserSuspended = true);
+        }
+        await CommunityWarningDialog.show(
+          context: context,
+          detectedWord: modResult.detectedWord ?? 'prohibited term',
+          violationCount: violation.count,
+          isSuspended: violation.isSuspended,
+        );
+      }
+      return;
+    }
+
     try {
       if (_editingComment != null) {
         final updated = await _repository.updateComment(_editingComment!.id, text.trim());
@@ -958,4 +1054,69 @@ class _CommentListRow {
       isExpanded: isExpanded,
     );
   }
+}
+
+class _EmptyFeedRepository implements FeedRepository {
+  @override
+  Future<List<FeedComment>> getComments(String reportId) async => [];
+
+  @override
+  Future<List<FeedPost>> getLinkedSightings(String reportId) async => [];
+
+  @override
+  Future<FeedPost?> getReportById(String reportId) async => null;
+
+  @override
+  Future<FeedComment> addComment(String reportId, String content, {String? parentId}) async {
+    return FeedComment(
+      id: 'mock-id',
+      postId: reportId,
+      userId: 'current_user',
+      authorName: 'Community Member',
+      content: content,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<FeedComment> updateComment(String commentId, String content) async {
+    return FeedComment(
+      id: commentId,
+      postId: '',
+      userId: 'current_user',
+      authorName: 'Community Member',
+      content: content,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> deleteComment(String commentId) async {}
+
+  @override
+  Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}) async => [];
+
+  @override
+  Future<List<FeedPost>> getPersonalReports(String userId, {String? filterStatus}) async => [];
+
+  @override
+  Future<void> deleteReport(String reportId, {String? reason, String? details}) async {}
+
+  @override
+  Future<String> uploadReportPhoto(Uint8List bytes, {String extension = 'jpg'}) async => '';
+
+  @override
+  Future<void> updateReport(
+    String reportId, {
+    String? description,
+    String? locationName,
+    String? status,
+    String? animalType,
+    String? photoUrl,
+    String? petId,
+    String? petName,
+    double? lat,
+    double? lng,
+    String? specie,
+  }) async {}
 }

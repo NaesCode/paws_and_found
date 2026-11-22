@@ -165,7 +165,7 @@ void main() {
       expect(result, isNotNull);
       expect(result!.latitude, 10.3297);
       expect(result!.longitude, 123.9063);
-      expect(result!.note, 'Last seen near the neighborhood park at 5 PM');
+      expect(result!.note, '[Mobility: standard] Last seen near the neighborhood park at 5 PM');
     });
 
     testWidgets('cancelling returns null', (tester) async {

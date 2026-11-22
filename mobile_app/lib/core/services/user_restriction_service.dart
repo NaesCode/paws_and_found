@@ -40,15 +40,16 @@ class UserViolationRecord {
 /// - 3–4 attempts: status escalates to 'Warning'
 /// - >= 5 attempts: status escalates to 'Suspended'
 class UserRestrictionService {
-  final SupabaseClient? _supabaseClient;
+  final SupabaseClient? supabaseClient;
+  final SharedPreferences? preferences;
   static const String _prefPrefix = 'user_violations_';
   static final Map<String, int> _inMemoryViolations = {};
+  static SharedPreferences? _cachedPrefs;
 
-  const UserRestrictionService({SupabaseClient? supabaseClient})
-      : _supabaseClient = supabaseClient;
+  const UserRestrictionService({this.supabaseClient, this.preferences});
 
   SupabaseClient? get _client {
-    if (_supabaseClient != null) return _supabaseClient;
+    if (supabaseClient != null) return supabaseClient;
     try {
       return Supabase.instance.client;
     } catch (_) {
@@ -56,14 +57,35 @@ class UserRestrictionService {
     }
   }
 
+  Future<SharedPreferences?> _getPrefs() async {
+    if (preferences != null) return preferences;
+    if (_cachedPrefs != null) return _cachedPrefs;
+    try {
+      _cachedPrefs = await SharedPreferences.getInstance().timeout(
+        const Duration(milliseconds: 100),
+      );
+      return _cachedPrefs;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Retrieves the current violation count for [userId].
   Future<int> getViolationCount(String userId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('$_prefPrefix$userId') ?? _inMemoryViolations[userId] ?? 0;
-    } catch (_) {
-      return _inMemoryViolations[userId] ?? 0;
+    if (_inMemoryViolations.containsKey(userId)) {
+      return _inMemoryViolations[userId]!;
     }
+    try {
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        final count = prefs.getInt('$_prefPrefix$userId');
+        if (count != null) {
+          _inMemoryViolations[userId] = count;
+          return count;
+        }
+      }
+    } catch (_) {}
+    return _inMemoryViolations[userId] ?? 0;
   }
 
   /// Records a violation for [userId] when prohibited language is submitted.
@@ -77,8 +99,10 @@ class UserRestrictionService {
     // Persist strike count locally
     _inMemoryViolations[userId] = newCount;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('$_prefPrefix$userId', newCount);
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.setInt('$_prefPrefix$userId', newCount);
+      }
     } catch (_) {}
 
     String newStatus = 'Active';
@@ -116,6 +140,14 @@ class UserRestrictionService {
     );
   }
 
+  String _getCurrentUserId() {
+    try {
+      return _client?.auth.currentUser?.id ?? 'current_user';
+    } catch (_) {
+      return 'current_user';
+    }
+  }
+
   /// Checks whether [userId] (or the currently authenticated user) is suspended.
   Future<bool> isUserSuspended([String? userId]) async {
     final status = await getUserStatus(userId);
@@ -124,8 +156,7 @@ class UserRestrictionService {
 
   /// Checks the current account status for [userId] (or the logged-in user).
   Future<String> getUserStatus([String? userId]) async {
-    final uid = userId ?? _client?.auth.currentUser?.id;
-    if (uid == null) return 'Active';
+    final uid = userId ?? _getCurrentUserId();
 
     // 1. If local strikes reached suspension threshold, enforce immediately
     final localStrikes = await getViolationCount(uid);
@@ -177,8 +208,10 @@ class UserRestrictionService {
   Future<void> clearViolations(String userId) async {
     _inMemoryViolations.remove(userId);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('$_prefPrefix$userId');
+      final prefs = await _getPrefs();
+      if (prefs != null) {
+        await prefs.remove('$_prefPrefix$userId');
+      }
     } catch (_) {}
   }
 }

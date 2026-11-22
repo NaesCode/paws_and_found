@@ -10,6 +10,9 @@ import '../../data/repositories/report_repository_impl.dart';
 import '../../domain/repositories/report_repository.dart';
 import '../../../../core/services/ai_pre_match_service.dart';
 import '../../data/models/ai_match_candidate.dart';
+import '../../../../core/services/content_moderation_service.dart';
+import '../../../../core/services/user_restriction_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 /// Presentation state controller for Camera & Animal Report Creation.
@@ -25,6 +28,8 @@ class CameraReportController extends ChangeNotifier {
   final LocationService _locationService;
   final GeocodingService _geocodingService;
   final AiPreMatchService _preMatchService;
+  final UserRestrictionService _restrictionService;
+  final ContentModerationService _moderationService;
   final ImagePicker _picker = ImagePicker();
 
   GeocodingService get geocoderService => _geocodingService;
@@ -34,10 +39,14 @@ class CameraReportController extends ChangeNotifier {
     LocationService? locationService,
     GeocodingService? geocodingService,
     AiPreMatchService? preMatchService,
+    UserRestrictionService? restrictionService,
+    ContentModerationService? moderationService,
   })  : _repository = repository ?? ReportRepositoryImpl(),
         _locationService = locationService ?? const GeolocatorLocationService(),
         _geocodingService = geocodingService ?? GeocoderProService(),
-        _preMatchService = preMatchService ?? AiPreMatchServiceImpl();
+        _preMatchService = preMatchService ?? AiPreMatchServiceImpl(),
+        _restrictionService = restrictionService ?? const UserRestrictionService(),
+        _moderationService = moderationService ?? const ContentModerationService();
 
   String _animalType = 'Canine';
   String _status = 'Stray';
@@ -306,6 +315,34 @@ class CameraReportController extends ChangeNotifier {
     _successReportId = null;
     notifyListeners();
 
+    // 1. Guard against suspended account
+    if (await _restrictionService.isUserSuspended()) {
+      _errorMessage = 'Your account has been suspended by administration. Suspended accounts cannot submit animal reports.';
+      _isSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+
+    // 2. Lexical content moderation scan on description
+    final modResult = _moderationService.checkContent(descriptionController.text);
+    if (modResult.isBlocked) {
+      String? uid;
+      try {
+        uid = Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {}
+      final targetUid = uid ?? 'current_user';
+
+      await _restrictionService.recordViolation(
+        userId: targetUid,
+        prohibitedWord: modResult.detectedWord ?? 'prohibited word',
+      );
+
+      _errorMessage = 'Your report contains prohibited language ("${modResult.detectedWord}"). Please review community guidelines.';
+      _isSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+
     if (_geocodedAddress == null || _geocodedAddress!.isEmpty) {
       await reverseGeocodeCurrentCoords();
     }
@@ -325,9 +362,7 @@ class CameraReportController extends ChangeNotifier {
       double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
       double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
 
-      final matchConfidencePct = _selectedAiCandidate != null
-          ? _selectedAiCandidate!.similarityPercent
-          : null;
+      final matchConfidencePct = _selectedAiCandidate?.similarityPercent;
       String descText = descriptionController.text.trim();
       if (matchConfidencePct != null && !descText.contains('[AI Match:')) {
         descText = '[AI Match: $matchConfidencePct%] $descText'.trim();
