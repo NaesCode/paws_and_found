@@ -11,6 +11,7 @@ import 'package:paws_and_found/features/feed/domain/repositories/feed_repository
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/claim_confirm_dialog.dart';
+import 'package:geolocator/geolocator.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) EXCEPT THE USER'S POST
 
@@ -38,6 +39,31 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
     _reportsFuture = _repository.getGeneralReports(currentUserId);
   }
 
+  Future<List<FeedPost>> _loadNearMeReports(String currentUserId) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission is required to filter reports near you.');
+    }
+
+    final position = await Geolocator.getCurrentPosition();
+
+    return _repository.getGeneralReportsNearMe(
+      currentUserId,
+      lat: position.latitude,
+      lng: position.longitude,
+      radiusMeters: null, 
+    );
+  }
+
   void _fetchGeneralReports(String filterValue) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
     
@@ -56,7 +82,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
         case 'found':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
           break;
-        case 'spotted': //spotted ni siya kapoy na change sa db
+        case 'spotted':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: dbFilterValue);
           break;
         case 'oldest':
@@ -65,6 +91,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             return list;
           });
           break;
+        case 'near me':
+          _reportsFuture = _loadNearMeReports(currentUserId);
         case 'latest':
         default:
           _reportsFuture = _repository.getGeneralReports(currentUserId);

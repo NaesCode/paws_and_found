@@ -413,5 +413,53 @@ class FeedRepositoryImpl implements FeedRepository {
       debugPrint('[FeedRepositoryImpl] AI re-analysis dispatch deferred (orchestrator offline): $e');
     }
   }
+
+  @override
+  Future<List<FeedPost>> getGeneralReportsNearMe(
+    String userId, {
+    required double lat,
+    required double lng,
+    double? radiusMeters = null,
+  }) async {
+    try {
+      final List<dynamic> rows = await _supabase.rpc(
+        'get_reports_near_me',
+        params: {
+          'p_user_id': userId,
+          'p_lat': lat,
+          'p_lng': lng,
+          'p_radius_meters': radiusMeters,
+        },
+      );
+
+      return rows.cast<Map<String, dynamic>>().map((row) {
+        final distanceMeters = (row['distance_meters'] as num?)?.toDouble();
+        String locationLabel = (row['location_name'] ?? '').toString();
+
+        if (distanceMeters != null) {
+          final distText = distanceMeters < 1000
+              ? '${distanceMeters.round()}m away'
+              : '${(distanceMeters / 1000).toStringAsFixed(1)}km away';
+          locationLabel = locationLabel.isNotEmpty
+              ? '$locationLabel • $distText'
+              : distText;
+        }
+
+        return FeedPost.fromJson({
+          ...row,
+          'location_name': locationLabel,
+          'profiles': {
+            'name': row['reporter_name'],
+            'profile_photo_url': row['reporter_photo_url'],
+          },
+          'pets': row['pet_table_name'] != null
+              ? {'name': row['pet_table_name']}
+              : null,
+        });
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch nearby reports: $e');
+    }
+  }
 }
 
