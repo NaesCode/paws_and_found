@@ -11,6 +11,7 @@ import '../widgets/popups/handover_confirm_dialog.dart';
 import '../../data/repositories/recovery_repository_impl.dart';
 import '../../data/models/recovery_claim_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 typedef ActiveClaimProgress = Map<String, dynamic>;
 
@@ -691,7 +692,14 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    final router = GoRouter.maybeOf(context);
+                    if (router != null) {
+                      context.go('/feed');
+                    } else {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
+                  },
                   child: const Text(
                     'Back to Community Feed',
                     style: TextStyle(
@@ -813,7 +821,14 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                final router = GoRouter.maybeOf(context);
+                if (router != null) {
+                  context.go('/feed');
+                } else {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              },
               child: const Text(
                 'Back to Community Feed',
                 style: TextStyle(
