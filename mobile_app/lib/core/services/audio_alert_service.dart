@@ -15,18 +15,26 @@ class AudioAlertService {
   final SettingsLocalDataSource _settingsDataSource;
   final SupabaseClient? _supabase;
 
+  static SupabaseClient? _getSafeSupabaseClient() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
   AudioAlertService({
     AudioPlayer? player,
     SettingsLocalDataSource? settingsDataSource,
     SupabaseClient? supabase,
   })  : _player = player ?? AudioPlayer(),
         _settingsDataSource = settingsDataSource ?? SettingsLocalDataSourceImpl(),
-        _supabase = supabase ?? (Supabase.instance.isInitialized ? Supabase.instance.client : null);
+        _supabase = supabase ?? _getSafeSupabaseClient();
 
   AudioAlertService._internal()
       : _player = AudioPlayer(),
         _settingsDataSource = SettingsLocalDataSourceImpl(),
-        _supabase = Supabase.instance.isInitialized ? Supabase.instance.client : null;
+        _supabase = _getSafeSupabaseClient();
 
   /// Resolves the asset path for a given sound type ID.
   static String resolveAssetForType(String soundId) {
