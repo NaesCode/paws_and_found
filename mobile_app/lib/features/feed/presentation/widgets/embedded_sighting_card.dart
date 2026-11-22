@@ -7,8 +7,8 @@ import 'package:paws_and_found/features/feed/data/repositories/feed_repository_i
 
 /// An interactive embedded card representing a linked sighting report within a discussion thread.
 ///
-/// Adheres to Atomic Design: Organism/Molecule displaying rich report metadata with a one-tap
-/// deep link leading directly to the sighting post or community map.
+/// Adheres to Atomic Design: Organism/Molecule displaying rich report metadata with one-tap
+/// deep links leading directly to the sighting post or community map.
 class EmbeddedSightingCard extends StatefulWidget {
   final String reportId;
 
@@ -263,42 +263,93 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
               ),
               const SizedBox(height: 8),
 
-              // Action button to view details
-              InkWell(
-                onTap: () {
-                  // Direct navigation to map view centered on this sighting
-                  context.go('/map?reportId=${post.id}');
-                },
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 6,
-                    horizontal: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.contrast1.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'View Sighting on Map',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.contrast1,
+              // Action buttons to view post or map
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        context.push('/post/${post.id}', extra: post);
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 7,
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.article_outlined,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'View Post',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 14,
-                        color: AppColors.contrast1,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        context.go('/map?reportId=${post.id}');
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 7,
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.contrast1.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 14,
+                              color: AppColors.contrast1,
+                            ),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'View on Map',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.contrast1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

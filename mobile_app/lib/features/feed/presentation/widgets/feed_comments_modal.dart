@@ -1269,4 +1269,7 @@ class _EmptyFeedRepository implements FeedRepository {
     double? lng,
     String? specie,
   }) async {}
+
+  @override
+  Future<bool> hasActiveClaimByOther(String reportId, String currentUserId) async => false;
 }

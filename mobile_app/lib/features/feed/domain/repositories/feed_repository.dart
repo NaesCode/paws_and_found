@@ -34,4 +34,5 @@ abstract class FeedRepository {
     required double lng,
     double? radiusMeters = 5000,
   });
+  Future<bool> hasActiveClaimByOther(String reportId, String currentUserId);
 }

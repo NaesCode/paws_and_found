@@ -152,6 +152,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
       case 'missing': return BannerType.missing;
       case 'stray': return BannerType.spotted;
       case 'found': return BannerType.found;
+      case 'safe': return BannerType.safe;
       default: return BannerType.missing;
     }
   }
@@ -333,32 +334,66 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         separatorBuilder: (context, index) => const SizedBox(height: 15),
                         itemBuilder: (context, index) {
                         final report = reports[index];
+                        final statusLower = report.status.toLowerCase();
+                        final isSafe = statusLower == 'safe';
+                        final isSpotted = statusLower == 'stray';
+                        final isMissing = statusLower == 'missing';
+                        final isFound = statusLower == 'found';
+                        final isViewOnMap = isSpotted;
 
                         return ReportCardItem(
-                          id: report.id,
-                          bannerType: _getBannerType(report.status),
-                          petName: report.petName,
-                          postedBy: report.postedBy,
-                          species: report.species,
-                          location: report.location,
-                          description: report.description,
-                          formattedTime: report.formattedTime,
-                          imageURL: report.imageUrl.isNotEmpty ? report.imageUrl : AppAssets.petPlaceholder,
-                          userImageUrl: report.userImageUrl,
-                          isFlagged: report.isFlagged,
-                          button1Text: "Spotted",
-                          button2Text: "Found",
-                          petButtonText: "This is my Pet!",
-                          onPetButtonPressed: () {
-                            showConfirmMyPetDialog(context, report);
-                          },
-                          onButton1Pressed: () {
-                            context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray');
-                          },
-                          onButton2Pressed: () {
-                            context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found');
-                          },
-                        );
+                        id: report.id,
+                        bannerType: _getBannerType(report.status),
+                        petName: report.petName,
+                        postedBy: report.postedBy,
+                        species: report.species,
+                        location: report.location,
+                        description: report.description,
+                        formattedTime: report.formattedTime,
+                        imageURL: report.imageUrl.isNotEmpty
+                            ? report.imageUrl
+                            : AppAssets.petPlaceholder,
+                        userImageUrl: report.userImageUrl,
+                        isFlagged: report.isFlagged,
+                        petButtonText: isSafe
+                        ? "Claimed"
+                        : (isViewOnMap ? "View on Map" : "This is my Pet!"),
+                        button1Text: isFound
+                            ? "View on Map"
+                            : (isSpotted ? "Found" : "Spotted"),
+                        button2Text: (isFound || isSpotted) ? null : "Found",
+                        onPetButtonPressed: isSafe
+                          ? null
+                          : () {
+                              if (isViewOnMap) {
+                                context.push('/map?reportId=${report.id}');
+                              } else {
+                                showConfirmMyPetDialog(context, report);
+                              }
+                            },
+                        onButton1Pressed: isSafe
+                          ? null
+                          : () {
+                              if (isFound) {
+                                context.push('/map?reportId=${report.id}');
+                              } else if (isSpotted) {
+                                context.push(
+                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
+                                );
+                              } else {
+                                context.push(
+                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray',
+                                );
+                              }
+                            },
+                        onButton2Pressed: (isSafe || isFound || isSpotted)
+                            ? null
+                            : () {
+                                context.push(
+                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
+                                );
+                              },
+                      );
                       },
                     ),
                   ),

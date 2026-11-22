@@ -7,6 +7,8 @@ class Stage1AgreementWidget extends StatefulWidget {
   final bool isReadOnly;
   final bool requestSent;
   final bool isApproved;
+  final bool isDeclined;
+  final bool wasPreviouslyDeclined;
   final String otherPartyName;
   final String otherPartyAvatarUrl;
   final String otherPartyEmail;
@@ -24,6 +26,8 @@ class Stage1AgreementWidget extends StatefulWidget {
     this.isReadOnly = false,
     required this.requestSent,
     required this.isApproved,
+    this.isDeclined = false,
+    this.wasPreviouslyDeclined = false,
     required this.otherPartyName,
     this.otherPartyAvatarUrl = '',
     this.otherPartyEmail = '',
@@ -46,7 +50,8 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
   late bool _agreePublicMeetup;
 
   bool get _isLocked => widget.isApproved || widget.isReadOnly;
-  bool get _allAgreed => _agreeOwnership && _agreeTruthfulProof && _agreePublicMeetup;
+  bool get _allAgreed =>
+      _agreeOwnership && _agreeTruthfulProof && _agreePublicMeetup;
 
   @override
   void initState() {
@@ -63,6 +68,12 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
       _agreeOwnership = true;
       _agreeTruthfulProof = true;
       _agreePublicMeetup = true;
+    }
+    // Reset checkboxes if a previously sent request was declined and reopened
+    if (!widget.requestSent && oldWidget.requestSent && !_isLocked) {
+      _agreeOwnership = false;
+      _agreeTruthfulProof = false;
+      _agreePublicMeetup = false;
     }
   }
 
@@ -89,10 +100,12 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: (_isLocked ? AppColors.primary : AppColors.accentOrange).withValues(alpha: 0.12),
+            color: (_isLocked ? AppColors.primary : AppColors.accentOrange)
+                .withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: (_isLocked ? AppColors.primary : AppColors.accentOrange).withValues(alpha: 0.4),
+              color: (_isLocked ? AppColors.primary : AppColors.accentOrange)
+                  .withValues(alpha: 0.4),
             ),
           ),
           child: Row(
@@ -108,7 +121,11 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
                   _isLocked
                       ? 'Initial claim agreement has been accepted and locked.'
                       : 'Stage 2 & 3 remain locked until the Finder approves this initial claim request (48h response window).',
-                  style: const TextStyle(fontSize: 12, color: AppColors.darkCharcoal, height: 1.3),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.darkCharcoal,
+                    height: 1.3,
+                  ),
                 ),
               ),
             ],
@@ -160,8 +177,13 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                 ),
                 icon: const Icon(Icons.badge_outlined, size: 16),
                 label: const Text('View Profile', style: TextStyle(fontSize: 12)),
@@ -204,13 +226,21 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
             const SizedBox(height: 14),
             const Text(
               'Claim Request Sent',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkCharcoal),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkCharcoal,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Waiting for the finder to accept your request. Once accepted, Stage 2 (Ownership Verification) will unlock automatically.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.5, color: AppColors.text2, height: 1.4),
+              style: TextStyle(
+                fontSize: 12.5,
+                color: AppColors.text2,
+                height: 1.4,
+              ),
             ),
           ],
         ),
@@ -227,9 +257,40 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.wasPreviouslyDeclined) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.red),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Your previous claim request was declined. You may review the terms and submit a new request below.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.darkCharcoal,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const Text(
             'Claimant Responsibility Agreement',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.darkCharcoal),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkCharcoal,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -248,7 +309,9 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
               'I confirm I am the rightful owner (or authorized family member) of this pet.',
               style: TextStyle(fontSize: 12.5, color: AppColors.text2),
             ),
-            onChanged: _isLocked ? null : (v) => setState(() => _agreeOwnership = v ?? false),
+            onChanged: _isLocked
+                ? null
+                : (v) => setState(() => _agreeOwnership = v ?? false),
           ),
           CheckboxListTile(
             value: _agreeTruthfulProof,
@@ -259,7 +322,9 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
               'I agree to submit clear photos and identifying details in Stage 2.',
               style: TextStyle(fontSize: 12.5, color: AppColors.text2),
             ),
-            onChanged: _isLocked ? null : (v) => setState(() => _agreeTruthfulProof = v ?? false),
+            onChanged: _isLocked
+                ? null
+                : (v) => setState(() => _agreeTruthfulProof = v ?? false),
           ),
           CheckboxListTile(
             value: _agreePublicMeetup,
@@ -270,7 +335,9 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
               'I agree to conduct any pet handover in a safe, public open location.',
               style: TextStyle(fontSize: 12.5, color: AppColors.text2),
             ),
-            onChanged: _isLocked ? null : (v) => setState(() => _agreePublicMeetup = v ?? false),
+            onChanged: _isLocked
+                ? null
+                : (v) => setState(() => _agreePublicMeetup = v ?? false),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -280,13 +347,17 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 disabledBackgroundColor: AppColors.background2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: (!_isLocked && _allAgreed) ? widget.onSendRequest : null,
               child: Text(
                 _isLocked ? 'Agreement Accepted ✓' : 'Send Claim Request',
                 style: TextStyle(
-                  color: (!_isLocked && _allAgreed) ? Colors.white : AppColors.text3,
+                  color: (!_isLocked && _allAgreed)
+                      ? Colors.white
+                      : AppColors.text3,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -298,6 +369,55 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
   }
 
   Widget _buildFinderCard() {
+    if (widget.isDeclined) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cancel_outlined,
+                size: 28,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Request declined successfully',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkCharcoal,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${widget.otherPartyName}\'s claim request has been closed and this report is open again for other potential owners.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.text2,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -310,12 +430,20 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
         children: [
           const Text(
             'Incoming Ownership Claim Request',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.darkCharcoal),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkCharcoal,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             '${widget.otherPartyName} has accepted the responsibility terms and wants to verify ownership of this animal.',
-            style: const TextStyle(fontSize: 13, color: AppColors.text2, height: 1.4),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.text2,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -324,12 +452,19 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _isLocked ? AppColors.text3 : Colors.red,
-                    side: BorderSide(color: _isLocked ? AppColors.border : Colors.red),
+                    side: BorderSide(
+                      color: _isLocked ? AppColors.border : Colors.red,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: _isLocked ? null : widget.onDeclineRequest,
-                  child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Decline',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -340,7 +475,9 @@ class _Stage1AgreementWidgetState extends State<Stage1AgreementWidget> {
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor: AppColors.background2,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: _isLocked ? null : widget.onApproveRequest,
                   child: Text(

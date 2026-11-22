@@ -3,7 +3,7 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 
 class FeedClaimBtn extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const FeedClaimBtn({
     super.key,
@@ -21,9 +21,11 @@ class FeedClaimBtn extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentOrange,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFE2E8F0),
+          disabledForegroundColor: AppColors.textMuted,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 12.0), 
-          minimumSize: Size.zero, 
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.0),

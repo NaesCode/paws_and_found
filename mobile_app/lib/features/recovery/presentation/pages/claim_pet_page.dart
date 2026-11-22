@@ -30,38 +30,130 @@ class ClaimPetPage extends StatefulWidget {
 
 class _ClaimPetPageState extends State<ClaimPetPage> {
   final ClaimRepository _repository = ClaimRepository();
+  final FeedRepositoryImpl _feedRepository = FeedRepositoryImpl();
   int? _viewingStage;
   int _selectedClaimantIndex = 0;
-  late Future<FeedPost?> _reportFuture;
+  late Future<({FeedPost? report, bool isBlockedByOther})> _initFuture;
+  bool _raceConditionBlocked = false;
+
+  // Tracks declined claims in the current session so the Finder's UI stays on the
+  // Stage 1 view with "Request declined successfully" even if the stream removes the row.
+  final Set<String> _declinedClaimIds = {};
+  PetClaim? _lastDeclinedClaim;
 
   String get _currentUserId => Supabase.instance.client.auth.currentUser?.id ?? '';
 
   @override
   void initState() {
     super.initState();
-    _reportFuture = widget.report != null
+    _initFuture = _loadInitialState();
+  }
+
+  Future<({FeedPost? report, bool isBlockedByOther})> _loadInitialState() async {
+    final reportFuture = widget.report != null
         ? Future.value(widget.report)
-        : FeedRepositoryImpl().getReportById(widget.reportId);
+        : _feedRepository.getReportById(widget.reportId);
+
+    final blockedFuture = _currentUserId.isNotEmpty
+        ? _feedRepository.hasActiveClaimByOther(widget.reportId, _currentUserId)
+        : Future.value(false);
+
+    final results = await Future.wait([reportFuture, blockedFuture]);
+    return (
+      report: results[0] as FeedPost?,
+      isBlockedByOther: results[1] as bool,
+    );
+  }
+
+  Future<void> _confirmAndCancelClaim(PetClaim claim, String petTitle) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        title: const Text(
+          'Cancel Claim Progress?',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to drop your claim for $petTitle? Your current progress will be cancelled and this report will reopen for other potential owners.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'Keep Claim',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Yes, Cancel Claim',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _repository.cancelClaim(claim.id);
+      if (mounted) {
+        setState(() {
+          _viewingStage = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your claim has been cancelled.'),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel claim: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<FeedPost?>(
-      future: _reportFuture,
-      builder: (context, reportSnapshot) {
-        if (reportSnapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder<({FeedPost? report, bool isBlockedByOther})>(
+      future: _initFuture,
+      builder: (context, initSnapshot) {
+        if (initSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (reportSnapshot.hasError) {
+        if (initSnapshot.hasError) {
           return Scaffold(
-            body: Center(child: Text('Error loading report: ${reportSnapshot.error}')),
+            body: Center(child: Text('Error loading report: ${initSnapshot.error}')),
           );
         }
 
-        final report = reportSnapshot.data;
+        final report = initSnapshot.data?.report;
         if (report == null) {
           return const Scaffold(
             body: Center(child: Text('Report not found.')),
@@ -74,6 +166,9 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
             ? report.petName
             : 'Spotted Pet #${report.id.length >= 4 ? report.id.substring(0, 4) : report.id}';
 
+        final isBlockedByOther = !isFinderView &&
+            ((initSnapshot.data?.isBlockedByOther ?? false) || _raceConditionBlocked);
+
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
@@ -82,88 +177,137 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Recovery Pipeline', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Recovery Pipeline',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 Text(
                   'Case: $petTitle',
-                  style: TextStyle(fontSize: 11.5, color: Colors.white.withValues(alpha: 0.85)),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
                 ),
               ],
             ),
           ),
-          body: StreamBuilder<List<PetClaim>>(
-            stream: _repository.watchClaimsForReport(report.id),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          body: isBlockedByOther
+              ? _buildClaimInProgressNotice(
+                  petTitle: petTitle,
+                  isCompleted: report.status.toLowerCase() == 'safe',
+                )
+              : StreamBuilder<List<PetClaim>>(
+                  stream: _repository.watchClaimsForReport(report.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-              final allClaims = snapshot.data ?? [];
+                    final allClaims = snapshot.data ?? [];
 
-              PetClaim? activeClaim;
-              if (isFinderView) {
-                if (allClaims.isNotEmpty) {
-                  final safeIndex = _selectedClaimantIndex.clamp(0, allClaims.length - 1);
-                  activeClaim = allClaims[safeIndex];
-                }
-              } else {
-                activeClaim = allClaims.where((c) => c.claimerId == _currentUserId).firstOrNull;
-              }
+                    PetClaim? activeClaim;
+                    PetClaim? otherActiveClaim;
+                    bool hadDeclinedClaim = false;
 
-              if (isFinderView && activeClaim == null) {
-                return const Center(child: Text('No claim requests submitted for this pet yet.'));
-              }
-
-              final isCompleted = activeClaim?.isCompleted ?? false;
-              final maxUnlockedStage = isCompleted ? 3 : (activeClaim?.currentStage ?? 1);
-              final displayedStage = (_viewingStage != null && _viewingStage! <= maxUnlockedStage)
-                  ? _viewingStage!
-                  : maxUnlockedStage;
-
-              return Column(
-                children: [
-                  RecoveryStepperHeader(
-                    currentStage: displayedStage,
-                    isCompleted: isCompleted,
-                    onStageTap: (tappedStage) {
-                      if (tappedStage <= maxUnlockedStage) {
-                        setState(() => _viewingStage = tappedStage);
+                    if (isFinderView) {
+                      if (allClaims.isNotEmpty) {
+                        final safeIndex = _selectedClaimantIndex.clamp(0, allClaims.length - 1);
+                        activeClaim = allClaims[safeIndex];
+                      } else if (_lastDeclinedClaim != null) {
+                        activeClaim = _lastDeclinedClaim;
                       }
-                    },
-                  ),
+                    } else {
+                      activeClaim = allClaims.where((c) {
+                        final st = c.status.toLowerCase();
+                        return c.claimerId == _currentUserId &&
+                            st != 'declined' &&
+                            st != 'cancelled' &&
+                            st != 'rejected';
+                      }).firstOrNull;
 
-                  if (isFinderView && allClaims.length > 1)
-                    ClaimantSelectorBar(
-                      claimants: allClaims.map((c) => {
-                        'id': c.id,
-                        'name': c.claimerName,
-                        'joined': 'Verified Member',
-                        'reportsCount': 0,
-                        'verifiedCount': 0,
-                        'avatarUrl': '',
-                      }).toList(),
-                      selectedIndex: _selectedClaimantIndex,
-                      onSelect: (idx) => setState(() {
-                        _selectedClaimantIndex = idx;
-                        _viewingStage = null;
-                      }),
-                    ),
+                      otherActiveClaim = allClaims.where((c) {
+                        final st = c.status.toLowerCase();
+                        return c.claimerId != _currentUserId &&
+                            st != 'declined' &&
+                            st != 'cancelled' &&
+                            st != 'rejected';
+                      }).firstOrNull;
 
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _buildStageFromClaim(
-                        claim: activeClaim,
-                        report: report,
+                      hadDeclinedClaim = activeClaim == null &&
+                          allClaims.any((c) =>
+                              c.claimerId == _currentUserId &&
+                              c.status.toLowerCase() == 'declined');
+                    }
+
+                    if (isFinderView && activeClaim == null) {
+                      return const Center(
+                        child: Text('No claim requests submitted for this pet yet.'),
+                      );
+                    }
+
+                    if (!isFinderView && activeClaim == null && otherActiveClaim != null) {
+                      return _buildClaimInProgressNotice(
                         petTitle: petTitle,
-                        isFinderView: isFinderView,
-                        displayedStage: displayedStage,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                        isCompleted: otherActiveClaim.isCompleted,
+                      );
+                    }
+
+                    final isCompleted = activeClaim?.isCompleted ?? false;
+                    final maxUnlockedStage =
+                        isCompleted ? 3 : (activeClaim?.currentStage ?? 1);
+                    final displayedStage =
+                        (_viewingStage != null && _viewingStage! <= maxUnlockedStage)
+                            ? _viewingStage!
+                            : maxUnlockedStage;
+
+                    return Column(
+                      children: [
+                        RecoveryStepperHeader(
+                          currentStage: displayedStage,
+                          isCompleted: isCompleted,
+                          onStageTap: (tappedStage) {
+                            if (tappedStage <= maxUnlockedStage) {
+                              setState(() => _viewingStage = tappedStage);
+                            }
+                          },
+                        ),
+
+                        if (isFinderView && allClaims.length > 1)
+                          ClaimantSelectorBar(
+                            claimants: allClaims
+                                .map((c) => {
+                                      'id': c.id,
+                                      'name': c.claimerName,
+                                      'joined': 'Verified Member',
+                                      'reportsCount': 0,
+                                      'verifiedCount': 0,
+                                      'avatarUrl': '',
+                                    })
+                                .toList(),
+                            selectedIndex: _selectedClaimantIndex,
+                            onSelect: (idx) => setState(() {
+                              _selectedClaimantIndex = idx;
+                              _viewingStage = null;
+                            }),
+                          ),
+
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16.0),
+                            child: _buildStageFromClaim(
+                              claim: activeClaim,
+                              report: report,
+                              petTitle: petTitle,
+                              isFinderView: isFinderView,
+                              displayedStage: displayedStage,
+                              wasPreviouslyDeclined: hadDeclinedClaim,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
         );
       },
     );
@@ -175,13 +319,18 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
     required String petTitle,
     required bool isFinderView,
     required int displayedStage,
+    bool wasPreviouslyDeclined = false,
   }) {
     final isCompleted = claim != null && claim.isCompleted;
+    final isDeclined = claim != null &&
+        (claim.status.toLowerCase() == 'declined' ||
+            _declinedClaimIds.contains(claim.id));
 
     Widget stageContent;
     switch (displayedStage) {
       case 1:
-        final otherUserId = isFinderView ? (claim?.claimerId ?? '') : report.reporterId;
+        final otherUserId =
+            isFinderView ? (claim?.claimerId ?? '') : report.reporterId;
 
         stageContent = Column(
           children: [
@@ -204,12 +353,15 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
 
                 return Stage1AgreementWidget(
                   isFinderView: isFinderView,
+                  isReadOnly: isCompleted,
                   requestSent: claim?.stage1RequestSent ?? false,
                   isApproved: claim?.stage1Approved ?? false,
+                  isDeclined: isDeclined,
+                  wasPreviouslyDeclined: wasPreviouslyDeclined,
                   otherPartyName: profile['name'] ?? fallbackName,
-                  otherPartyAvatarUrl: profile['avatarUrl'] ?? (isFinderView ? '' : report.userImageUrl),
+                  otherPartyAvatarUrl: profile['avatarUrl'] ??
+                      (isFinderView ? '' : report.userImageUrl),
                   otherPartyEmail: profile['email'] ?? '',
-                  isReadOnly: isCompleted,
                   otherPartyPhone: profile['phone'] ?? '',
                   otherPartyJoined: profile['joinedText'] ?? 'Community Member',
                   otherPartyReports: profile['totalReports'] ?? 0,
@@ -233,6 +385,14 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                         );
                       }
                     } catch (e) {
+                      final errStr = e.toString().toLowerCase();
+                      if (mounted &&
+                          (errStr.contains('23505') ||
+                              errStr.contains('already') ||
+                              errStr.contains('active claim'))) {
+                        setState(() => _raceConditionBlocked = true);
+                        return;
+                      }
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -243,8 +403,74 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                       }
                     }
                   },
-                  onApproveRequest: () => _repository.respondToStage1(claim!.id, approve: true),
-                  onDeclineRequest: () => _repository.respondToStage1(claim!.id, approve: false),
+                  onApproveRequest: () =>
+                      _repository.respondToStage1(claim!.id, approve: true),
+                  onDeclineRequest: () async {
+                    final claimantName = profile['name'] ?? fallbackName;
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        title: const Text(
+                          'Decline Claim Request?',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        content: Text(
+                          'Are you sure you want to decline $claimantName\'s claim request? This will close their claim and reopen the report for other potential owners.',
+                          style: const TextStyle(height: 1.4),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text(
+                              'Yes, Decline',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed != true) return;
+
+                    try {
+                      await _repository.respondToStage1(claim!.id, approve: false);
+                      if (mounted) {
+                        setState(() {
+                          _declinedClaimIds.add(claim.id);
+                          _lastDeclinedClaim = claim;
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to decline request: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
                 );
               },
             ),
@@ -263,7 +489,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                 onTap: () => setState(() => _viewingStage = 3),
               ),
             Stage2VerificationWidget(
-              claimId: claim.id,
+              claimId: claim!.id,
               isFinderView: isFinderView,
               proofSubmitted: claim.stage2ProofSubmitted,
               isApproved: claim.stage2Approved,
@@ -272,7 +498,8 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               finderFeedback: claim.stage2Feedback,
               uploadedProofLabels: claim.proofImageUrls,
               uploadedDocLabels: claim.docUrls,
-              onSubmitVerification: (note, proofs, docs) => _repository.submitStage2Proof(
+              onSubmitVerification: (note, proofs, docs) =>
+                  _repository.submitStage2Proof(
                 claimId: claim.id,
                 note: note,
                 proofUrls: proofs,
@@ -284,7 +511,8 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                   setState(() => _viewingStage = 3);
                 }
               },
-              onRequestMoreInfo: (feedback) => _repository.requestMoreStage2Info(
+              onRequestMoreInfo: (feedback) =>
+                  _repository.requestMoreStage2Info(
                 claimId: claim.id,
                 feedbackMessage: feedback,
               ),
@@ -327,7 +555,8 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               otherHandoverConfirmed: isFinderView
                   ? claim.claimerConfirmedHandover
                   : claim.finderConfirmedHandover,
-              onProposeMeetup: (place, lat, lng, time) => _repository.proposeMeetup(
+              onProposeMeetup: (place, lat, lng, time) =>
+                  _repository.proposeMeetup(
                 claimId: claim.id,
                 placeName: place,
                 lat: lat,
@@ -355,14 +584,127 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
         break;
     }
 
-    if (!isCompleted) return stageContent;
+    if (isCompleted) {
+      return Column(
+        children: [
+          _buildCompletedBanner(petTitle),
+          const SizedBox(height: 16),
+          stageContent,
+        ],
+      );
+    }
+
+    final canCancelClaim = !isFinderView &&
+        claim != null &&
+        !isDeclined &&
+        (claim.stage1RequestSent || claim.currentStage > 1);
+
+    if (!canCancelClaim) return stageContent;
 
     return Column(
       children: [
-        _buildCompletedBanner(petTitle),
-        const SizedBox(height: 16),
         stageContent,
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.red.withValues(alpha: 0.35)),
+              ),
+            ),
+            icon: const Icon(Icons.close_rounded, size: 18),
+            label: const Text(
+              'Cancel Claim & Drop Progress',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onPressed: () => _confirmAndCancelClaim(claim, petTitle),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildClaimInProgressNotice({
+    required String petTitle,
+    required bool isCompleted,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCompleted ? Icons.verified_rounded : Icons.lock_clock_rounded,
+                  size: 40,
+                  color: isCompleted ? AppColors.primary : AppColors.accentOrange,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isCompleted
+                    ? '$petTitle Has Been Reunited'
+                    : 'Claim Currently Pending',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkCharcoal,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isCompleted
+                    ? 'Another owner has already verified ownership and completed the handover for $petTitle.'
+                    : 'Another user already has an active claim under review for $petTitle. New claims are locked unless that request is declined.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  color: AppColors.text2,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Back to Community Feed',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -422,7 +764,10 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
       ),
       child: Column(
         children: [
@@ -432,7 +777,11 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               color: AppColors.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.verified_rounded, size: 48, color: AppColors.primary),
+            child: const Icon(
+              Icons.verified_rounded,
+              size: 48,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -447,7 +796,11 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
           Text(
             'Both parties have confirmed the safe handover of $petTitle. This report has been automatically marked as FOUND and closed on the community map. Tap any stage above to review the completed record.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13.5, color: AppColors.text2, height: 1.4),
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: AppColors.text2,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -456,12 +809,17 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () => Navigator.of(context).pop(),
               child: const Text(
                 'Back to Community Feed',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -486,7 +844,8 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
           final activeRows = rows.where((row) =>
               (row['finder_id'] == userId || row['claimer_id'] == userId) &&
               row['status'] != 'completed' &&
-              row['status'] != 'declined');
+              row['status'] != 'declined' &&
+              row['status'] != 'cancelled');
 
           final List<ActiveClaimProgress> items = [];
           for (final row in activeRows) {
@@ -502,8 +861,10 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
             }
 
             final rawName = (report?['animal_name'] ?? '').toString().trim();
-            final animalType = (report?['animal_type'] ?? 'Pet').toString().trim();
-            final petTitle = rawName.isNotEmpty ? rawName : 'Spotted $animalType';
+            final animalType =
+                (report?['animal_type'] ?? 'Pet').toString().trim();
+            final petTitle =
+                rawName.isNotEmpty ? rawName : 'Spotted $animalType';
 
             items.add({
               'claimId': row['id']?.toString() ?? '',
@@ -513,8 +874,10 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               'stage1Approved': row['stage1_approved'] ?? false,
               'stage2ProofSubmitted': row['stage2_proof_submitted'] ?? false,
               'stage2Approved': row['stage2_approved'] ?? false,
-              'finderConfirmedHandover': row['finder_confirmed_handover'] ?? false,
-              'claimerConfirmedHandover': row['claimer_confirmed_handover'] ?? false,
+              'finderConfirmedHandover':
+                  row['finder_confirmed_handover'] ?? false,
+              'claimerConfirmedHandover':
+                  row['claimer_confirmed_handover'] ?? false,
               'petTitle': petTitle,
               'photoUrl': (report?['photo_url'] ?? '').toString(),
             });
