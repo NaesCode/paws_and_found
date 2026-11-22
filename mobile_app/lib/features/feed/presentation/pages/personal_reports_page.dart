@@ -50,7 +50,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
           table: 'reports',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
-            column: 'user_id', // or 'reporter_id' depending on your reports column name
+            column: 'user_id', 
             value: currentUserId,
           ),
           callback: (_) {
@@ -279,6 +279,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                               _handleEditReport(report);
                             } else{
                               // mark found or like the pet is already found chuchu or the automatic after the pipeline
+                              _handleMarkAsFound(report);
                             }
                           },
                           onUndoPressed: isWithinGracePeriod
