@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/location_constants.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/core/utils/description_tag_helper.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_footer.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 
 import '../../domain/entities/app_notification.dart';
@@ -14,12 +15,14 @@ class PostDetailsBottomSheet extends StatefulWidget {
   final AppNotification notification;
   final NotificationRepository repository;
   final void Function(String reportId, double? lat, double? lng)? onViewOnMap;
+  final void Function(String reportId)? onViewInFeed;
 
   const PostDetailsBottomSheet({
     super.key,
     required this.notification,
     required this.repository,
     this.onViewOnMap,
+    this.onViewInFeed,
   });
 
   /// Static helper to display the sheet.
@@ -28,6 +31,7 @@ class PostDetailsBottomSheet extends StatefulWidget {
     required AppNotification notification,
     required NotificationRepository repository,
     void Function(String reportId, double? lat, double? lng)? onViewOnMap,
+    void Function(String reportId)? onViewInFeed,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -37,6 +41,7 @@ class PostDetailsBottomSheet extends StatefulWidget {
         notification: notification,
         repository: repository,
         onViewOnMap: onViewOnMap,
+        onViewInFeed: onViewInFeed,
       ),
     );
   }
@@ -163,6 +168,7 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                 final double? lat = (post['latitude'] as num?)?.toDouble();
                 final double? lng = (post['longitude'] as num?)?.toDouble();
                 final rawId = post['id'] as String? ?? '';
+                final cleanId = rawId.replaceFirst('#', '');
                 final isFlagged =
                     (post['moderationStatus'] as String? ?? '').toLowerCase() == 'flagged';
                 final moderationNotes = post['moderationNotes'] as String?;
@@ -217,7 +223,7 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                               ? Image.network(
                                   photoUrl,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, _, _) =>
+                                  errorBuilder: (ctx, err, stack) =>
                                       _placeholderImage(animalType: animalType),
                                 )
                               : _placeholderImage(animalType: animalType),
@@ -426,7 +432,6 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          final cleanId = rawId.replaceFirst('#', '');
 
                           final model = MapReportModel(
                             id: cleanId.isNotEmpty
@@ -477,6 +482,40 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                         ),
                       ),
                       const SizedBox(height: 8),
+
+                      // View Post in Feed button (shown when a report ID is resolvable)
+                      if (cleanId.isNotEmpty)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.article_rounded, size: 18),
+                            label: const Text(
+                              'View Post in Feed',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(color: AppColors.primary),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              if (widget.onViewInFeed != null) {
+                                widget.onViewInFeed!(cleanId);
+                              } else {
+                                showFeedCommentsModal(context,
+                                    reportId: cleanId, petName: title);
+                              }
+                            },
+                          ),
+                        ),
+                      if (cleanId.isNotEmpty) const SizedBox(height: 8),
 
                       // Close Button
                       OutlinedButton(

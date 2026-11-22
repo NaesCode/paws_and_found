@@ -213,6 +213,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
           await _supabase.from('notifications').insert({
             'user_id': targetUserId,
             'type': 'warning',
+            'related_report_id': postId,
             'message': notifMessage,
           });
         } catch (_) {}

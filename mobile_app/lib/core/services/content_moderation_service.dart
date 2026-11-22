@@ -1,3 +1,6 @@
+import 'package:paws_and_found/core/constants/profanity_dictionary.dart';
+import 'package:paws_and_found/core/services/profanity_filter_service.dart';
+
 /// Result of a content moderation scan.
 class ModerationCheckResult {
   /// Whether the text passed content moderation guidelines without violation.
@@ -18,63 +21,14 @@ class ModerationCheckResult {
 /// Service responsible for scanning user-generated text (comments, messages, descriptions)
 /// against community safety guidelines and prohibited profanity lists.
 ///
-/// Supports English, Tagalog, and Cebuano/Bisaya prohibited terms with word-boundary
-/// matching to prevent false positives on benign words.
+/// Backed by [ProfanityFilterService] and [ProfanityDictionary] with support for
+/// English, Tagalog, and Cebuano/Bisaya prohibited terms, leetspeak normalization,
+/// repeated-character collapsing, and word-boundary matching to prevent false positives.
 class ContentModerationService {
   const ContentModerationService();
 
-  /// Curated list of prohibited terms across Cebuano, Tagalog, and English.
-  static const List<String> _prohibitedTerms = [
-    // Cebuano / Bisaya
-    'buang',
-    'buanga',
-    'yawa',
-    'yawaa',
-    'atay',
-    'ataya',
-    'piste',
-    'pisting',
-    'pesteng',
-    'bilat',
-    'oten',
-    'kayat',
-    'lubot',
-    'hudas',
-
-    // Tagalog / Filipino
-    'gago',
-    'gaga',
-    'tanga',
-    'puta',
-    'tangina',
-    'putangina',
-    'ulol',
-    'tarantado',
-    'kupal',
-    'inutil',
-    'pakshet',
-    'leche',
-    'hindot',
-    'punyeta',
-
-    // English
-    'fuck',
-    'fucking',
-    'fucker',
-    'shit',
-    'bullshit',
-    'bitch',
-    'asshole',
-    'bastard',
-    'cunt',
-    'dick',
-    'pussy',
-    'nigger',
-    'nigga',
-    'whore',
-    'slut',
-    'faggot',
-  ];
+  /// Prohibited terms set backed by the centralized [ProfanityDictionary].
+  static Set<String> get prohibitedTerms => ProfanityDictionary.words;
 
   /// Scans the provided [text] for prohibited vocabulary.
   ///
@@ -85,18 +39,12 @@ class ContentModerationService {
       return const ModerationCheckResult(isClean: true);
     }
 
-    final sanitized = text.toLowerCase();
-
-    for (final term in _prohibitedTerms) {
-      // Use regex with word boundaries (\b) or punctuation boundaries to avoid
-      // false positives (e.g. 'assistant', 'assessment', 'classic').
-      final pattern = RegExp(r'(^|\W)' + RegExp.escape(term) + r'($|\W)', caseSensitive: false);
-      if (pattern.hasMatch(sanitized)) {
-        return ModerationCheckResult(
-          isClean: false,
-          detectedWord: term,
-        );
-      }
+    final detected = ProfanityFilterService.findProfanities(text);
+    if (detected.isNotEmpty) {
+      return ModerationCheckResult(
+        isClean: false,
+        detectedWord: detected.first,
+      );
     }
 
     return const ModerationCheckResult(isClean: true);

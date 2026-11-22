@@ -15,6 +15,7 @@ class PetItem extends StatelessWidget {
   final VoidCallback? onEditPressed;
   final VoidCallback? onDeletePressed;
   final VoidCallback? onTap;
+  final VoidCallback? onPhotoTap;
 
   const PetItem({
     super.key,
@@ -23,6 +24,7 @@ class PetItem extends StatelessWidget {
     this.onEditPressed,
     this.onDeletePressed,
     this.onTap,
+    this.onPhotoTap,
   });
 
   @override
@@ -136,6 +138,8 @@ class PetItem extends StatelessWidget {
                       child: PetPhotoTile(
                         photoUrl: pet.photoURLs.isNotEmpty ? pet.photoURLs.first : null,
                         petName: pet.name,
+                        photoCount: pet.photoURLs.length,
+                        onTap: onPhotoTap ?? onTap,
                       ),
                     ),
                     const SizedBox(width: 8),

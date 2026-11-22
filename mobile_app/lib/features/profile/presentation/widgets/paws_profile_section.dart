@@ -18,6 +18,7 @@ class PawsProfileSection extends StatelessWidget {
   final ValueChanged<Pet>? onEditPet;
   final ValueChanged<Pet>? onDeletePet;
   final ValueChanged<Pet>? onPetTap;
+  final ValueChanged<Pet>? onPhotoTap;
   final VoidCallback? onAddPetPressed;
 
   const PawsProfileSection({
@@ -28,13 +29,14 @@ class PawsProfileSection extends StatelessWidget {
     this.onEditPet,
     this.onDeletePet,
     this.onPetTap,
+    this.onPhotoTap,
     this.onAddPetPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background2,
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -141,6 +143,7 @@ class PawsProfileSection extends StatelessWidget {
                 onStatusActionPressed: () => onStatusToggle(pet),
                 onEditPressed: onEditPet != null ? () => onEditPet!(pet) : null,
                 onDeletePressed: onDeletePet != null ? () => onDeletePet!(pet) : null,
+                onPhotoTap: () => (onPhotoTap ?? onPetTap)?.call(pet),
                 onTap: () => onPetTap?.call(pet),
               ),
             ),
