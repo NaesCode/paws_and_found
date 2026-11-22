@@ -12,6 +12,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/report/presentation/pages/camera_report_page.dart';
 import '../../features/recovery/presentation/pages/claim_pet_page.dart';
+import '../../features/feed/data/models/feed_post_model.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 
 class AppRouter {
@@ -202,17 +203,17 @@ class AppRouter {
       ),
 
       GoRoute(
-      path: '/claim-pet',
-      name: 'claimPet',
-      builder: (context, state) {
-        final reportId = state.uri.queryParameters['reportId'] ?? '';
-        final petName = state.uri.queryParameters['petName'] ?? '';
-        return ClaimPetPage(
-          reportId: reportId,
-          petName: petName,
-        );
-      },
-    ),
+        path: '/claim',
+        builder: (context, state) {
+          final report = state.extra as FeedPost?;
+          final reportId = report?.id ?? state.uri.queryParameters['reportId'] ?? '';
+
+          return ClaimPetPage(
+            reportId: reportId,
+            report: report,
+          );
+        },
+      ),
     ],
   );
 }

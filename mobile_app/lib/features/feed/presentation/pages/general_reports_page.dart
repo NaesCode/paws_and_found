@@ -10,6 +10,8 @@ import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../widgets/claim_confirm_dialog.dart';
+import 'package:geolocator/geolocator.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) EXCEPT THE USER'S POST
 
@@ -37,6 +39,31 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
     _reportsFuture = _repository.getGeneralReports(currentUserId);
   }
 
+  Future<List<FeedPost>> _loadNearMeReports(String currentUserId) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission is required to filter reports near you.');
+    }
+
+    final position = await Geolocator.getCurrentPosition();
+
+    return _repository.getGeneralReportsNearMe(
+      currentUserId,
+      lat: position.latitude,
+      lng: position.longitude,
+      radiusMeters: null, 
+    );
+  }
+
   void _fetchGeneralReports(String filterValue) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
     
@@ -55,7 +82,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
         case 'found':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
           break;
-        case 'spotted': //spotted ni siya kapoy na change sa db
+        case 'spotted':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: dbFilterValue);
           break;
         case 'oldest':
@@ -64,6 +91,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             return list;
           });
           break;
+        case 'near me':
+          _reportsFuture = _loadNearMeReports(currentUserId);
         case 'latest':
         default:
           _reportsFuture = _repository.getGeneralReports(currentUserId);
@@ -176,7 +205,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           button2Text: "Found",
                           petButtonText: "This is my Pet!",
                           onPetButtonPressed: () {
-                            _confirmMyPet(report);
+                            showConfirmMyPetDialog(context, report);
                           },
                           onButton1Pressed: () {
                             context.push('/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray');
@@ -195,52 +224,5 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
         ],
       ),
     );
-  }
-
-  Future<void> _confirmMyPet(FeedPost report) async {
-    final rawName = report.petName.trim();
-    final isUnknown = rawName.isEmpty || rawName.toLowerCase() == 'unknown pet';
-    final petLabel = isUnknown ? 'this unknown pet' : rawName;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Claim This Pet?',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Are you sure $petLabel is yours? You will be redirected to verify ownership.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentOrange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Yes, My Pet'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true && mounted) {
-      context.push(
-        '/claim-pet?reportId=${report.id}&petName=${Uri.encodeComponent(report.petName)}',
-      );
-    }
   }
 }

@@ -32,9 +32,10 @@ abstract class ProfileRepository {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   });
 
-  /// Updates an existing registered pet's details (name, species, breed, color, description, photoUrls).
+  /// Updates an existing registered pet's details (name, species, breed, color, description, photoUrls, alertSound).
   Future<Pet> updatePet({
     required String petId,
     String? name,
@@ -43,6 +44,7 @@ abstract class ProfileRepository {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   });
 
   /// Deletes a registered pet with an audit reason.
@@ -59,4 +61,9 @@ abstract class ProfileRepository {
 
   /// Marks a missing pet as safe.
   Future<void> markPetSafe(String petId);
+
+  /// Watches active/pending pet claims and meetups involving the current user
+  /// until they are marked completed or declined.
+  Stream<List<dynamic>> watchPendingMeetups();
+  Stream<List<dynamic>> watchCompletedReunions();
 }

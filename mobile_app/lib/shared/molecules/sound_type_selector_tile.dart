@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_assets.dart';
+import '../../core/services/audio_alert_service.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Supported notification sound types.
 enum NotificationSoundType {
-  cat(id: 'cat', label: 'Cat Sound', subtitle: 'Playful Meow alert', icon: Icons.pets),
-  dog(id: 'dog', label: 'Dog Sound', subtitle: 'Friendly Bark alert', icon: Icons.pets_outlined),
-  bird(id: 'bird', label: 'Bird Sound', subtitle: 'Gentle Chirp alert', icon: Icons.flutter_dash);
+  cat(id: 'cat', label: 'Cat Sound', subtitle: 'Playful Meow alert', icon: Icons.pets, assetPath: AppAssets.soundCat),
+  kitten(id: 'kitten', label: 'Kitten Sound', subtitle: 'Gentle Kitten Meow alert', icon: Icons.pets, assetPath: AppAssets.soundKitten),
+  dog(id: 'dog', label: 'Dog Sound', subtitle: 'Friendly Bark alert', icon: Icons.pets_outlined, assetPath: AppAssets.soundDog),
+  puppy(id: 'puppy', label: 'Puppy Sound', subtitle: 'Lively Puppy alert', icon: Icons.pets_outlined, assetPath: AppAssets.soundPuppy),
+  bird(id: 'bird', label: 'Bird Sound', subtitle: 'Gentle Chirp alert', icon: Icons.flutter_dash, assetPath: AppAssets.soundBird),
+  macaw(id: 'macaw', label: 'Macaw Sound', subtitle: 'Vibrant Macaw Call alert', icon: Icons.flutter_dash, assetPath: AppAssets.soundMacaw),
+  system(id: 'system', label: 'System Sound', subtitle: 'Default System chime alert', icon: Icons.notifications_active_outlined, assetPath: AppAssets.soundSystem);
 
   final String id;
   final String label;
   final String subtitle;
   final IconData icon;
+  final String assetPath;
 
   const NotificationSoundType({
     required this.id,
     required this.label,
     required this.subtitle,
     required this.icon,
+    required this.assetPath,
   });
 
   static NotificationSoundType fromId(String? id) {
@@ -143,14 +151,30 @@ class SoundTypeSelectorTile extends StatelessWidget {
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      trailing: isSelected
-                          ? const Icon(
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.volume_up_rounded,
+                              size: 20,
+                              color: AppColors.primary,
+                            ),
+                            tooltip: 'Preview sound',
+                            onPressed: () {
+                              AudioAlertService.instance.playPreview(type.assetPath);
+                            },
+                          ),
+                          if (isSelected)
+                            const Icon(
                               Icons.check_circle_rounded,
                               color: AppColors.primary,
                               size: 22,
-                            )
-                          : null,
+                            ),
+                        ],
+                      ),
                       onTap: () {
+                        AudioAlertService.instance.playPreview(type.assetPath);
                         onTypeChanged?.call(type);
                         Navigator.pop(modalContext);
                       },

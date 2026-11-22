@@ -10,6 +10,7 @@ class PetModel extends Pet {
     super.description,
     super.photoURLs,
     super.status,
+    super.alertSound,
   });
 
   factory PetModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +33,7 @@ class PetModel extends Pet {
       description: json['description'] as String?,
       photoURLs: rawPhotos is List ? rawPhotos.map((e) => e.toString()).toList() : const [],
       status: petStatus,
+      alertSound: (json['alert_sound'] as String?) ?? 'cat',
     );
   }
 
@@ -44,6 +46,7 @@ class PetModel extends Pet {
       if (color != null) 'color': color,
       if (description != null) 'description': description,
       'photo_urls': photoURLs,
+      'alert_sound': alertSound,
     };
   }
 }

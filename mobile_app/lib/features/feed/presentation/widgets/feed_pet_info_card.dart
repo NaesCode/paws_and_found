@@ -15,8 +15,8 @@ class FeedPetInfoCard extends StatelessWidget {
   final String name;
   final String specie;
   final String description;
-  final String petButtonText;         
-  final VoidCallback onPetButtonPressed; 
+  final String petButtonText;
+  final VoidCallback onPetButtonPressed;
 
   const FeedPetInfoCard({
     super.key,
@@ -60,7 +60,7 @@ class FeedPetInfoCard extends StatelessWidget {
                       width: 125,
                       height: 155,
                       decoration: const BoxDecoration(
-                        color: AppColors.accentOrange, 
+                        color: AppColors.accentOrange,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(65),
                           topRight: Radius.circular(65),
@@ -73,7 +73,7 @@ class FeedPetInfoCard extends StatelessWidget {
                         ? Image.network(
                             imageUrl,
                             fit: BoxFit.fill,
-                            errorBuilder: (_, __, ___) => Image.asset(
+                            errorBuilder: (_, _, _) => Image.asset(
                               AppAssets.petPlaceholder,
                               fit: BoxFit.fill,
                             ),
@@ -91,18 +91,21 @@ class FeedPetInfoCard extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        
+
         // Right Side
         Expanded(
           flex: 5,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Content Box 
+              // Content Box
               Container(
                 width: double.infinity,
                 height: 146,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   borderRadius: BorderRadius.circular(2),
@@ -116,26 +119,23 @@ class FeedPetInfoCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              FeedClaimBtn(
-                text: petButtonText,
-                onPressed: onPetButtonPressed,
-              ),
+              FeedClaimBtn(text: petButtonText, onPressed: onPetButtonPressed),
               const SizedBox(height: 8),
 
               // Existing Action Buttons
               Row(
                 children: [
                   FeedActionBtns(
-                    text: button1Text, 
-                    backgroundColor: AppColors.darkCharcoal, 
+                    text: button1Text,
+                    backgroundColor: AppColors.darkCharcoal,
                     onPressed: onButton1Pressed,
                   ),
                   const SizedBox(width: 8),
                   FeedActionBtns(
-                    text: button2Text, 
-                    backgroundColor: AppColors.primary, 
+                    text: button2Text,
+                    backgroundColor: AppColors.primary,
                     onPressed: onButton2Pressed,
-                  )
+                  ),
                 ],
               ),
             ],

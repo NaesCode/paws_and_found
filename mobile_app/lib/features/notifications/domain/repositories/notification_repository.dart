@@ -24,6 +24,12 @@ abstract class NotificationRepository {
   /// Returns the current unread count (used for the badge).
   Future<int> getUnreadCount();
 
+  /// Permanently deletes a single notification row.
+  Future<void> deleteNotification(String notificationId);
+
+  /// Permanently deletes ALL notifications for the current user.
+  Future<void> clearAllNotifications();
+
   /// Resolves and fetches the full post/sighting details associated with a notification.
   ///
   /// Returns a structured map containing post title, animal type, status, description,
@@ -31,3 +37,4 @@ abstract class NotificationRepository {
   Future<Map<String, dynamic>?> getPostDetailsForNotification(
       AppNotification notification);
 }
+

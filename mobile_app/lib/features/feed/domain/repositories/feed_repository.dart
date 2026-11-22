@@ -27,4 +27,11 @@ abstract class FeedRepository {
   );
   Future<FeedComment> updateComment(String commentId, String content);
   Future<void> deleteComment(String commentId);
+  Future<void> markReportAsFound(String reportId);
+  Future<List<FeedPost>> getGeneralReportsNearMe(
+    String userId, {
+    required double lat,
+    required double lng,
+    double? radiusMeters = 5000,
+  });
 }

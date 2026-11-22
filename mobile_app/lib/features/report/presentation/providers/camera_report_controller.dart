@@ -1,7 +1,9 @@
 import 'dart:async' show unawaited;
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/geocoding_service.dart';
 import '../../../../core/services/location_service.dart';
@@ -13,7 +15,6 @@ import '../../data/models/ai_match_candidate.dart';
 import '../../../../core/services/content_moderation_service.dart';
 import '../../../../core/services/user_restriction_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 
 /// Presentation state controller for Camera & Animal Report Creation.
 ///
@@ -150,8 +151,10 @@ class CameraReportController extends ChangeNotifier {
     _isScanningAi = true;
     notifyListeners();
     try {
-      final double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
-      final double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
+      final double lat =
+          _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
+      final double lng =
+          _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
       final candidates = await _preMatchService.scanForCandidates(
         imageBytes: _selectedImageBytes!,
         lat: lat,
@@ -354,13 +357,16 @@ class CameraReportController extends ChangeNotifier {
           photoUrl = await _repository.uploadReportPhoto(_selectedImageBytes!);
         } catch (_) {
           // Graceful fallback for offline wireframe testing
-          photoUrl = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1';
+          photoUrl =
+              'https://images.unsplash.com/photo-1543466835-00a7907e9de1';
         }
       }
 
       // Default fallback coordinates: Prioritize custom pin, then detected device GPS, then Cebu default
-      double lat = _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
-      double lng = _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
+      double lat =
+          _pinnedLat ?? _deviceLat ?? LocationConstants.defaultLatitude;
+      double lng =
+          _pinnedLng ?? _deviceLng ?? LocationConstants.defaultLongitude;
 
       final matchConfidencePct = _selectedAiCandidate?.similarityPercent;
       String descText = descriptionController.text.trim();
@@ -429,7 +435,9 @@ class CameraReportController extends ChangeNotifier {
         // (Handled gracefully with fallback if orchestrator is not yet deployed)
         unawaited(_repository.requestReportAnalysis(reportId));
       } catch (e, stack) {
-        debugPrint('[CameraReportController] createReport database error: $e\n$stack');
+        debugPrint(
+          '[CameraReportController] createReport database error: $e\n$stack',
+        );
         _errorMessage = 'Database submission failed: $e';
         _isSubmitting = false;
         notifyListeners();

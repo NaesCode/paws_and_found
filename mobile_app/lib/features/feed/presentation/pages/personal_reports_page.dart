@@ -29,14 +29,50 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
   final FeedRepository _repository = FeedRepositoryImpl();
   late Future<List<FeedPost>> _reportsFuture;
 
-  String _selectedFilter = 'Latest';
-  final List<String> _personalFilters = ['Latest', 'Oldest', 'Missing', 'Found', 'Spotted'];
+  RealtimeChannel? _reportsChannel;
 
   @override
   void initState() {
     super.initState();
-    _fetchPersonalReports(_selectedFilter); // Load initial data
+    _fetchPersonalReports(_selectedFilter);
+    _subscribeToReportUpdates();
   }
+
+  void _subscribeToReportUpdates() {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (currentUserId.isEmpty) return;
+
+    _reportsChannel = Supabase.instance.client
+        .channel('personal_reports_$currentUserId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'reports',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'reporter_id', 
+            value: currentUserId,
+          ),
+          callback: (_) {
+            if (mounted) {
+              _fetchPersonalReports(_selectedFilter);
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_reportsChannel != null) {
+      Supabase.instance.client.removeChannel(_reportsChannel!);
+    }
+    super.dispose();
+  }
+
+  String _selectedFilter = 'Latest';
+  final List<String> _personalFilters = ['Latest', 'Oldest', 'Missing', 'Found', 'Spotted'];
+
 
   Future<void> _handleEditReport(FeedPost report) async {
     final updated = await EditReportSheet.show(
@@ -201,6 +237,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
+                        final isFound = report.status.toLowerCase() == 'found';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
                         final isWithinGracePeriod =
                             DateTime.now().difference(report.createdAt).inMinutes <= 360;
@@ -218,16 +255,16 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
                           button1Text: isMissing ? "View Map" : "Edit",
-                          button2Text: isMissing ? "Edit" : "Found",
+                          button2Text: isMissing ? "Edit" : (isFound? "Reunited" : "Found"),
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
                           petButtonText: isMissing? "Mark as Found": "View on Map",
                           onPetButtonPressed: () {
                             if(isMissing){
-                              context.go('/map?reportId=${report.id}');
+                              _handleMarkAsFound(report);
                             }
                             else{
-
+                              context.go('/map?reportId=${report.id}');
                             }
                           },
                           onButton1Pressed: () {
@@ -241,8 +278,11 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           onButton2Pressed: () {
                             if(isMissing){
                               _handleEditReport(report);
-                            } else{
+                            } else if (isFound) {
                               // mark found or like the pet is already found chuchu or the automatic after the pipeline
+                            }
+                            else{
+                              _handleMarkAsFound(report);
                             }
                           },
                           onUndoPressed: isWithinGracePeriod
@@ -260,5 +300,57 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleMarkAsFound(FeedPost report) async {
+    final petTitle = report.petName.isNotEmpty ? report.petName : 'this pet';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Mark "$petTitle" as Found?'),
+        content: Text(
+          'Confirming that $petTitle has been found will update the post status to FOUND, remove the active alert from the community map, and close any open claim requests.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.text3)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Confirm Found',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _repository.markReportAsFound(report.id);
+      if (mounted) {
+        _fetchPersonalReports(_selectedFilter);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$petTitle has been marked as Found!'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update status: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 }

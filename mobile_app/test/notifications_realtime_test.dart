@@ -15,6 +15,8 @@ class MockNotificationRepository implements NotificationRepository {
   int getNotificationsCallCount = 0;
   int markReadCallCount = 0;
   int markAllReadCallCount = 0;
+  int deleteNotificationCallCount = 0;
+  int clearAllNotificationsCallCount = 0;
 
   void emit(List<AppNotification> notifications) {
     currentNotifications = notifications;
@@ -78,6 +80,20 @@ class MockNotificationRepository implements NotificationRepository {
         relatedReportId: n.relatedReportId,
       );
     }).toList();
+  }
+
+  @override
+  Future<void> deleteNotification(String notificationId) async {
+    deleteNotificationCallCount++;
+    currentNotifications = currentNotifications.where((n) => n.id != notificationId).toList();
+    _streamController.add(currentNotifications);
+  }
+
+  @override
+  Future<void> clearAllNotifications() async {
+    clearAllNotificationsCallCount++;
+    currentNotifications = [];
+    _streamController.add(currentNotifications);
   }
 
   @override
@@ -300,9 +316,10 @@ void main() {
       expect(find.textContaining('Urgent Alert: Luna (Dog) was reported missing'), findsOneWidget);
       expect(find.textContaining('Search broadcast active: Mochi has been reported missing'), findsOneWidget);
 
-      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.campaign_rounded), findsOneWidget);
+      final listFinder = find.byType(ListView);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.check_circle_rounded)), findsOneWidget);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.location_on_rounded)), findsOneWidget);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.campaign_rounded)), findsOneWidget);
     });
 
     testWidgets('Pillars 2 & 4: Renders high-confidence match alerts, AI moderation warnings, and deletion confirmations',
@@ -359,9 +376,10 @@ void main() {
       expect(find.textContaining('Your sighting report has been successfully withdrawn'), findsOneWidget);
       expect(find.textContaining('Pet Profile Removed: Banana has been removed'), findsOneWidget);
 
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.campaign_rounded), findsNWidgets(2));
+      final listFinder = find.byType(ListView);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.favorite_rounded)), findsOneWidget);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.warning_amber_rounded)), findsOneWidget);
+      expect(find.descendant(of: listFinder, matching: find.byIcon(Icons.campaign_rounded)), findsNWidgets(2));
     });
 
     testWidgets('Post-Related Notification is clickable and opens PostDetailsBottomSheet directly', (tester) async {
