@@ -50,7 +50,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
           table: 'reports',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
-            column: 'user_id', 
+            column: 'reporter_id', 
             value: currentUserId,
           ),
           callback: (_) {
@@ -237,6 +237,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
+                        final isFound = report.status.toLowerCase() == 'found';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
                         final isWithinGracePeriod =
                             DateTime.now().difference(report.createdAt).inMinutes <= 360;
@@ -254,7 +255,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
                           button1Text: isMissing ? "View Map" : "Edit",
-                          button2Text: isMissing ? "Edit" : "Found",
+                          button2Text: isMissing ? "Edit" : (isFound? "Reunited" : "Found"),
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
                           petButtonText: isMissing? "Mark as Found": "View on Map",
@@ -277,8 +278,10 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           onButton2Pressed: () {
                             if(isMissing){
                               _handleEditReport(report);
-                            } else{
+                            } else if (isFound) {
                               // mark found or like the pet is already found chuchu or the automatic after the pipeline
+                            }
+                            else{
                               _handleMarkAsFound(report);
                             }
                           },
