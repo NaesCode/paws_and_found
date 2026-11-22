@@ -30,7 +30,7 @@ class ProfanityInfractionResult {
     } else if (isWarned) {
       message = 'Warning: Continued use of prohibited language will result in account suspension ($count violations recorded).';
     } else {
-      message = 'Please keep community discussions respectful. Offensive language is not allowed ($count/3 warnings).';
+      message = 'Please keep community discussions respectful. Offensive language is not allowed ($count/5 warnings).';
     }
 
     return ProfanityInfractionResult(

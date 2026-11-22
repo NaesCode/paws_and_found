@@ -36,11 +36,15 @@ class _FeedPageState extends State<FeedPage> {
   bool _isGeneralSelected = true;
   bool _isFabExtended = true;
   bool _isFabVisible = true;
+  bool _isUserSuspended = false;
   String? _isolatedReportId;
 
   @override
   void initState() {
     super.initState();
+    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
+    _checkSuspensionStatus();
+    
     _isolatedReportId = widget.isolatedReportId;
     if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
       _isGeneralSelected = true;
@@ -65,14 +69,6 @@ class _FeedPageState extends State<FeedPage> {
       _isolatedReportId = null;
     });
     widget.onClearIsolation?.call();
-  }
-  bool _isUserSuspended = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
-    _checkSuspensionStatus();
   }
 
   Future<void> _checkSuspensionStatus() async {
