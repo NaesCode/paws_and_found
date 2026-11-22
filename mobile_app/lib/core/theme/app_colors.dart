@@ -44,4 +44,5 @@ class AppColors {
   static const Color statusStray = accentOrange;   // #FF8552
   static const Color statusFound = primary;        // #428475
   static const Color statusSafe = Color(0xFF059669);
+  static const Color error = Color(0xFFDC2626);
 }

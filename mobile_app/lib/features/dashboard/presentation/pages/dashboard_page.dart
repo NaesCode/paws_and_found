@@ -1,8 +1,12 @@
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:paws_and_found/core/services/audio_alert_service.dart';
+import 'package:paws_and_found/core/services/local_notification_service.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:paws_and_found/features/notifications/domain/entities/app_notification.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:paws_and_found/features/profile/presentation/pages/profile_setup_page.dart';
 import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
@@ -39,6 +43,9 @@ class _DashboardPageState extends State<DashboardPage> {
   // Notification badge count — fetched once on mount and kept in sync via stream.
   int _unreadCount = 0;
   StreamSubscription<int>? _unreadSub;
+  StreamSubscription<List<AppNotification>>? _notifSub;
+  String? _lastKnownNotificationId;
+  bool _isInitialNotifStream = true;
 
   @override
   void initState() {
@@ -46,6 +53,86 @@ class _DashboardPageState extends State<DashboardPage> {
     _currentIndex = widget.initialIndex;
     _fetchUnreadCount();
     _subscribeToUnreadCount();
+    _subscribeToNotificationAlerts();
+    _initNativeNotifications();
+  }
+
+  void _initNativeNotifications() {
+    unawaited(LocalNotificationService.instance.requestPermission());
+    LocalNotificationService.instance.onNotificationTapped
+        .addListener(_onNativeNotificationTapped);
+  }
+
+  void _onNativeNotificationTapped() {
+    final payload = LocalNotificationService.instance.onNotificationTapped.value;
+    if (payload != null && mounted) {
+      // Direct navigation to notifications tab upon tapping native heads-up banner
+      setState(() => _currentIndex = 4);
+    }
+  }
+
+  static const String _keyLastAlertedNotificationId = 'last_alerted_notification_id';
+
+  void _subscribeToNotificationAlerts() {
+    try {
+      _notifSub = NotificationRepositoryImpl()
+          .streamNotifications()
+          .listen(
+            (notifications) async {
+              if (!mounted || notifications.isEmpty) return;
+
+              final newest = notifications.first;
+              if (_isInitialNotifStream) {
+                _isInitialNotifStream = false;
+                _lastKnownNotificationId = newest.id;
+
+                // Emphasize unread notification received while logged out (within the last 24h)
+                await _checkAndAlertMissedNotification(newest);
+                return;
+              }
+
+              // Play alert and display native pop-up notification for new unread alert arriving live
+              if (newest.id != _lastKnownNotificationId && !newest.isRead) {
+                _lastKnownNotificationId = newest.id;
+                await _recordAlertedNotificationId(newest.id);
+                AudioAlertService.instance.playNotificationAlertForNotification(newest);
+                LocalNotificationService.instance.showAppNotification(newest);
+              }
+            },
+            onError: (_) {},
+          );
+    } catch (_) {}
+  }
+
+  /// Checks if the latest notification arrived while user was logged out / app closed,
+  /// and triggers a heads-up pop-up alert if it was received within the day.
+  Future<void> _checkAndAlertMissedNotification(AppNotification notification) async {
+    try {
+      if (notification.isRead) return;
+
+      // Only re-notify if within the day (last 24 hours)
+      final age = DateTime.now().difference(notification.createdAt);
+      if (age.inHours >= 24) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastAlertedId = prefs.getString(_keyLastAlertedNotificationId);
+
+      // If we haven't already alerted this notification ID
+      if (lastAlertedId != notification.id) {
+        await prefs.setString(_keyLastAlertedNotificationId, notification.id);
+        if (mounted) {
+          AudioAlertService.instance.playNotificationAlertForNotification(notification);
+          LocalNotificationService.instance.showAppNotification(notification);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _recordAlertedNotificationId(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyLastAlertedNotificationId, id);
+    } catch (_) {}
   }
 
   void _subscribeToUnreadCount() {
@@ -64,6 +151,9 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _unreadSub?.cancel();
+    _notifSub?.cancel();
+    LocalNotificationService.instance.onNotificationTapped
+        .removeListener(_onNativeNotificationTapped);
     super.dispose();
   }
 

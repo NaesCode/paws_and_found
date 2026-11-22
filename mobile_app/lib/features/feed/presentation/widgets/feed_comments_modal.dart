@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
+import 'package:paws_and_found/core/services/profanity_filter_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -427,7 +428,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
 
         final matchRegex = RegExp(r'\[AI Match:\s*(\d+)%?\]', caseSensitive: false);
         final match = matchRegex.firstMatch(sighting.description);
-        final matchConfidence = match != null ? match.group(1) : null;
+        final matchConfidence = match?.group(1);
         final cleanDesc = sighting.description.replaceAll(matchRegex, '').trim();
 
         return Container(
@@ -622,6 +623,16 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
   Future<void> _handleCommentSubmit(String text, String? replyTo) async {
     if (widget.reportId == null || text.trim().isEmpty) return;
 
+    // Bad words / profanity validation across English, Filipino, and Bisaya
+    final badWords = ProfanityFilterService.findProfanities(text);
+    if (badWords.isNotEmpty) {
+      final result = await ProfanityFilterService.instance.recordInfraction(badWords);
+      if (mounted) {
+        _showProfanityBlockedDialog(badWords, result);
+      }
+      return; // Stop submission
+    }
+
     try {
       if (_editingComment != null) {
         final updated = await _repository.updateComment(_editingComment!.id, text.trim());
@@ -658,6 +669,86 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         );
       }
     }
+  }
+
+  void _showProfanityBlockedDialog(
+    List<String> badWords,
+    ProfanityInfractionResult result,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(
+                result.isSuspended ? Icons.block_rounded : Icons.warning_amber_rounded,
+                color: result.isSuspended ? AppColors.error : AppColors.accentOrange,
+                size: 26,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  result.isSuspended
+                      ? 'Account Suspended'
+                      : result.isWarned
+                          ? 'Community Warning'
+                          : 'Prohibited Language',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your comment was not posted because it contains prohibited language in our community guidelines.',
+                style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  'Detected: "${badWords.join(', ')}"',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                result.message,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: result.isSuspended ? AppColors.error : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _confirmAndDeleteComment(FeedComment comment) async {

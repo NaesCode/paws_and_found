@@ -32,9 +32,10 @@ abstract class ProfileRepository {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   });
 
-  /// Updates an existing registered pet's details (name, species, breed, color, description, photoUrls).
+  /// Updates an existing registered pet's details (name, species, breed, color, description, photoUrls, alertSound).
   Future<Pet> updatePet({
     required String petId,
     String? name,
@@ -43,6 +44,7 @@ abstract class ProfileRepository {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   });
 
   /// Deletes a registered pet with an audit reason.

@@ -93,6 +93,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   }) async {
     final pet = await remoteDataSource.addPet(
       name: name,
@@ -101,6 +102,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       color: color,
       description: description,
       photoUrls: photoUrls,
+      alertSound: alertSound,
     );
 
     // Asynchronously dispatch AI pet embedding extraction to Django orchestrator
@@ -120,6 +122,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   }) async {
     // 1. Delete-before-upload logic if photoUrls changed (including when removed)
     if (photoUrls != null) {
@@ -159,6 +162,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       color: color,
       description: description,
       photoUrls: photoUrls,
+      alertSound: alertSound,
     );
 
     // 3. AI re-embedding & reverse matching dispatch:

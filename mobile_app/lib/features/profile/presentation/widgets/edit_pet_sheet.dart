@@ -7,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
 import '../../../../shared/atoms/paw_text_field.dart';
+import '../../../../shared/molecules/sound_type_selector_tile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
 
@@ -67,6 +68,8 @@ class _EditPetSheetState extends State<EditPetSheet> {
   String? _generalError;
   bool _isLoading = false;
 
+  late NotificationSoundType _selectedAlertSound;
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +93,9 @@ class _EditPetSheetState extends State<EditPetSheet> {
         text: existingSpecies.toLowerCase() == 'other' ? '' : existingSpecies,
       );
     }
+
+    // Pre-seed the per-pet alert sound from saved value
+    _selectedAlertSound = NotificationSoundType.fromId(widget.pet.alertSound);
   }
 
   @override
@@ -252,6 +258,7 @@ class _EditPetSheetState extends State<EditPetSheet> {
         color: color,
         description: description,
         photoUrls: finalPhotoUrls,
+        alertSound: _selectedAlertSound.id,
       );
 
       if (mounted) {
@@ -619,6 +626,26 @@ class _EditPetSheetState extends State<EditPetSheet> {
                   keyboardType: TextInputType.multiline,
                   textInputAction: TextInputAction.done,
                   maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+
+                // Alert Sound Preference (per-pet)
+                const Text(
+                  'Notification Alert Sound',
+                  style: AppTypography.petName,
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Choose the sound that plays when you get updates about this pet.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.text3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SoundTypeSelectorTile(
+                  selectedType: _selectedAlertSound,
+                  onTypeChanged: (type) => setState(() => _selectedAlertSound = type),
                 ),
                 const SizedBox(height: 24),
 

@@ -1,21 +1,97 @@
-import 'package:go_router/go_router.dart';
-import '../../../../shared/atoms/app_logo.dart';
-import '../../../../shared/organisms/custom_app_bar.dart';
-import '../../../../shared/molecules/paw_loading.dart';
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 
+import '../../../../shared/atoms/app_logo.dart';
+import '../../../../shared/molecules/paw_loading.dart';
+import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../data/repositories/notification_repository_impl.dart';
 import '../../domain/entities/app_notification.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../widgets/post_details_bottom_sheet.dart';
 
-/// Displays the user's notification inbox.
-///
-/// Loaded eagerly on first build and refreshable via pull-to-refresh.
-/// Each tap marks the tapped item as read and, for post-related notifications,
-/// immediately opens the post details view directly.
+// ---------------------------------------------------------------------------
+// Filter definitions
+// ---------------------------------------------------------------------------
+
+enum _NotifFilter {
+  all,
+  unread,
+  matches,
+  nearby,
+  updates,
+  system,
+}
+
+extension _NotifFilterExt on _NotifFilter {
+  String get label {
+    switch (this) {
+      case _NotifFilter.all:
+        return 'All';
+      case _NotifFilter.unread:
+        return 'Unread';
+      case _NotifFilter.matches:
+        return 'Matches';
+      case _NotifFilter.nearby:
+        return 'Nearby';
+      case _NotifFilter.updates:
+        return 'Updates';
+      case _NotifFilter.system:
+        return 'System';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case _NotifFilter.all:
+        return Icons.notifications_rounded;
+      case _NotifFilter.unread:
+        return Icons.mark_chat_unread_rounded;
+      case _NotifFilter.matches:
+        return Icons.favorite_rounded;
+      case _NotifFilter.nearby:
+        return Icons.location_on_rounded;
+      case _NotifFilter.updates:
+        return Icons.campaign_rounded;
+      case _NotifFilter.system:
+        return Icons.info_rounded;
+    }
+  }
+
+  bool matches(AppNotification n) {
+    switch (this) {
+      case _NotifFilter.all:
+        return true;
+      case _NotifFilter.unread:
+        return !n.isRead;
+      case _NotifFilter.matches:
+        return n.type == 'match_found' || n.type == 'match_confirmed';
+      case _NotifFilter.nearby:
+        return n.type == 'report_nearby';
+      case _NotifFilter.updates:
+        return n.type == 'report_update' ||
+            n.type == 'pet_safe' ||
+            n.type == 'status_update' ||
+            n.type == 'verification_request';
+      case _NotifFilter.system:
+        return n.type == 'welcome' ||
+            n.type == 'warning' ||
+            n.type == 'suspension';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+/// Notification inbox with:
+/// - Filter chip bar (All / Unread / Matches / Nearby / Updates / System)
+/// - Swipe-to-delete on individual rows (with undo snackbar)
+/// - Long-press → "Clear all" confirmation dialog
+/// - "Mark all read" action in app bar
 class NotificationsPage extends StatefulWidget {
   final NotificationRepository? repository;
   final bool isActiveTab;
@@ -42,6 +118,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
   String? _error;
   StreamSubscription<List<AppNotification>>? _subscription;
 
+  _NotifFilter _activeFilter = _NotifFilter.all;
+
+  /// IDs of notifications currently being deleted (undo window still open OR
+  /// DB call in-flight). Items in this set are excluded from the displayed list
+  /// so that Supabase Realtime stream updates cannot restore them visually.
+  final Set<String> _pendingDeleteIds = {};
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
+
   @override
   void initState() {
     super.initState();
@@ -63,13 +150,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Data
+  // ---------------------------------------------------------------------------
+
   void _subscribe() {
     try {
       _subscription = _repo.streamNotifications().listen(
         (items) {
           if (mounted) {
             setState(() {
-              _notifications = items;
+              // Keep items that are NOT in the pending-delete set so that
+              // Realtime stream pushes cannot restore a notification while
+              // an undo snackbar is open or a DB delete is in flight.
+              _notifications = items
+                  .where((n) => !_pendingDeleteIds.contains(n.id))
+                  .toList();
               _isLoading = false;
               _error = null;
             });
@@ -78,12 +180,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         onError: (_) {},
       );
     } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
   }
 
   Future<void> _load({bool isSilent = false}) async {
@@ -103,6 +199,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
   Future<void> _markRead(AppNotification n) async {
     if (n.isRead) return;
     await _repo.markRead(n.id);
@@ -116,10 +216,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _handleNotificationTap(AppNotification n) async {
-    // 1. Mark as read
     await _markRead(n);
-
-    // 2. If post-related, open post details directly
     if (n.isPostRelated && mounted) {
       PostDetailsBottomSheet.show(
         context: context,
@@ -139,19 +236,166 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  /// Returns a copy of [n] with `isRead = true`.
-  AppNotification _asRead(AppNotification n) {
-    return AppNotification(
-      id: n.id,
-      userId: n.userId,
-      type: n.type,
-      message: n.message,
-      relatedMatchId: n.relatedMatchId,
-      relatedReportId: n.relatedReportId,
-      isRead: true,
-      createdAt: n.createdAt,
+  /// Swipe-delete:
+  /// 1. Marks ID as "pending delete" so the stream can't restore it visually.
+  /// 2. Removes from local list immediately (optimistic UI).
+  /// 3. Shows an UNDO snackbar for 4 seconds.
+  /// 4. If UNDO is tapped within 4 seconds, restoration is instant and no DB delete occurs.
+  /// 5. After the 4-second window expires, the snackbar disappears and the DB deletion executes.
+  Future<void> _deleteNotification(AppNotification n) async {
+    if (_pendingDeleteIds.contains(n.id)) return;
+
+    final index = _notifications.indexOf(n);
+    setState(() {
+      _pendingDeleteIds.add(n.id);
+      _notifications.remove(n);
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+
+    final completer = Completer<bool>();
+
+    // Show the undo snackbar for 4 seconds
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Notification removed'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'UNDO',
+          textColor: AppColors.accentOrange,
+          onPressed: () {
+            if (!completer.isCompleted) completer.complete(true);
+          },
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      ),
     );
+
+    controller.closed.then((_) {
+      if (!completer.isCompleted) completer.complete(false);
+    });
+
+    final undone = await completer.future;
+
+    if (undone) {
+      // User tapped UNDO within 4 seconds — restore immediately without touching DB
+      if (mounted) {
+        setState(() {
+          _pendingDeleteIds.remove(n.id);
+          final safeIdx = index.clamp(0, _notifications.length);
+          _notifications.insert(safeIdx, n);
+        });
+      }
+      return;
+    }
+
+    // 4-second window elapsed — now commit the deletion to the database
+    try {
+      await _repo.deleteNotification(n.id);
+      if (mounted) {
+        setState(() => _pendingDeleteIds.remove(n.id));
+      }
+    } catch (e) {
+      // DB deletion failed (e.g. missing SQL privilege) — restore item and notify
+      if (mounted) {
+        setState(() {
+          _pendingDeleteIds.remove(n.id);
+          final safeIdx = index.clamp(0, _notifications.length);
+          _notifications.insert(safeIdx, n);
+        });
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Could not delete: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          ),
+        );
+      }
+    }
   }
+
+  Future<void> _confirmClearAll() async {
+    final filtered = _filtered;
+    if (filtered.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Clear notifications?'),
+        content: Text(
+          _activeFilter == _NotifFilter.all
+              ? 'All ${filtered.length} notification${filtered.length == 1 ? '' : 's'} will be permanently deleted.'
+              : '${filtered.length} ${_activeFilter.label.toLowerCase()} notification${filtered.length == 1 ? '' : 's'} will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    if (_activeFilter == _NotifFilter.all) {
+      // Clear everything at once
+      setState(() => _notifications.clear());
+      try {
+        await _repo.clearAllNotifications();
+      } catch (_) {
+        _load(); // restore on failure
+      }
+    } else {
+      // Only delete the currently-visible filtered subset
+      final toDelete = List<AppNotification>.from(filtered);
+      setState(() => _notifications.removeWhere((n) => toDelete.contains(n)));
+      for (final n in toDelete) {
+        try {
+          await _repo.deleteNotification(n.id);
+        } catch (_) {}
+      }
+    }
+  }
+
+  AppNotification _asRead(AppNotification n) => AppNotification(
+        id: n.id,
+        userId: n.userId,
+        type: n.type,
+        message: n.message,
+        relatedMatchId: n.relatedMatchId,
+        relatedReportId: n.relatedReportId,
+        isRead: true,
+        createdAt: n.createdAt,
+      );
+
+  // ---------------------------------------------------------------------------
+  // Derived state
+  // ---------------------------------------------------------------------------
+
+  List<AppNotification> get _filtered => _notifications
+      .where((n) => !_pendingDeleteIds.contains(n.id))
+      .where(_activeFilter.matches)
+      .toList();
+
+  int get _unreadTotal => _notifications
+      .where((n) => !_pendingDeleteIds.contains(n.id) && !n.isRead)
+      .length;
 
   // ---------------------------------------------------------------------------
   // Build
@@ -159,8 +403,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final unread = _notifications.where((n) => !n.isRead).length;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -177,20 +419,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          if (_notifications.isNotEmpty)
+          if (_unreadTotal > 0)
             TextButton.icon(
-              onPressed: unread > 0 ? _markAllRead : null,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.45),
-              ),
-              icon: Icon(
-                Icons.done_all_rounded,
-                size: 16,
-                color: unread > 0
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.45),
-              ),
+              onPressed: _markAllRead,
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              icon: const Icon(Icons.done_all_rounded, size: 16, color: Colors.white),
               label: const Text(
                 'Mark all read',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -202,7 +435,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       bottomNavigationBar: widget.showBottomNavPlaceholder
           ? CustomAppBar(
               currentIndex: 4,
-              hasUnreadNotifications: unread > 0,
+              hasUnreadNotifications: _unreadTotal > 0,
               onTabSelected: (index) {
                 switch (index) {
                   case 0:
@@ -218,7 +451,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     context.go('/profile');
                     break;
                   case 4:
-                    // Already on notifications
                     break;
                 }
               },
@@ -234,7 +466,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       );
     }
 
-    if (_error != null) {
+    if (_error != null && _notifications.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -261,25 +493,53 @@ class _NotificationsPageState extends State<NotificationsPage> {
       );
     }
 
-    if (_notifications.isEmpty) {
+    return Column(
+      children: [
+        // ── Filter chip bar ──────────────────────────────────────────────
+        _FilterChipBar(
+          activeFilter: _activeFilter,
+          notifications: _notifications,
+          onFilterChanged: (f) => setState(() => _activeFilter = f),
+        ),
+
+        // ── List ─────────────────────────────────────────────────────────
+        Expanded(child: _buildList()),
+      ],
+    );
+  }
+
+  Widget _buildList() {
+    final visible = _filtered;
+
+    if (visible.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_none_rounded, size: 64, color: AppColors.primary.withValues(alpha: 0.4)),
+            Icon(
+              _activeFilter == _NotifFilter.all
+                  ? Icons.notifications_none_rounded
+                  : _activeFilter.icon,
+              size: 64,
+              color: AppColors.primary.withValues(alpha: 0.35),
+            ),
             const SizedBox(height: 16),
-            const Text(
-              'All caught up!',
-              style: TextStyle(
-                fontSize: 18,
+            Text(
+              _activeFilter == _NotifFilter.all
+                  ? 'All caught up!'
+                  : 'No ${_activeFilter.label.toLowerCase()} notifications',
+              style: const TextStyle(
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkCharcoal,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'You have no notifications yet.',
-              style: TextStyle(color: AppColors.text3),
+            const SizedBox(height: 6),
+            Text(
+              _activeFilter == _NotifFilter.all
+                  ? 'You have no notifications yet.'
+                  : 'Nothing here — try a different filter.',
+              style: const TextStyle(color: AppColors.text3, fontSize: 13),
             ),
           ],
         ),
@@ -289,15 +549,59 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _load,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _notifications.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 16),
+        itemCount: visible.length + 1, // +1 for the clear-all footer
         itemBuilder: (context, index) {
-          final n = _notifications[index];
-          return _NotificationTile(
-            notification: n,
-            onTap: () => _handleNotificationTap(n),
+          if (index == visible.length) {
+            // Footer — "Clear all visible" button
+            return _ClearAllFooter(
+              count: visible.length,
+              filterLabel: _activeFilter.label,
+              onClear: _confirmClearAll,
+            );
+          }
+
+          final n = visible[index];
+          final isLast = index == visible.length - 1;
+
+          return Column(
+            children: [
+              // Swipe-to-delete wrapper
+              Dismissible(
+                key: ValueKey(n.id),
+                direction: DismissDirection.endToStart,
+                // Red "Delete" background revealed on swipe
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  color: Colors.redAccent,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 26),
+                      SizedBox(height: 4),
+                      Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                confirmDismiss: (_) async => true,
+                onDismissed: (_) => _deleteNotification(n),
+                child: _NotificationTile(
+                  notification: n,
+                  onTap: () => _handleNotificationTap(n),
+                ),
+              ),
+              if (!isLast)
+                const Divider(height: 1, indent: 72, endIndent: 16),
+            ],
           );
         },
       ),
@@ -306,7 +610,153 @@ class _NotificationsPageState extends State<NotificationsPage> {
 }
 
 // ---------------------------------------------------------------------------
-// Private tile widget
+// Filter chip bar
+// ---------------------------------------------------------------------------
+
+class _FilterChipBar extends StatelessWidget {
+  final _NotifFilter activeFilter;
+  final List<AppNotification> notifications;
+  final ValueChanged<_NotifFilter> onFilterChanged;
+
+  const _FilterChipBar({
+    required this.activeFilter,
+    required this.notifications,
+    required this.onFilterChanged,
+  });
+
+  int _countFor(_NotifFilter f) =>
+      notifications.where(f.matches).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: _NotifFilter.values.map((f) {
+            final count = _countFor(f);
+            final isActive = f == activeFilter;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onFilterChanged(f),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primary
+                        : AppColors.primary.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isActive
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        f.icon,
+                        size: 14,
+                        color: isActive ? Colors.white : AppColors.primary,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        f.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? Colors.white : AppColors.primary,
+                        ),
+                      ),
+                      if (count > 0) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : AppColors.accentOrange,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isActive ? Colors.white : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Clear-all footer
+// ---------------------------------------------------------------------------
+
+class _ClearAllFooter extends StatelessWidget {
+  final int count;
+  final String filterLabel;
+  final VoidCallback onClear;
+
+  const _ClearAllFooter({
+    required this.count,
+    required this.filterLabel,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: OutlinedButton.icon(
+        onPressed: onClear,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.redAccent,
+          side: const BorderSide(color: Colors.redAccent, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          minimumSize: const Size(double.infinity, 0),
+        ),
+        icon: const Icon(Icons.delete_forever_rounded, size: 18),
+        label: Text(
+          'Clear all $filterLabel notifications ($count)',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Notification tile
 // ---------------------------------------------------------------------------
 
 class _NotificationTile extends StatelessWidget {
@@ -390,7 +840,7 @@ class _NotificationTile extends StatelessWidget {
             ),
             const SizedBox(width: 14),
 
-            // Message + time + view post indicator
+            // Message + time + "View Post" pill
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,8 +873,7 @@ class _NotificationTile extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.visibility_outlined,
-                                  size: 11.5, color: color),
+                              Icon(Icons.visibility_outlined, size: 11.5, color: color),
                               const SizedBox(width: 3.5),
                               Text(
                                 'View Post',
@@ -438,13 +887,20 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         ),
                       ],
+                      // Hint for swipe gesture
+                      const Spacer(),
+                      Icon(
+                        Icons.swipe_left_alt_rounded,
+                        size: 13,
+                        color: AppColors.text3.withValues(alpha: 0.5),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
 
-            // Action Chevron for post-related items
+            // Chevron for post-related items
             if (notification.isPostRelated)
               Padding(
                 padding: const EdgeInsets.only(left: 6, top: 10),

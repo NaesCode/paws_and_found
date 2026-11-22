@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1062421274558",
+    "project_id": "paws-and-found-hub",
+    "storage_bucket": "paws-and-found-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1062421274558:android:b1a37660c56f274a2da3ef",
+        "android_client_info": {
+          "package_name": "com.swacnaswac.pawsandfound"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdt-V7jdVg_--bd6R3I-Kwmv7QZqT3u18"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

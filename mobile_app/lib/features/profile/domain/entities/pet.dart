@@ -15,6 +15,10 @@ class Pet {
   final List<String> photoURLs;
   final PetStatus status;
 
+  /// The notification alert sound type ID for this pet.
+  /// Matches a [NotificationSoundType] id: 'cat', 'kitten', 'dog', 'puppy', 'bird', 'macaw', 'system'.
+  final String alertSound;
+
   const Pet({
     required this.petID,
     required this.name,
@@ -24,6 +28,7 @@ class Pet {
     this.description,
     this.photoURLs = const [],
     this.status = PetStatus.safe,
+    this.alertSound = 'cat',
   });
 
   /// Formatted species/breed string, avoiding duplicate species words (e.g. "Ginger Cat", not "Ginger Cat Cat").
@@ -49,6 +54,7 @@ class Pet {
     String? description,
     List<String>? photoURLs,
     PetStatus? status,
+    String? alertSound,
   }) {
     return Pet(
       petID: petID ?? this.petID,
@@ -59,6 +65,7 @@ class Pet {
       description: description ?? this.description,
       photoURLs: photoURLs ?? this.photoURLs,
       status: status ?? this.status,
+      alertSound: alertSound ?? this.alertSound,
     );
   }
 }

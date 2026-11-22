@@ -114,6 +114,23 @@ class NotificationRepositoryImpl implements NotificationRepository {
         .eq('is_read', false);
   }
 
+  @override
+  Future<void> deleteNotification(String notificationId) async {
+    await _supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', _uid);
+  }
+
+  @override
+  Future<void> clearAllNotifications() async {
+    await _supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', _uid);
+  }
+
   // ---------------------------------------------------------------------------
   // Post Details Resolution (Smart Matching by ID, Match, and Pet Name)
   // ---------------------------------------------------------------------------

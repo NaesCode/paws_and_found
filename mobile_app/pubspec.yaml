@@ -50,6 +50,10 @@ dependencies:
   share_plus: ^13.3.1
   shared_preferences: ^2.2.0
   flutter_svg: ^2.5.0
+  audioplayers: ^6.1.0
+  flutter_local_notifications: ^18.0.1
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +82,7 @@ flutter:
     - assets/
     - assets/images/
     - assets/svgs/
+    - assets/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
