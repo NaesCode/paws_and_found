@@ -1,14 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:paws_and_found/core/services/user_restriction_service.dart';
 import 'package:paws_and_found/features/feed/presentation/pages/feed_page.dart';
 import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    const service = UserRestrictionService();
+    await service.clearViolations('current_user');
+  });
+
+  tearDown(() async {
+    const service = UserRestrictionService();
+    await service.clearViolations('current_user');
+  });
+
   // to work the camera
   Widget createTestWidget({
     Widget? generalReportsView,
     Widget? personalReportsView,
+    UserRestrictionService? restrictionService,
     VoidCallback? onCameraNavigated,
   }) {
     final router = GoRouter(
@@ -21,6 +37,7 @@ void main() {
                 const Center(child: Text('Mock General Reports')),
             personalReportsView: personalReportsView ??
                 const Center(child: Text('Mock Personal Reports')),
+            restrictionService: restrictionService,
           ),
         ),
         GoRoute(
@@ -155,6 +172,99 @@ void main() {
 
       // FAB label re-expands
       expect(find.text('Report Sighting'), findsOneWidget);
+    });
+  });
+
+  group('FeedPage Account Restrictions & Suspended View Tests', () {
+    testWidgets('renders FeedSuspendedView when user account is suspended', (tester) async {
+      const restrictionService = UserRestrictionService();
+      // Record 5 violations to reach suspension threshold
+      for (int i = 0; i < 5; i++) {
+        await restrictionService.recordViolation(
+          userId: 'current_user',
+          prohibitedWord: 'buang',
+        );
+      }
+
+      await tester.pumpWidget(
+        createTestWidget(
+          restrictionService: restrictionService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Verify FeedSuspendedView is rendered
+      expect(find.byKey(const Key('feed_suspended_view')), findsOneWidget);
+      expect(find.text('Account Suspended'), findsOneWidget);
+      expect(find.text('Contact Admin'), findsOneWidget);
+      expect(find.text('Check Account Status'), findsOneWidget);
+
+      // 2. Verify normal feeds and segmented controls are hidden
+      expect(find.byType(PawSegmentedControl), findsNothing);
+      expect(find.text('Mock General Reports'), findsNothing);
+      expect(find.text('Mock Personal Reports'), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('tapping Contact Admin opens support modal with email and copy action', (tester) async {
+      const restrictionService = UserRestrictionService();
+      for (int i = 0; i < 5; i++) {
+        await restrictionService.recordViolation(
+          userId: 'current_user',
+          prohibitedWord: 'buang',
+        );
+      }
+
+      await tester.pumpWidget(
+        createTestWidget(
+          restrictionService: restrictionService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Contact Admin
+      await tester.tap(find.byKey(const Key('contact_admin_button')));
+      await tester.pumpAndSettle();
+
+      // Verify contact administration dialog is shown
+      expect(find.text('Contact Administration'), findsOneWidget);
+      expect(find.text('support@pawsandfound.org'), findsOneWidget);
+      expect(find.byKey(const Key('copy_admin_email_button')), findsOneWidget);
+
+      // Tap Close
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Contact Administration'), findsNothing);
+    });
+
+    testWidgets('tapping Check Account Status unlocks feed once account is restored', (tester) async {
+      const restrictionService = UserRestrictionService();
+      for (int i = 0; i < 5; i++) {
+        await restrictionService.recordViolation(
+          userId: 'current_user',
+          prohibitedWord: 'buang',
+        );
+      }
+
+      await tester.pumpWidget(
+        createTestWidget(
+          restrictionService: restrictionService,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Account Suspended'), findsOneWidget);
+
+      // Admin clears/restores user status
+      await restrictionService.clearViolations('current_user');
+
+      // Tap Check Account Status
+      await tester.tap(find.byKey(const Key('refresh_status_button')));
+      await tester.pumpAndSettle();
+
+      // Feed should now be restored
+      expect(find.text('Account Suspended'), findsNothing);
+      expect(find.text('Mock General Reports'), findsOneWidget);
+      expect(find.byType(PawSegmentedControl), findsOneWidget);
     });
   });
 }
