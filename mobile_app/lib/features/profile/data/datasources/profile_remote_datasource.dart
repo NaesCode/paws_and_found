@@ -23,6 +23,7 @@ abstract class ProfileRemoteDataSource {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   });
   Future<PetModel> updatePet(
     String petId, {
@@ -32,6 +33,7 @@ abstract class ProfileRemoteDataSource {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   });
   Future<void> deletePet(String petId, {String? reason, String? details});
   Future<void> reportPetMissing(
@@ -158,6 +160,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   }) async {
     final uid = _currentUserId;
     if (uid == null) {
@@ -173,6 +176,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
       'photo_urls': photoUrls,
+      'alert_sound': alertSound,
     };
 
     final data = await supabase
@@ -193,6 +197,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   }) async {
     final uid = _currentUserId;
     if (uid == null) {
@@ -212,6 +217,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
           description: description ?? existing.description,
           photoURLs: photoUrls ?? existing.photoURLs,
           status: existing.status,
+          alertSound: alertSound ?? existing.alertSound,
         );
         _mockPets[index] = updated;
         return updated;
@@ -225,7 +231,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (breed != null) 'breed': breed.trim(),
       if (color != null) 'color': color.trim(),
       if (description != null) 'description': description.trim(),
-      'photo_urls': ?photoUrls,
+      if (photoUrls != null) 'photo_urls': photoUrls,
+      if (alertSound != null) 'alert_sound': alertSound,
     };
 
     final data = await supabase

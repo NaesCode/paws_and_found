@@ -11,6 +11,18 @@ class AppAssets {
   // ---------------------------------------------------------------------------
   static const String imagesDir = 'assets/images';
   static const String svgsDir = 'assets/svgs';
+  static const String audioDir = 'assets/audio';
+
+  // ---------------------------------------------------------------------------
+  // Audio (Species Alert Sounds)
+  // ---------------------------------------------------------------------------
+  static const String soundBird = '$audioDir/bird_default.wav';
+  static const String soundCat = '$audioDir/cat_default1.wav';
+  static const String soundSystem = '$audioDir/default_system.wav';
+  static const String soundDog = '$audioDir/dog_default.wav';
+  static const String soundKitten = '$audioDir/kitten_default.wav';
+  static const String soundMacaw = '$audioDir/macaw-default.wav';
+  static const String soundPuppy = '$audioDir/puppy_default.wav';
 
   // ---------------------------------------------------------------------------
   // Images (Add constants here as image assets are added to assets/images/)

@@ -87,6 +87,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? color,
     String? description,
     List<String> photoUrls = const [],
+    String alertSound = 'cat',
   }) async {
     final pet = await remoteDataSource.addPet(
       name: name,
@@ -95,6 +96,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       color: color,
       description: description,
       photoUrls: photoUrls,
+      alertSound: alertSound,
     );
 
     if (pet.photoURLs.isNotEmpty && !pet.petID.startsWith('mock-')) {
@@ -113,6 +115,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? color,
     String? description,
     List<String>? photoUrls,
+    String? alertSound,
   }) async {
     if (photoUrls != null) {
       try {
@@ -150,6 +153,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       color: color,
       description: description,
       photoUrls: photoUrls,
+      alertSound: alertSound,
     );
 
     if (!petId.startsWith('mock-')) {

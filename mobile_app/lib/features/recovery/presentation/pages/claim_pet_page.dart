@@ -263,7 +263,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                 onTap: () => setState(() => _viewingStage = 3),
               ),
             Stage2VerificationWidget(
-              claimId: claim!.id,
+              claimId: claim.id,
               isFinderView: isFinderView,
               proofSubmitted: claim.stage2ProofSubmitted,
               isApproved: claim.stage2Approved,
@@ -299,7 +299,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
             ? claim!.meetupConfirmedByFinder
             : claim!.meetupConfirmedByClaimer;
         final isMeetupConfirmed =
-            claim!.meetupConfirmedByFinder && claim.meetupConfirmedByClaimer;
+            claim.meetupConfirmedByFinder && claim.meetupConfirmedByClaimer;
 
         stageContent = Column(
           children: [

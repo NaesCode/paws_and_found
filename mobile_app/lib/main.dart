@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/analysis_retry_service.dart';
+import 'core/services/fcm_token_service.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -12,15 +14,19 @@ Future<void> main() async {
     publishableKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiYnJubHl0dWxiYXlsc2JwYWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjg0NTgsImV4cCI6MjEwNTY0NDQ1OH0.9m6TPNn04dAk12vCAP8aRngOuQ4lw2vySWM8XbHZtHA',
   );
 
-  // Background retry sweep for pending AI analyses.
+  // Initialize native heads-up pop-up notification channels
+  await LocalNotificationService.instance.initialize();
+
+  // Initialize FCM Cloud Messaging service
+  await FcmTokenService.instance.initialize();
+
+  // Background retry sweep for pending AI analyses and FCM token sync.
   // Runs once on startup if already signed in, or on a fresh sign-in event.
-  // A boolean guard prevents double-sweeping: when the app launches with an
-  // existing session, currentSession is non-null so we sweep immediately and
-  // set the flag — the auth listener then skips the redundant startup event.
   final retryService = AnalysisRetryService();
   bool initialSweepDone = Supabase.instance.client.auth.currentSession != null;
   if (initialSweepDone) {
     unawaited(retryService.sweepPendingAnalyses());
+    unawaited(FcmTokenService.instance.syncToken());
   }
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.session != null) {
@@ -29,7 +35,9 @@ Future<void> main() async {
         initialSweepDone = true;
         unawaited(retryService.sweepPendingAnalyses());
       }
-      // If initialSweepDone is already true, the startup sweep already ran — skip.
+      unawaited(FcmTokenService.instance.syncToken());
+    } else if (data.event == AuthChangeEvent.signedOut) {
+      unawaited(FcmTokenService.instance.clearToken());
     }
   });
 
