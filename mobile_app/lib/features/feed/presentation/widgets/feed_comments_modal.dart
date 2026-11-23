@@ -541,23 +541,31 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         final matchConfidence = match?.group(1);
         final cleanDesc = sighting.description.replaceAll(matchRegex, '').trim();
 
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.text1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.go('/feed?reportId=${sighting.id}');
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.text1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Row(
                 children: [
                   CircleAvatar(
@@ -731,35 +739,65 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 ],
               ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.2,
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: ValueKey('btn_sighting_view_post_${sighting.id}'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.article_outlined, size: 15),
+                      label: const Text(
+                        'View Post',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        context.go('/feed?reportId=${sighting.id}');
+                      },
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      key: ValueKey('btn_sighting_view_map_${sighting.id}'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.map_rounded, size: 15),
+                      label: const Text(
+                        'View Map',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        context.go('/map?reportId=${sighting.id}');
+                      },
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
-                  icon: const Icon(Icons.map_rounded, size: 16),
-                  label: const Text(
-                    'View Sighting on Map →',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    context.go('/map?reportId=${sighting.id}');
-                  },
-                ),
+                ],
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  },
     );
   }
 
@@ -1118,6 +1156,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 isReply: row.isReply,
                 isCurrentUser:
                     currentUserId != null && comment.userId == currentUserId,
+                linkedReportId: comment.linkedReportId,
                 onReplyTap: () {
                   setState(() {
                     _editingComment = null;

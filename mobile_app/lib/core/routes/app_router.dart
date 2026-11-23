@@ -92,7 +92,25 @@ class AppRouter {
       GoRoute(
         path: '/feed',
         name: 'feed',
-        builder: (context, state) => const DashboardPage(initialIndex: 1),
+        builder: (context, state) {
+          final reportId = state.uri.queryParameters['reportId'];
+          return DashboardPage(
+            initialIndex: 1,
+            initialFeedReportId: reportId,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/post/:id',
+        name: 'postDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? state.uri.queryParameters['reportId'];
+          return DashboardPage(
+            initialIndex: 1,
+            initialFeedReportId: id,
+          );
+        },
       ),
 
       GoRoute(

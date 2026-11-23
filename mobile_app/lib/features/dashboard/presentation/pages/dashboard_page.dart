@@ -29,7 +29,14 @@ class DashboardPage extends StatefulWidget {
   /// Allows injection of the starting tab index (e.g. from a deep-link).
   final int initialIndex;
 
-  const DashboardPage({super.key, this.initialIndex = 0});
+  /// Allows opening the Feed tab with a specific report highlighted / isolated.
+  final String? initialFeedReportId;
+
+  const DashboardPage({
+    super.key,
+    this.initialIndex = 0,
+    this.initialFeedReportId,
+  });
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -53,10 +60,23 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _selectedFeedReportId = widget.initialFeedReportId;
     _fetchUnreadCount();
     _subscribeToUnreadCount();
     _subscribeToNotificationAlerts();
     _initNativeNotifications();
+  }
+
+  @override
+  void didUpdateWidget(DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFeedReportId != oldWidget.initialFeedReportId &&
+        widget.initialFeedReportId != null) {
+      setState(() {
+        _selectedFeedReportId = widget.initialFeedReportId;
+        _currentIndex = 1;
+      });
+    }
   }
 
   void _initNativeNotifications() {

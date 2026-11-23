@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 
 class FeedCardComments extends StatelessWidget {
@@ -138,10 +139,43 @@ class FeedCardComments extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                // if (linkedReportId != null && linkedReportId!.isNotEmpty) ...[
-                //   EmbeddedSightingCard(reportId: linkedReportId!),
-                //   const SizedBox(height: 4.0),
-                // ],
+                if (linkedReportId != null && linkedReportId!.isNotEmpty) ...[
+                  const SizedBox(height: 6.0),
+                  InkWell(
+                    key: ValueKey('btn_linked_report_$linkedReportId'),
+                    onTap: () {
+                      Navigator.of(context, rootNavigator: true).maybePop();
+                      context.go('/feed?reportId=$linkedReportId');
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.link_rounded, size: 14, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Text(
+                            'View Linked Sighting Post →',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6.0),
                 GestureDetector(
                   onTap: onReplyTap,
