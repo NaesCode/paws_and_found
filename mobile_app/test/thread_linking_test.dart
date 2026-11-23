@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
@@ -9,10 +8,10 @@ import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_comm
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_comments_modal.dart';
 
 class _FakeFeedRepo implements FeedRepository {
-  final List<FeedComment> comments;
+  final List<FeedComment> comments = const [];
   final List<FeedPost> sightings;
 
-  _FakeFeedRepo({this.comments = const [], this.sightings = const []});
+  _FakeFeedRepo({this.sightings = const []});
 
   @override
   Future<List<FeedComment>> getComments(String reportId) async => comments;

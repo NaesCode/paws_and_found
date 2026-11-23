@@ -30,7 +30,6 @@ class ClaimPetPage extends StatefulWidget {
 }
 
 class _ClaimPetPageState extends State<ClaimPetPage> {
-  DateTime? _scheduledMeetupDateTime;
   final ClaimRepository _repository = ClaimRepository();
   final FeedRepositoryImpl _feedRepository = FeedRepositoryImpl();
   int? _viewingStage;
@@ -558,9 +557,6 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                   ? claim.claimerConfirmedHandover
                   : claim.finderConfirmedHandover,
               onProposeMeetup: (place, lat, lng, time, scheduledDateTime) {
-                setState(() {
-                  _scheduledMeetupDateTime = scheduledDateTime;
-                });
                 return _repository.proposeMeetup(
                   claimId: claim.id,
                   placeName: place,
