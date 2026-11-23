@@ -32,6 +32,7 @@ class FeedRepositoryImpl implements FeedRepository {
         animal_name,
         description,
         photo_url,
+        location,
         location_name,
         status,
         analysis_status,
@@ -105,6 +106,7 @@ class FeedRepositoryImpl implements FeedRepository {
         animal_type, 
         description, 
         photo_url, 
+        location,
         location_name, 
         status, 
         animal_name,
@@ -147,6 +149,7 @@ class FeedRepositoryImpl implements FeedRepository {
           animal_type, 
           description, 
           photo_url, 
+          location,
           location_name, 
           status, 
           animal_name,
@@ -168,6 +171,7 @@ class FeedRepositoryImpl implements FeedRepository {
           animal_type, 
           description, 
           photo_url, 
+          location,
           location_name, 
           status, 
           animal_name,
@@ -269,6 +273,7 @@ class FeedRepositoryImpl implements FeedRepository {
             animal_type,
             description,
             photo_url,
+            location,
             location_name,
             status,
             analysis_status,
@@ -454,7 +459,7 @@ class FeedRepositoryImpl implements FeedRepository {
     String userId, {
     required double lat,
     required double lng,
-    double? radiusMeters = null,
+    double? radiusMeters,
   }) async {
     try {
       final List<dynamic> rows = await _supabase.rpc(

@@ -239,7 +239,6 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
-                        final isFound = report.status.toLowerCase() == 'found';
                         final isSafe = report.status.toLowerCase() == 'safe';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
                         final isWithinGracePeriod =
