@@ -106,13 +106,8 @@ class CameraReportController extends ChangeNotifier {
   }
 
   void setAnimalType(String value) {
-    if (_animalType == value) return;
     _animalType = value;
     notifyListeners();
-    // Re-run AI pre-match scan if an image has already been captured
-    if (_selectedImageBytes != null && _selectedImageBytes!.isNotEmpty) {
-      runAiPreMatchScan();
-    }
   }
 
   void setStatus(String value) {
