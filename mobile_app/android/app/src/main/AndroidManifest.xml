@@ -9,7 +9,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
-        android:label="paws_and_found"
+        android:label="Paws & Found"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
