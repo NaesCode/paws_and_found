@@ -339,7 +339,6 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         final isSpotted = statusLower == 'stray';
                         final isMissing = statusLower == 'missing';
                         final isFound = statusLower == 'found';
-                        final isViewOnMap = isSpotted;
 
                         return ReportCardItem(
                         id: report.id,

@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/location_constants.dart';
 import '../models/user_profile_model.dart';
 import '../models/pet_model.dart';
 import '../../domain/entities/pet.dart';
@@ -353,7 +355,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       );
     }
 
-    await supabase.rpc(
+    final response = await supabase.rpc(
       'report_pet_missing',
       params: {
         'p_pet_id': petId,
@@ -365,6 +367,20 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
             .toIso8601String(),
       },
     );
+
+    if (response != null) {
+      try {
+        final locationName = LocationConstants.isWithinCebu(lat, lng)
+            ? LocationConstants.defaultCityName
+            : '${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°';
+        await supabase
+            .from('reports')
+            .update({'location_name': locationName})
+            .eq('id', response.toString());
+      } catch (e) {
+        debugPrint('[ProfileRemoteDataSource] Optional location_name update skipped: $e');
+      }
+    }
   }
 
   @override
