@@ -490,7 +490,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                 onTap: () => setState(() => _viewingStage = 3),
               ),
             Stage2VerificationWidget(
-              claimId: claim!.id,
+              claimId: claim.id,
               isFinderView: isFinderView,
               proofSubmitted: claim.stage2ProofSubmitted,
               isApproved: claim.stage2Approved,
