@@ -258,12 +258,12 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
                           petButtonText: isSafe
-                              ? "Safe"
-                              : (isMissing ? "Mark as Found" : "View on Map"),
+                              ? "He is Safe"
+                              : (isMissing ? "Mark as Safe" : "View on Map"),
                           button1Text: isMissing
                               ? "View Map"
                               : (isSafe ? "Reunited" : "Edit"),
-                          button2Text: "Safe",
+                          button2Text: isMissing ? "Edit": "Safe",
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
                           onPetButtonPressed: isSafe
@@ -285,8 +285,12 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                                   }
                                 },
                           onButton2Pressed: isSafe ? null : () {
-                            _handleMarkAsFound(report);
-                          } ,
+                                  if (isMissing) {
+                                    _handleEditReport(report);
+                                  } else {
+                                    _handleMarkAsFound(report);
+                                  }
+                                },
                           onUndoPressed: isWithinGracePeriod
                               ? () => _handleUndoReport(report)
                               : null,
@@ -310,7 +314,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Mark "$petTitle" as Found?'),
+        title: Text('Mark "$petTitle" as Safe?'),
         content: Text(
           'Confirming that $petTitle has been found will update the post status to FOUND, remove the active alert from the community map, and close any open claim requests.',
         ),
