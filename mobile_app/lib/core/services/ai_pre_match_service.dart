@@ -68,7 +68,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         );
 
         final streamedResponse = await _httpClient.send(request).timeout(
-              const Duration(seconds: 8),
+              const Duration(seconds: 20),
             );
 
         if (streamedResponse.statusCode == 200) {
@@ -81,16 +81,12 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
               .toList();
         }
       } catch (e) {
-        debugPrint('[AiPreMatchService] Host $base unavailable ($e), falling back to proximity scan...');
+        debugPrint('[AiPreMatchService] Host $base unavailable ($e)');
       }
     }
 
-    // 2. Graceful Dev Fallback: Query live missing pets in Supabase & rank by species & GPS Haversine distance
-    return _fetchNearbyMissingCandidates(
-      lat: lat,
-      lng: lng,
-      animalType: animalType,
-    );
+    // Never fabricate fake visual matches if the AI vision server is unreachable
+    return [];
   }
 
   /// Calculates geographic distance in kilometers between two GPS points using the Haversine formula.

@@ -591,8 +591,8 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         # 2. Dog (Pinky) with low similarity 0.64 -> should be filtered out by threshold!
         # 3. Dog (Tucker) with high similarity 0.85 -> should be included!
         rep_cat = MagicMock()
-        rep_cat.id = "rep-cat-1"
-        rep_cat.pet_id = "pet-cat-1"
+        rep_cat.id = uuid.uuid4()
+        rep_cat.pet_id = uuid.uuid4()
         rep_cat.pet.name = "Georgei"
         rep_cat.pet.species = "Cat"
         rep_cat.animal_type = "feline"
@@ -606,8 +606,8 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         rep_cat.pet.missing_since = None
 
         rep_dog_low = MagicMock()
-        rep_dog_low.id = "rep-dog-low"
-        rep_dog_low.pet_id = "pet-dog-low"
+        rep_dog_low.id = uuid.uuid4()
+        rep_dog_low.pet_id = uuid.uuid4()
         rep_dog_low.pet.name = "Pinky"
         rep_dog_low.pet.species = "Dog"
         rep_dog_low.animal_type = "canine"
@@ -621,8 +621,8 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         rep_dog_low.pet.missing_since = None
 
         rep_dog_high = MagicMock()
-        rep_dog_high.id = "rep-dog-high"
-        rep_dog_high.pet_id = "pet-dog-high"
+        rep_dog_high.id = uuid.uuid4()
+        rep_dog_high.pet_id = uuid.uuid4()
         rep_dog_high.pet.name = "Tucker"
         rep_dog_high.pet.species = "Dog"
         rep_dog_high.animal_type = "canine"
@@ -642,12 +642,20 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         mock_report_filter.return_value = mock_qs
 
         # Mock embeddings
-        with patch("core.models.PetEmbedding.objects.filter") as mock_pet_emb:
-            mock_emb_inst = MagicMock()
-            mock_emb_inst.vector = [0.1] * 512
-            mock_pet_emb.return_value.first.return_value = mock_emb_inst
+        with patch("core.models.PetEmbedding.objects.filter") as mock_pet_emb, \
+             patch("core.models.ReportEmbedding.objects.filter") as mock_rep_emb:
+            mock_rep_emb.return_value = []
+            mock_emb_low = MagicMock()
+            mock_emb_low.pet_id = rep_dog_low.pet_id
+            mock_emb_low.vector = [0.1] * 512
 
-            # Cosine scores: Cat = 0.63, Dog Low = 0.64, Dog High = 0.85
+            mock_emb_high = MagicMock()
+            mock_emb_high.pet_id = rep_dog_high.pet_id
+            mock_emb_high.vector = [0.1] * 512
+
+            mock_pet_emb.return_value = [mock_emb_low, mock_emb_high]
+
+            # Cosine scores: Dog Low = 0.64, Dog High = 0.85
             mock_cosine.side_effect = [0.64, 0.85]
 
             fake_file = BytesIO(b"fake_jpeg_data")

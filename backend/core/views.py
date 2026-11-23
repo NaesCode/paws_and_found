@@ -646,8 +646,24 @@ class MatchCandidatesView(APIView):
         # Enforce minimum visual similarity threshold (>= 0.75) to prevent baseline embedding noise
         min_threshold = getattr(settings, "MATCH_PRE_SUGGESTION_MIN_SIMILARITY", 0.75)
 
+        reports_list = list(missing_reports[:30])
+        pet_ids = [r.pet_id for r in reports_list if r.pet_id]
+        report_ids = [r.id for r in reports_list]
+
+        # Bulk prefetch embeddings to eliminate N+1 DB latency
+        pet_emb_map = {
+            pe.pet_id: pe.vector
+            for pe in PetEmbedding.objects.filter(pet_id__in=pet_ids)
+            if pe.vector
+        }
+        report_emb_map = {
+            re.report_id: re.vector
+            for re in ReportEmbedding.objects.filter(report_id__in=report_ids)
+            if re.vector
+        }
+
         candidates = []
-        for report in missing_reports[:30]:
+        for report in reports_list:
             pet = report.pet
 
             # Strict Species Filter: never match cross-species (e.g. Dog vs Cat, Cat vs Bird)
@@ -660,20 +676,7 @@ class MatchCandidatesView(APIView):
             ):
                 continue
 
-            pet_embedding = None
-            if pet:
-                pet_embedding = PetEmbedding.objects.filter(pet_id=pet.id).first()
-
-            report_embedding = None
-            if not pet_embedding:
-                report_embedding = ReportEmbedding.objects.filter(report_id=report.id).first()
-
-            target_vector = None
-            if pet_embedding and pet_embedding.vector:
-                target_vector = pet_embedding.vector
-            elif report_embedding and report_embedding.vector:
-                target_vector = report_embedding.vector
-
+            target_vector = pet_emb_map.get(report.pet_id) or report_emb_map.get(report.id)
             if not target_vector:
                 continue
 
