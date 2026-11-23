@@ -174,9 +174,12 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
     final rawNote = _noteController.text.trim();
     final modResult = const ContentModerationService().checkContent(rawNote);
     if (modResult.isBlocked) {
-      final uid = Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+      String? uid;
+      try {
+        uid = Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {}
       final record = await const UserRestrictionService().recordViolation(
-        userId: uid,
+        userId: uid ?? 'current_user',
         prohibitedWord: modResult.detectedWord ?? '',
       );
       if (!mounted) return;

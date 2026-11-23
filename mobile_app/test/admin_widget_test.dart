@@ -265,7 +265,7 @@ void main() {
       expect(find.text('User Management'), findsOneWidget);
       expect(find.text('ADMIN'), findsOneWidget);
       expect(find.byType(AppOverflowMenu), findsOneWidget);
-      expect(find.text('Search users...'), findsOneWidget);
+      expect(find.text('Search users by name or email...'), findsOneWidget);
       expect(find.text('NAME'), findsOneWidget);
       expect(find.text('STATUS'), findsOneWidget);
 
@@ -1197,7 +1197,8 @@ void main() {
       expect(find.text('Post Status Breakdown'), findsOneWidget);
       expect(find.text('Missing Pets'), findsWidgets);
       expect(find.text('Stray Sightings'), findsWidgets);
-      expect(find.text('Found / Reunited'), findsWidgets);
+      expect(find.text('Found'), findsWidgets);
+      expect(find.text('Safe / Reunited'), findsWidgets);
       expect(find.byKey(const ValueKey('btn_post_status_weekly')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_post_status_monthly')), findsOneWidget);
       expect(find.byKey(const ValueKey('btn_post_status_yearly')), findsOneWidget);

@@ -189,12 +189,9 @@ void main() {
       await tester.tap(find.text('Broadcast Alert'));
       await tester.pumpAndSettle();
 
-      // Guidelines warning dialog should appear
-      expect(find.text('Community Guidelines'), findsOneWidget);
-      expect(
-        find.text('Your report note contains prohibited language ("buang"). Please remove it to proceed.'),
-        findsOneWidget,
-      );
+      // Community Warning dialog should appear
+      expect(find.text('Community Warning'), findsOneWidget);
+      expect(find.text('Detected: "buang"'), findsOneWidget);
     });
   });
 }
