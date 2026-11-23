@@ -382,6 +382,35 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return items;
   }
 
+  @override
+  Future<Set<String>> getFlaggedPetNames() async {
+    final client = Supabase.instance.client;
+    final uid = client.auth.currentUser?.id;
+    if (uid == null) return {};
+
+    try {
+      final List<dynamic> rows = await client
+          .from('notifications')
+          .select('message')
+          .eq('user_id', uid)
+          .eq('type', 'warning')
+          .like('message', '%Pet Profile Under Review%');
+
+      final flagged = <String>{};
+      final regex = RegExp(r"Pet Profile Under Review:\s*'([^']+)'");
+      for (final r in rows) {
+        final msg = r['message']?.toString() ?? '';
+        final match = regex.firstMatch(msg);
+        if (match != null && match.group(1) != null) {
+          flagged.add(match.group(1)!);
+        }
+      }
+      return flagged;
+    } catch (_) {
+      return {};
+    }
+  }
+
   Future<void> _requestPetAnalysis(String petId, {bool refresh = false}) async {
     try {
       await _orchestratorClient.post(

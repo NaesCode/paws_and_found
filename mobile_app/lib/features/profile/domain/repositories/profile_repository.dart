@@ -66,4 +66,7 @@ abstract class ProfileRepository {
   /// until they are marked completed or declined.
   Stream<List<dynamic>> watchPendingMeetups();
   Stream<List<dynamic>> watchCompletedReunions();
+
+  /// Retrieves the set of pet names that are currently flagged under review by AI moderation.
+  Future<Set<String>> getFlaggedPetNames();
 }

@@ -13,6 +13,7 @@ import 'pet_item.dart';
 /// - Loading state indicator
 class PawsProfileSection extends StatelessWidget {
   final List<Pet> pets;
+  final Set<String> flaggedPetNames;
   final bool isLoading;
   final ValueChanged<Pet> onStatusToggle;
   final ValueChanged<Pet>? onEditPet;
@@ -24,6 +25,7 @@ class PawsProfileSection extends StatelessWidget {
   const PawsProfileSection({
     super.key,
     required this.pets,
+    this.flaggedPetNames = const {},
     this.isLoading = false,
     required this.onStatusToggle,
     this.onEditPet,
@@ -140,6 +142,7 @@ class PawsProfileSection extends StatelessWidget {
             ...pets.map(
               (pet) => PetItem(
                 pet: pet,
+                isFlagged: flaggedPetNames.contains(pet.name),
                 onStatusActionPressed: () => onStatusToggle(pet),
                 onEditPressed: onEditPet != null ? () => onEditPet!(pet) : null,
                 onDeletePressed: onDeletePet != null ? () => onDeletePet!(pet) : null,

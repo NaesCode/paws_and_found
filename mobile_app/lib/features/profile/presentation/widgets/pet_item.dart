@@ -11,6 +11,7 @@ import 'pet_info_card.dart';
 ///   expanding to fit full multiline descriptions without truncation.
 class PetItem extends StatelessWidget {
   final Pet pet;
+  final bool isFlagged;
   final VoidCallback? onStatusActionPressed;
   final VoidCallback? onEditPressed;
   final VoidCallback? onDeletePressed;
@@ -20,6 +21,7 @@ class PetItem extends StatelessWidget {
   const PetItem({
     super.key,
     required this.pet,
+    this.isFlagged = false,
     this.onStatusActionPressed,
     this.onEditPressed,
     this.onDeletePressed,
@@ -99,27 +101,56 @@ class PetItem extends StatelessWidget {
                       ),
                   ],
                 ),
-                isSafe
-                    ? PawPillButton.danger(
-                        text: 'Report Missing!',
-                        onPressed: onStatusActionPressed,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        trailingIcon: const Icon(
-                          Icons.pets,
-                          size: 11,
-                          color: AppColors.text1,
+                isFlagged
+                    ? InkWell(
+                        onTap: onStatusActionPressed,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.amber.shade400),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 13, color: Colors.amber.shade900),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Under Review',
+                                style: TextStyle(
+                                  fontFamily: 'Nunito Sans',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
-                    : PawPillButton.primary(
-                        text: 'Mark as Safe',
-                        onPressed: onStatusActionPressed,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        trailingIcon: const Icon(
-                          Icons.check_circle_outline,
-                          size: 12,
-                          color: AppColors.text1,
-                        ),
-                      ),
+                    : isSafe
+                        ? PawPillButton.danger(
+                            text: 'Report Missing!',
+                            onPressed: onStatusActionPressed,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            trailingIcon: const Icon(
+                              Icons.pets,
+                              size: 11,
+                              color: AppColors.text1,
+                            ),
+                          )
+                        : PawPillButton.primary(
+                            text: 'Mark as Safe',
+                            onPressed: onStatusActionPressed,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            trailingIcon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 12,
+                              color: AppColors.text1,
+                            ),
+                          ),
               ],
             ),
           ),
