@@ -430,6 +430,55 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(call_kwargs["type"], "warning")
         self.assertIn("Post Under Review", call_kwargs["message"])
 
+    @patch("core.models.PetEmbedding.objects.filter")
+    @patch("core.models.Notification.objects.create")
+    @patch("core.models.PetEmbedding.objects.update_or_create")
+    @patch("core.views.embed_image")
+    @patch("core.views._download_image")
+    @patch("core.models.Pet.objects.get")
+    def test_analyze_pet_smart_moderation_flags_non_animal(
+        self,
+        mock_get_pet,
+        mock_download,
+        mock_embed,
+        mock_emb_update,
+        mock_notif_create,
+        mock_emb_filter,
+    ):
+        from core.ai.features import EmbeddingResult
+
+        mock_emb_filter.return_value.first.return_value = None
+
+        mock_pet = MagicMock()
+        mock_pet.id = self.pet_id
+        mock_pet.owner_id = self.user_a_id
+        mock_pet.name = "Buster"
+        mock_pet.photo_urls = ["https://supabase.example.com/storage/v1/object/public/animal-photos/fake_pet.jpg"]
+        mock_pet.status = "safe"
+        mock_get_pet.return_value = mock_pet
+        mock_download.return_value = b"fake_non_animal_selfie_bytes"
+
+        # SSDLite320 detecting no animal (score = 0.08, no crop)
+        mock_embed.return_value = EmbeddingResult(
+            vector=[1.0 / np.sqrt(512)] * 512,
+            model_version="resnet18-in1k-v1+ssdlite-crop-v1",
+            used_crop=False,
+            detector_score=0.08,
+        )
+
+        self._auth_as(self.user_a_id)
+        response = self.client.post(f"/api/pets/{self.pet_id}/analyze/")
+
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+        self.assertEqual(response.data["status"], "flagged_unrelated")
+        self.assertIn("No clear animal", response.data["error"])
+        mock_emb_update.assert_not_called()
+        mock_notif_create.assert_called_once()
+        call_kwargs = mock_notif_create.call_args[1]
+        self.assertEqual(call_kwargs["user_id"], self.user_a_id)
+        self.assertEqual(call_kwargs["type"], "warning")
+        self.assertIn("Pet Profile Under Review", call_kwargs["message"])
+
     def test_analyze_report_workflow_and_idempotency(
         self,
         mock_get_report,

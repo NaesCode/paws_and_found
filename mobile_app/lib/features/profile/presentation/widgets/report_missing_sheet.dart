@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/content_moderation_service.dart';
@@ -8,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
 import '../../../../shared/atoms/paw_text_field.dart';
+import '../../../../shared/molecules/community_warning_dialog.dart';
 import '../../../../shared/organisms/location_pin_picker_sheet.dart';
 import '../../domain/entities/pet.dart';
 
@@ -172,27 +174,17 @@ class _ReportMissingSheetState extends State<ReportMissingSheet> {
     final rawNote = _noteController.text.trim();
     final modResult = const ContentModerationService().checkContent(rawNote);
     if (modResult.isBlocked) {
+      final uid = Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+      final record = await const UserRestrictionService().recordViolation(
+        userId: uid,
+        prohibitedWord: modResult.detectedWord ?? '',
+      );
       if (!mounted) return;
-      showDialog(
+      await CommunityWarningDialog.show(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Community Guidelines'),
-            ],
-          ),
-          content: Text(
-            'Your report note contains prohibited language ("${modResult.detectedWord}"). Please remove it to proceed.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+        detectedWord: modResult.detectedWord ?? '',
+        violationCount: record.count,
+        isSuspended: record.isSuspended,
       );
       return;
     }
