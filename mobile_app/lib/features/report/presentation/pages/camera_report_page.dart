@@ -251,11 +251,9 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
           maxChildSize: 0.9,
           expand: false,
           builder: (ctx, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
+            return Material(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: Column(
                 children: [
                   const SizedBox(height: 8),

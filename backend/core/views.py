@@ -621,12 +621,10 @@ class MatchCandidatesView(APIView):
 
         animal_type = str(request.data.get("animal_type", "")).strip().lower()
 
-        # Determine effective query species:
-        # If SSDLite positively detected an animal class (e.g. 'cat', 'dog', 'bird'),
-        # use that. Otherwise use the user's form dropdown selection.
+        # Determine detected animal species from AI vision detector:
+        # We do NOT restrict by the form's dropdown selection to allow true visual search
+        # (Google Lens behavior: camera visual features determine the match, not the form dropdown).
         detected_species_group = normalize_species_group(getattr(emb_result, "detected_species", None))
-        form_species_group = normalize_species_group(animal_type)
-        effective_query_species = detected_species_group or form_species_group
 
         # 3. Query active missing reports
         missing_reports = (
@@ -643,8 +641,10 @@ class MatchCandidatesView(APIView):
                 distance=Distance("location", point)
             )
 
-        # Enforce minimum visual similarity threshold (>= 0.75) to prevent baseline embedding noise
-        min_threshold = getattr(settings, "MATCH_PRE_SUGGESTION_MIN_SIMILARITY", 0.75)
+        # Enforce high-fidelity visual similarity threshold (>= 0.84).
+        # Same-pet true positive pairs score 0.85 - 0.98+.
+        # Different animals of the same species (e.g. orange cat vs grey cat) baseline around 0.78 - 0.82.
+        min_threshold = getattr(settings, "MATCH_PRE_SUGGESTION_MIN_SIMILARITY", 0.84)
 
         reports_list = list(missing_reports[:30])
         pet_ids = [r.pet_id for r in reports_list if r.pet_id]
@@ -666,13 +666,14 @@ class MatchCandidatesView(APIView):
         for report in reports_list:
             pet = report.pet
 
-            # Strict Species Filter: never match cross-species (e.g. Dog vs Cat, Cat vs Bird)
+            # If the AI detector recognized the animal's class (e.g. cat, dog, bird),
+            # strictly prevent cross-species candidates (e.g. Cat photo matching a Dog).
             candidate_species_raw = (pet.species if pet and pet.species else report.animal_type) or ""
             candidate_species_group = normalize_species_group(candidate_species_raw)
             if (
-                effective_query_species
+                detected_species_group
                 and candidate_species_group
-                and effective_query_species != candidate_species_group
+                and detected_species_group != candidate_species_group
             ):
                 continue
 
