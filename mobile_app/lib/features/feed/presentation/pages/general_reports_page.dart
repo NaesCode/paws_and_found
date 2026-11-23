@@ -357,7 +357,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         isFlagged: report.isFlagged,
                         petButtonText: isSafe
                         ? "Claimed"
-                        : (isViewOnMap ? "View on Map" : "This is my Pet!"),
+                        : (isMissing || isSpotted) ? "View on Map" : "This is my pet",
                         button1Text: isFound
                             ? "View on Map"
                             : (isSpotted ? "Found" : "Spotted"),
@@ -365,7 +365,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         onPetButtonPressed: isSafe
                           ? null
                           : () {
-                              if (isViewOnMap) {
+                              if (isMissing || isSpotted) {
                                 context.push('/map?reportId=${report.id}');
                               } else {
                                 showConfirmMyPetDialog(context, report);
