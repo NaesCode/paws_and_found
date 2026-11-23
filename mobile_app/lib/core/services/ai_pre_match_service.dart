@@ -68,7 +68,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         );
 
         final streamedResponse = await _httpClient.send(request).timeout(
-              const Duration(seconds: 20),
+              const Duration(seconds: 35),
             );
 
         if (streamedResponse.statusCode == 200) {
