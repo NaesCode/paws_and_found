@@ -269,7 +269,8 @@ class _EmbeddedSightingCardState extends State<EmbeddedSightingCard> {
                   Expanded(
                     child: InkWell(
                       onTap: () {
-                        context.push('/post/${post.id}', extra: post);
+                        Navigator.of(context, rootNavigator: true).maybePop();
+                        context.go('/feed?reportId=${post.id}');
                       },
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
