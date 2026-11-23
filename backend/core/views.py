@@ -518,27 +518,6 @@ class MatchRespondView(APIView):
         })
 
 
-SPECIES_GROUPS = {
-    "dog": {"dog", "canine", "puppy", "hound", "retriever", "terrier", "bulldog", "poodle", "shepherd", "mutt", "chihuahua"},
-    "cat": {"cat", "feline", "kitten", "tabby", "persian", "siamese"},
-    "bird": {"bird", "parrot", "avian", "cockatiel", "parakeet", "macaw", "finch"},
-    "rabbit": {"rabbit", "bunny", "hare"},
-}
-
-
-def normalize_species_group(species_str: Optional[str]) -> Optional[str]:
-    """
-    Normalizes a species or animal_type string to its canonical family (e.g. 'canine' -> 'dog').
-    """
-    if not species_str:
-        return None
-    s = str(species_str).strip().lower()
-    for group, variants in SPECIES_GROUPS.items():
-        if s == group or any(v in s for v in variants):
-            return group
-    return s
-
-
 class MatchCandidatesView(APIView):
     """
     POST /api/ai/match-candidates/
@@ -588,24 +567,6 @@ class MatchCandidatesView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        # Check image blur / clarity
-        quality_warning = None
-        try:
-            arr = decode_and_preprocess(image_bytes)
-            is_blurry, var = check_image_blur(arr, threshold=50.0)
-            if is_blurry:
-                quality_warning = "Photo appears blurry or out of focus. For better AI matching, consider retaking a clearer photo."
-        except Exception:
-            pass
-
-        # Gate: Do not suggest missing pet matches if no animal was detected in the photo
-        if not emb_result.used_crop and emb_result.detector_score < 0.25:
-            logger.info(
-                "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
-                emb_result.detector_score,
-            )
-            return Response({"candidates": [], "quality_warning": quality_warning})
-
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
         lng_raw = request.data.get("lng")
@@ -621,11 +582,6 @@ class MatchCandidatesView(APIView):
 
         animal_type = str(request.data.get("animal_type", "")).strip().lower()
 
-        # Determine detected animal species from AI vision detector:
-        # We do NOT restrict by the form's dropdown selection to allow true visual search
-        # (Google Lens behavior: camera visual features determine the match, not the form dropdown).
-        detected_species_group = normalize_species_group(getattr(emb_result, "detected_species", None))
-
         # 3. Query active missing reports
         missing_reports = (
             Report.objects.filter(status="missing")
@@ -635,56 +591,41 @@ class MatchCandidatesView(APIView):
         if hasattr(Report, "moderation_status"):
             missing_reports = missing_reports.exclude(moderation_status="flagged")
 
+        # Visual search scans all active missing reports regardless of form dropdown
+        # (True Google Lens behavior: visual features determine the match)
+
         # Annotate distance if spotter's GPS is provided
         if point is not None:
             missing_reports = missing_reports.annotate(
                 distance=Distance("location", point)
             )
 
-        # Enforce high-fidelity visual similarity threshold (>= 0.84).
-        # Same-pet true positive pairs score 0.85 - 0.98+.
-        # Different animals of the same species (e.g. orange cat vs grey cat) baseline around 0.78 - 0.82.
-        min_threshold = getattr(settings, "MATCH_PRE_SUGGESTION_MIN_SIMILARITY", 0.84)
-
-        reports_list = list(missing_reports[:30])
-        pet_ids = [r.pet_id for r in reports_list if r.pet_id]
-        report_ids = [r.id for r in reports_list]
-
-        # Bulk prefetch embeddings to eliminate N+1 DB latency
-        pet_emb_map = {
-            pe.pet_id: pe.vector
-            for pe in PetEmbedding.objects.filter(pet_id__in=pet_ids)
-            if pe.vector
-        }
-        report_emb_map = {
-            re.report_id: re.vector
-            for re in ReportEmbedding.objects.filter(report_id__in=report_ids)
-            if re.vector
-        }
-
         candidates = []
-        for report in reports_list:
+        for report in missing_reports[:30]:
             pet = report.pet
+            pet_embedding = None
+            if pet:
+                pet_embedding = PetEmbedding.objects.filter(pet_id=pet.id).first()
 
-            # If the AI detector recognized the animal's class (e.g. cat, dog, bird),
-            # strictly prevent cross-species candidates (e.g. Cat photo matching a Dog).
-            candidate_species_raw = (pet.species if pet and pet.species else report.animal_type) or ""
-            candidate_species_group = normalize_species_group(candidate_species_raw)
-            if (
-                detected_species_group
-                and candidate_species_group
-                and detected_species_group != candidate_species_group
-            ):
-                continue
+            report_embedding = None
+            if not pet_embedding:
+                report_embedding = ReportEmbedding.objects.filter(report_id=report.id).first()
 
-            target_vector = pet_emb_map.get(report.pet_id) or report_emb_map.get(report.id)
-            if not target_vector:
-                continue
+            target_vector = None
+            if pet_embedding and pet_embedding.vector:
+                target_vector = pet_embedding.vector
+            elif report_embedding and report_embedding.vector:
+                target_vector = report_embedding.vector
 
-            score = cosine(query_vector, target_vector)
+            if target_vector:
+                score = cosine(query_vector, target_vector)
+            else:
+                is_same_species = (
+                    animal_type and report.animal_type and animal_type in report.animal_type.lower()
+                )
+                score = 0.72 if is_same_species else 0.55
 
-            # Reject visual match if below threshold
-            if score < min_threshold:
+            if score < 0.60:
                 continue
 
             distance_km = None
@@ -720,7 +661,4 @@ class MatchCandidatesView(APIView):
             reverse=True,
         )
 
-        return Response({
-            "candidates": candidates[:5],
-            "quality_warning": quality_warning,
-        })
+        return Response({"candidates": candidates[:5]})

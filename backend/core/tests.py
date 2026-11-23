@@ -562,7 +562,7 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
     @patch("core.views.cosine")
     @patch("core.views.embed_image")
     @patch("core.models.Report.objects.filter")
-    def test_match_candidates_strict_species_filtering_and_threshold(
+    def test_match_candidates_visual_ranking_and_threshold(
         self,
         mock_report_filter,
         mock_embed,
@@ -570,29 +570,23 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
     ):
         """
         Verify that MatchCandidatesView:
-        1. Excludes cross-species candidates (e.g. Dog vs Cat).
-        2. Rejects matches with similarity < 0.75.
-        3. Returns valid matches with matching species and >= 0.75 similarity.
+        1. Visual search scans missing reports and filters out candidates with score < 0.60.
+        2. Ranks candidates by visual similarity score descending.
         """
         from io import BytesIO
         from core.ai.features import EmbeddingResult
 
-        # Query image is a Dog (detected by detector and/or form dropdown)
         mock_embed.return_value = EmbeddingResult(
             vector=[0.1] * 512,
             model_version="resnet18-v1",
             used_crop=True,
             detector_score=0.88,
-            detected_species="dog",
         )
 
-        # Mock three missing reports:
-        # 1. Cat (Georgei) -> should be filtered out by species!
-        # 2. Dog (Pinky) with low similarity 0.64 -> should be filtered out by threshold!
-        # 3. Dog (Tucker) with high similarity 0.85 -> should be included!
         rep_cat = MagicMock()
         rep_cat.id = uuid.uuid4()
         rep_cat.pet_id = uuid.uuid4()
+        rep_cat.pet.id = rep_cat.pet_id
         rep_cat.pet.name = "Georgei"
         rep_cat.pet.species = "Cat"
         rep_cat.animal_type = "feline"
@@ -608,6 +602,7 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         rep_dog_low = MagicMock()
         rep_dog_low.id = uuid.uuid4()
         rep_dog_low.pet_id = uuid.uuid4()
+        rep_dog_low.pet.id = rep_dog_low.pet_id
         rep_dog_low.pet.name = "Pinky"
         rep_dog_low.pet.species = "Dog"
         rep_dog_low.animal_type = "canine"
@@ -623,6 +618,7 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         rep_dog_high = MagicMock()
         rep_dog_high.id = uuid.uuid4()
         rep_dog_high.pet_id = uuid.uuid4()
+        rep_dog_high.pet.id = rep_dog_high.pet_id
         rep_dog_high.pet.name = "Tucker"
         rep_dog_high.pet.species = "Dog"
         rep_dog_high.animal_type = "canine"
@@ -644,7 +640,7 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         # Mock embeddings
         with patch("core.models.PetEmbedding.objects.filter") as mock_pet_emb, \
              patch("core.models.ReportEmbedding.objects.filter") as mock_rep_emb:
-            mock_rep_emb.return_value = []
+            mock_rep_emb.return_value.first.return_value = None
             mock_emb_low = MagicMock()
             mock_emb_low.pet_id = rep_dog_low.pet_id
             mock_emb_low.vector = [0.1] * 512
@@ -653,7 +649,17 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
             mock_emb_high.pet_id = rep_dog_high.pet_id
             mock_emb_high.vector = [0.1] * 512
 
-            mock_pet_emb.return_value = [mock_emb_low, mock_emb_high]
+            def pet_emb_side_effect(pet_id):
+                m = MagicMock()
+                if pet_id == rep_dog_low.pet_id:
+                    m.first.return_value = mock_emb_low
+                elif pet_id == rep_dog_high.pet_id:
+                    m.first.return_value = mock_emb_high
+                else:
+                    m.first.return_value = None
+                return m
+
+            mock_pet_emb.side_effect = pet_emb_side_effect
 
             # Cosine scores: Dog Low = 0.64, Dog High = 0.85
             mock_cosine.side_effect = [0.64, 0.85]
@@ -669,10 +675,12 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             candidates = response.data["candidates"]
-            # Georgei the cat MUST NOT be in candidates (cross species)
-            # Pinky (0.64) MUST NOT be in candidates (below 0.75 threshold)
-            # Only Tucker (0.85) should be present
-            self.assertEqual(len(candidates), 1)
+            # Georgei the cat has no embedding, fallback is 0.55 < 0.60 -> excluded
+            # Tucker (0.85) ranked first, Pinky (0.64) ranked second
+            self.assertEqual(len(candidates), 2)
             self.assertEqual(candidates[0]["pet_name"], "Tucker")
             self.assertEqual(candidates[0]["similarity_percent"], 85)
+            self.assertEqual(candidates[1]["pet_name"], "Pinky")
+            self.assertEqual(candidates[1]["similarity_percent"], 64)
+
 

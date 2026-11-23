@@ -16,14 +16,13 @@ _detector_lock = threading.Lock()
 _detector_model: Optional[torch.nn.Module] = None
 _detector_transforms = None
 _target_categories: Optional[Set[int]] = None
-_categories_list: Optional[list] = None
 
 SCORE_THRESHOLD = 0.40
 PADDING_RATIO = 0.10
 
 
 def _load_detector():
-    global _detector_model, _detector_transforms, _target_categories, _categories_list
+    global _detector_model, _detector_transforms, _target_categories
     if _detector_model is not None:
         return
 
@@ -36,31 +35,26 @@ def _load_detector():
         model = ssdlite320_mobilenet_v3_large(weights=weights)
         model.eval()
 
-        # Extract animal category indices dynamically by class name from weights metadata
+        # Extract target category indices dynamically by class name from weights metadata
         categories = weights.meta.get("categories", [])
-        animal_classes = {
-            "cat", "dog", "bird", "horse", "sheep", "cow",
-            "elephant", "bear", "zebra", "giraffe",
-        }
-        target_indices = {idx for idx, cat in enumerate(categories) if cat in animal_classes}
+        target_indices = {idx for idx, cat in enumerate(categories) if cat in ("cat", "dog")}
         if not target_indices:
             # Fallback if categories metadata format varies
-            target_indices = {16, 17, 18, 19, 20, 21, 22, 23, 24, 25}
+            target_indices = {16, 17, 18}
 
         _detector_model = model
         _detector_transforms = weights.transforms()
         _target_categories = target_indices
-        _categories_list = categories
-        logger.info("SSDLite320 detector loaded. Target animal classes (indices %s)", target_indices)
+        logger.info("SSDLite320 detector loaded. Target classes: cat, dog (indices %s)", target_indices)
 
 
 def detect_and_crop_animal(
     image_rgb: np.ndarray,
     score_threshold: float = SCORE_THRESHOLD,
     padding_ratio: float = PADDING_RATIO,
-) -> Tuple[np.ndarray, bool, float, Optional[str]]:
+) -> Tuple[np.ndarray, bool, float]:
     """
-    Detects animals in the RGB image. If found with confidence >= score_threshold,
+    Detects cats or dogs in the RGB image. If found with confidence >= score_threshold,
     crops to the highest scoring bounding box with padding_ratio.
     Otherwise returns the original image.
 
@@ -70,7 +64,7 @@ def detect_and_crop_animal(
         padding_ratio: bounding box padding fraction.
 
     Returns:
-        Tuple of (cropped_or_full_image_rgb, used_crop, detector_score, detected_class)
+        Tuple of (cropped_or_full_image_rgb, used_crop, detector_score)
     """
     _load_detector()
     h, w = image_rgb.shape[:2]
@@ -88,7 +82,6 @@ def detect_and_crop_animal(
 
     best_box = None
     best_score = 0.0
-    best_label_idx = None
 
     for i in range(len(scores)):
         score = float(scores[i].item())
@@ -99,7 +92,6 @@ def detect_and_crop_animal(
             if score > best_score:
                 best_score = score
                 best_box = boxes[i].tolist()
-                best_label_idx = label
 
     if best_box is not None:
         x1, y1, x2, y2 = best_box
@@ -114,17 +106,9 @@ def detect_and_crop_animal(
         crop_x2 = min(w, int(round(x2 + pad_x)))
         crop_y2 = min(h, int(round(y2 + pad_y)))
 
-        detected_class = None
-        if (
-            best_label_idx is not None
-            and _categories_list
-            and best_label_idx < len(_categories_list)
-        ):
-            detected_class = str(_categories_list[best_label_idx]).lower()
-
         if crop_x2 > crop_x1 and crop_y2 > crop_y1:
             cropped = image_rgb[crop_y1:crop_y2, crop_x1:crop_x2]
-            return cropped, True, round(best_score, 4), detected_class
+            return cropped, True, round(best_score, 4)
 
-    return image_rgb, False, 0.0, None
+    return image_rgb, False, 0.0
 
