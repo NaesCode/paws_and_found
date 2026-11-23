@@ -13,11 +13,18 @@ class Stage3MeetupWidget extends StatefulWidget {
   final double? selectedLat;
   final double? selectedLng;
   final String? selectedTime;
+  final DateTime? selectedDateTime;
   final bool myMeetupAgreed;
   final bool isMeetupConfirmed;
   final bool myHandoverConfirmed;
   final bool otherHandoverConfirmed;
-  final Future<void> Function(String place, double lat, double lng, String time) onProposeMeetup;
+  final Future<void> Function(
+    String place,
+    double lat,
+    double lng,
+    String time,
+    DateTime? scheduledDateTime,
+  ) onProposeMeetup;
   final Future<void> Function() onConfirmMeetup;
   final VoidCallback onConfirmHandoverTap;
 
@@ -31,6 +38,7 @@ class Stage3MeetupWidget extends StatefulWidget {
     this.selectedLat,
     this.selectedLng,
     required this.selectedTime,
+    this.selectedDateTime,
     required this.myMeetupAgreed,
     required this.isMeetupConfirmed,
     required this.myHandoverConfirmed,
@@ -49,6 +57,7 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
   double? _draftLat;
   double? _draftLng;
   String _draftTime = 'Today, 4:00 PM';
+  DateTime? _draftDateTime;
   bool _isSaving = false;
 
   @override
@@ -57,6 +66,7 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
     _draftPlace = widget.selectedPlace;
     _draftLat = widget.selectedLat;
     _draftLng = widget.selectedLng;
+    _draftDateTime = widget.selectedDateTime;
     if (widget.selectedTime != null && widget.selectedTime!.isNotEmpty) {
       _draftTime = widget.selectedTime!;
     }
@@ -71,6 +81,9 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
       _draftPlace = widget.selectedPlace;
       _draftLat = widget.selectedLat;
       _draftLng = widget.selectedLng;
+    }
+    if (widget.selectedDateTime != oldWidget.selectedDateTime) {
+      _draftDateTime = widget.selectedDateTime;
     }
     if (widget.selectedTime != null && widget.selectedTime != oldWidget.selectedTime) {
       _draftTime = widget.selectedTime!;
@@ -101,7 +114,7 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: _draftDateTime ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 60)),
     );
@@ -109,16 +122,33 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
 
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _draftDateTime != null
+          ? TimeOfDay.fromDateTime(_draftDateTime!)
+          : TimeOfDay.now(),
     );
     if (pickedTime == null || !mounted) return;
+
+    final combinedDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
 
     final formattedDate = MaterialLocalizations.of(context).formatMediumDate(pickedDate);
     final formattedTime = pickedTime.format(context);
 
     setState(() {
+      _draftDateTime = combinedDateTime;
       _draftTime = '$formattedDate • $formattedTime';
     });
+  }
+
+  DateTime _resolveScheduledDateTime() {
+    if (_draftDateTime != null) return _draftDateTime!;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, 16, 0); // Fallback for default "Today, 4:00 PM"
   }
 
   @override
@@ -343,6 +373,7 @@ class _Stage3MeetupWidgetState extends State<Stage3MeetupWidget> {
                                     displayLat,
                                     displayLng,
                                     _draftTime,
+                                    _resolveScheduledDateTime(),
                                   );
                                 } finally {
                                   if (mounted) setState(() => _isSaving = false);
