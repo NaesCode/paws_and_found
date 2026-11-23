@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 import requests
 from django.conf import settings
@@ -518,6 +518,27 @@ class MatchRespondView(APIView):
         })
 
 
+SPECIES_GROUPS = {
+    "dog": {"dog", "canine", "puppy", "hound", "retriever", "terrier", "bulldog", "poodle", "shepherd", "mutt", "chihuahua"},
+    "cat": {"cat", "feline", "kitten", "tabby", "persian", "siamese"},
+    "bird": {"bird", "parrot", "avian", "cockatiel", "parakeet", "macaw", "finch"},
+    "rabbit": {"rabbit", "bunny", "hare"},
+}
+
+
+def normalize_species_group(species_str: Optional[str]) -> Optional[str]:
+    """
+    Normalizes a species or animal_type string to its canonical family (e.g. 'canine' -> 'dog').
+    """
+    if not species_str:
+        return None
+    s = str(species_str).strip().lower()
+    for group, variants in SPECIES_GROUPS.items():
+        if s == group or any(v in s for v in variants):
+            return group
+    return s
+
+
 class MatchCandidatesView(APIView):
     """
     POST /api/ai/match-candidates/
@@ -600,6 +621,13 @@ class MatchCandidatesView(APIView):
 
         animal_type = str(request.data.get("animal_type", "")).strip().lower()
 
+        # Determine effective query species:
+        # If SSDLite positively detected an animal class (e.g. 'cat', 'dog', 'bird'),
+        # use that. Otherwise use the user's form dropdown selection.
+        detected_species_group = normalize_species_group(getattr(emb_result, "detected_species", None))
+        form_species_group = normalize_species_group(animal_type)
+        effective_query_species = detected_species_group or form_species_group
+
         # 3. Query active missing reports
         missing_reports = (
             Report.objects.filter(status="missing")
@@ -609,18 +637,29 @@ class MatchCandidatesView(APIView):
         if hasattr(Report, "moderation_status"):
             missing_reports = missing_reports.exclude(moderation_status="flagged")
 
-        # Visual search scans all active missing reports regardless of form dropdown
-        # (True Google Lens behavior: visual features determine the match)
-
         # Annotate distance if spotter's GPS is provided
         if point is not None:
             missing_reports = missing_reports.annotate(
                 distance=Distance("location", point)
             )
 
+        # Enforce minimum visual similarity threshold (>= 0.75) to prevent baseline embedding noise
+        min_threshold = getattr(settings, "MATCH_PRE_SUGGESTION_MIN_SIMILARITY", 0.75)
+
         candidates = []
         for report in missing_reports[:30]:
             pet = report.pet
+
+            # Strict Species Filter: never match cross-species (e.g. Dog vs Cat, Cat vs Bird)
+            candidate_species_raw = (pet.species if pet and pet.species else report.animal_type) or ""
+            candidate_species_group = normalize_species_group(candidate_species_raw)
+            if (
+                effective_query_species
+                and candidate_species_group
+                and effective_query_species != candidate_species_group
+            ):
+                continue
+
             pet_embedding = None
             if pet:
                 pet_embedding = PetEmbedding.objects.filter(pet_id=pet.id).first()
@@ -640,8 +679,8 @@ class MatchCandidatesView(APIView):
 
             score = cosine(query_vector, target_vector)
 
-            # Require minimum visual similarity threshold (>= 0.60) to consider a plausible match
-            if score < 0.60:
+            # Reject visual match if below threshold
+            if score < min_threshold:
                 continue
 
             distance_km = None

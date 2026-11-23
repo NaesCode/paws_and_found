@@ -38,6 +38,7 @@ class MatchingRuleTests(SimpleTestCase):
         self.assertEqual(radius_for(7.0), 150_000)
         self.assertEqual(radius_for(30.0), 150_000)
 
+    @override_settings(MATCH_BASE_SIMILARITY=0.80)
     def test_required_similarity_distance_tiers(self):
         # Base: 0.80
         # Tier 1: <= 10 km -> 0.80 + 0.00 = 0.80
@@ -354,6 +355,7 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         mock_match.id = self.match_id
         mock_match.status = "pending"
         mock_match.report.reporter_id = self.user_b_id
+        mock_match.report.reporter = self.user_b_id
         mock_match.report.animal_type = "dog"
         mock_match.pet.owner_id = self.user_a_id
         mock_match.pet.name = "Milo"
@@ -387,8 +389,8 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self,
         mock_get_report,
         mock_download,
-        mock_embed,
         mock_emb_update,
+        mock_embed,
         mock_match,
         mock_notif_create,
     ):
@@ -413,9 +415,9 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
             detector_score=0.05,
         )
 
+        self._auth_as(self.user_b_id)
         response = self.client.post(
             f"/api/reports/{self.report_id}/analyze/",
-            HTTP_AUTHORIZATION=f"Bearer {self.user_b_token}",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -479,6 +481,11 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(call_kwargs["type"], "warning")
         self.assertIn("Pet Profile Under Review", call_kwargs["message"])
 
+    @patch("core.views.match_report_against_pets")
+    @patch("core.views.embed_image")
+    @patch("core.models.ReportEmbedding.objects.update_or_create")
+    @patch("core.views._download_image")
+    @patch("core.models.Report.objects.get")
     def test_analyze_report_workflow_and_idempotency(
         self,
         mock_get_report,
@@ -551,3 +558,113 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         # analysis_status must be set to 'failed' so the client can retry properly
         self.assertEqual(mock_report.analysis_status, "failed")
+
+    @patch("core.views.cosine")
+    @patch("core.views.embed_image")
+    @patch("core.models.Report.objects.filter")
+    def test_match_candidates_strict_species_filtering_and_threshold(
+        self,
+        mock_report_filter,
+        mock_embed,
+        mock_cosine,
+    ):
+        """
+        Verify that MatchCandidatesView:
+        1. Excludes cross-species candidates (e.g. Dog vs Cat).
+        2. Rejects matches with similarity < 0.75.
+        3. Returns valid matches with matching species and >= 0.75 similarity.
+        """
+        from io import BytesIO
+        from core.ai.features import EmbeddingResult
+
+        # Query image is a Dog (detected by detector and/or form dropdown)
+        mock_embed.return_value = EmbeddingResult(
+            vector=[0.1] * 512,
+            model_version="resnet18-v1",
+            used_crop=True,
+            detector_score=0.88,
+            detected_species="dog",
+        )
+
+        # Mock three missing reports:
+        # 1. Cat (Georgei) -> should be filtered out by species!
+        # 2. Dog (Pinky) with low similarity 0.64 -> should be filtered out by threshold!
+        # 3. Dog (Tucker) with high similarity 0.85 -> should be included!
+        rep_cat = MagicMock()
+        rep_cat.id = "rep-cat-1"
+        rep_cat.pet_id = "pet-cat-1"
+        rep_cat.pet.name = "Georgei"
+        rep_cat.pet.species = "Cat"
+        rep_cat.animal_type = "feline"
+        rep_cat.pet.photo_urls = ["https://example.com/cat.jpg"]
+        rep_cat.reporter.name = "Cat Owner"
+        rep_cat.pet.owner.name = "Cat Owner"
+        rep_cat.description = "Lost ginger cat"
+        rep_cat.location_name = "Area A"
+        rep_cat.photo_url = None
+        rep_cat.created_at = None
+        rep_cat.pet.missing_since = None
+
+        rep_dog_low = MagicMock()
+        rep_dog_low.id = "rep-dog-low"
+        rep_dog_low.pet_id = "pet-dog-low"
+        rep_dog_low.pet.name = "Pinky"
+        rep_dog_low.pet.species = "Dog"
+        rep_dog_low.animal_type = "canine"
+        rep_dog_low.pet.photo_urls = ["https://example.com/pinky.jpg"]
+        rep_dog_low.reporter.name = "Dog Owner"
+        rep_dog_low.pet.owner.name = "Dog Owner"
+        rep_dog_low.description = "Lost chihuahua"
+        rep_dog_low.location_name = "Area B"
+        rep_dog_low.photo_url = None
+        rep_dog_low.created_at = None
+        rep_dog_low.pet.missing_since = None
+
+        rep_dog_high = MagicMock()
+        rep_dog_high.id = "rep-dog-high"
+        rep_dog_high.pet_id = "pet-dog-high"
+        rep_dog_high.pet.name = "Tucker"
+        rep_dog_high.pet.species = "Dog"
+        rep_dog_high.animal_type = "canine"
+        rep_dog_high.pet.photo_urls = ["https://example.com/tucker.jpg"]
+        rep_dog_high.reporter.name = "Dog Owner 2"
+        rep_dog_high.pet.owner.name = "Dog Owner 2"
+        rep_dog_high.description = "Lost golden retriever"
+        rep_dog_high.location_name = "Area C"
+        rep_dog_high.photo_url = None
+        rep_dog_high.created_at = None
+        rep_dog_high.pet.missing_since = None
+
+        mock_qs = MagicMock()
+        mock_qs.select_related.return_value = mock_qs
+        mock_qs.exclude.return_value = mock_qs
+        mock_qs.__getitem__.return_value = [rep_cat, rep_dog_low, rep_dog_high]
+        mock_report_filter.return_value = mock_qs
+
+        # Mock embeddings
+        with patch("core.models.PetEmbedding.objects.filter") as mock_pet_emb:
+            mock_emb_inst = MagicMock()
+            mock_emb_inst.vector = [0.1] * 512
+            mock_pet_emb.return_value.first.return_value = mock_emb_inst
+
+            # Cosine scores: Cat = 0.63, Dog Low = 0.64, Dog High = 0.85
+            mock_cosine.side_effect = [0.64, 0.85]
+
+            fake_file = BytesIO(b"fake_jpeg_data")
+            fake_file.name = "query.jpg"
+
+            response = self.client.post(
+                "/api/ai/match-candidates/",
+                {"image": fake_file, "animal_type": "canine"},
+                format="multipart",
+            )
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            candidates = response.data["candidates"]
+            # Georgei the cat MUST NOT be in candidates (cross species)
+            # Pinky (0.64) MUST NOT be in candidates (below 0.75 threshold)
+            # Only Tucker (0.85) should be present
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0]["pet_name"], "Tucker")
+            self.assertEqual(candidates[0]["similarity_percent"], 85)
+

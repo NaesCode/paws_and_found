@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import List, NamedTuple, Union
+from typing import List, NamedTuple, Optional, Union
 
 import numpy as np
 import torch
@@ -34,13 +34,14 @@ class EmbeddingResult(NamedTuple):
     model_version: str
     used_crop: bool
     detector_score: float
+    detected_species: Optional[str] = None
 
 
 def embed_image(image_bytes: bytes, use_detector: bool = True) -> EmbeddingResult:
     """
     End-to-end AI image embedding pipeline:
     1. Decodes and preprocesses image bytes (EXIF correction, RGB conversion, 1024px cap).
-    2. Runs SSDLite320 MobileNetV3 to detect cat/dog and crops with 10% padding (if use_detector=True).
+    2. Runs SSDLite320 MobileNetV3 to detect cat/dog/animal and crops with 10% padding (if use_detector=True).
     3. Runs ResNet-18 to produce an L2-normalized 512-dimensional vector.
 
     Thread-safe and guarded by a module-level lock.
@@ -53,11 +54,12 @@ def embed_image(image_bytes: bytes, use_detector: bool = True) -> EmbeddingResul
     with _ai_inference_lock:
         preprocessed_rgb = decode_and_preprocess(image_bytes, max_bytes=max_bytes)
         if use_detector:
-            cropped_rgb, used_crop, detector_score = detect_and_crop_animal(preprocessed_rgb)
+            cropped_rgb, used_crop, detector_score, detected_species = detect_and_crop_animal(preprocessed_rgb)
         else:
             cropped_rgb = preprocessed_rgb
             used_crop = False
             detector_score = 0.0
+            detected_species = None
         vector = extract_embedding_from_crop(cropped_rgb)
 
     return EmbeddingResult(
@@ -65,6 +67,7 @@ def embed_image(image_bytes: bytes, use_detector: bool = True) -> EmbeddingResul
         model_version=model_version,
         used_crop=used_crop,
         detector_score=detector_score,
+        detected_species=detected_species,
     )
 
 

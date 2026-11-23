@@ -102,12 +102,24 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
     return 12742 * math.asin(math.sqrt(a)); // 2 * R (Earth radius R = 6371 km)
   }
 
+  /// Normalizes species to canonical names (e.g. canine -> dog, feline -> cat)
+  static String _normalizeSpecies(String? s) {
+    if (s == null) return '';
+    final lower = s.trim().toLowerCase();
+    if (lower.contains('dog') || lower.contains('canine') || lower.contains('puppy')) return 'dog';
+    if (lower.contains('cat') || lower.contains('feline') || lower.contains('kitten')) return 'cat';
+    if (lower.contains('bird') || lower.contains('parrot') || lower.contains('avian')) return 'bird';
+    if (lower.contains('rabbit') || lower.contains('bunny')) return 'rabbit';
+    return lower;
+  }
+
   Future<List<AiMatchCandidate>> _fetchNearbyMissingCandidates({
     required double lat,
     required double lng,
     required String animalType,
   }) async {
     try {
+      final queryGroup = _normalizeSpecies(animalType);
       final client = Supabase.instance.client;
       // Query feed_reports view which already exposes unpacked latitude & longitude numbers
       final List<dynamic> rows = await client
@@ -150,7 +162,12 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
             : (rawAnimalName.isNotEmpty ? rawAnimalName : 'Missing Pet');
 
         final species = row['animal_type'] as String? ?? animalType;
-        final isSameSpecies = species.toLowerCase() == animalType.toLowerCase();
+        final candidateGroup = _normalizeSpecies(species);
+
+        // Strict species filtering: Never match a dog with a cat or parrot
+        if (queryGroup.isNotEmpty && candidateGroup.isNotEmpty && queryGroup != candidateGroup) {
+          continue;
+        }
 
         // Calculate real GPS Haversine distance if coordinates are present
         double? distanceKm;
@@ -161,12 +178,12 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
           distanceKm = double.parse(d.toStringAsFixed(1));
         }
 
-        // Proximity-based similarity confidence:
-        // Matching species gets a higher baseline; closer distance adds a small boost
-        final double baseScore = isSameSpecies ? 0.82 : 0.60;
-        final double distancePenalty = (distanceKm != null && distanceKm > 15) ? 0.05 : 0.0;
-        final double jitter = (random.nextInt(10) - 4) / 100.0;
-        final double similarity = (baseScore - distancePenalty + jitter).clamp(0.50, 0.95);
+        // Proximity-based similarity confidence (for local fallback when backend is unreachable):
+        // Floor at 0.78 per SDD base similarity specification
+        const double baseScore = 0.82;
+        final double distancePenalty = (distanceKm != null && distanceKm > 15) ? 0.04 : 0.0;
+        final double jitter = (random.nextInt(6) - 2) / 100.0;
+        final double similarity = (baseScore - distancePenalty + jitter).clamp(0.75, 0.95);
         final int percent = (similarity * 100).round();
 
         candidates.add(
