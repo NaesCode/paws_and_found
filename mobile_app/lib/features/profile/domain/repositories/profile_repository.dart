@@ -69,4 +69,7 @@ abstract class ProfileRepository {
 
   /// Retrieves the set of pet names that are currently flagged under review by AI moderation.
   Future<Set<String>> getFlaggedPetNames();
+
+  /// Real-time stream of pet names flagged under review by AI moderation.
+  Stream<Set<String>> watchFlaggedPetNames();
 }

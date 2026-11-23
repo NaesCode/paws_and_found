@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,12 +47,26 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _hasPromptedOnboarding = false;
+  StreamSubscription<Set<String>>? _flaggedPetsSub;
 
   @override
   void initState() {
     super.initState();
     _repository = widget.repository ?? ProfileRepositoryImpl();
     _loadProfileData();
+    _flaggedPetsSub = _repository.watchFlaggedPetNames().listen((flagged) {
+      if (mounted) {
+        setState(() {
+          _flaggedPetNames = flagged;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _flaggedPetsSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProfileData() async {

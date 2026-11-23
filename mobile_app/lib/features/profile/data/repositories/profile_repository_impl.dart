@@ -100,7 +100,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
     );
 
     if (pet.photoURLs.isNotEmpty && !pet.petID.startsWith('mock-')) {
-      unawaited(_requestPetAnalysis(pet.petID));
+      try {
+        await _requestPetAnalysis(pet.petID).timeout(const Duration(seconds: 15));
+      } catch (e) {
+        debugPrint('[ProfileRepositoryImpl] Initial pet analysis wait timed out or failed: $e');
+      }
     }
 
     return pet;
@@ -158,7 +162,15 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     if (!petId.startsWith('mock-')) {
       final photoWasUpdated = photoUrls != null && photoUrls.isNotEmpty;
-      unawaited(_requestPetAnalysis(petId, refresh: photoWasUpdated));
+      if (photoWasUpdated) {
+        try {
+          await _requestPetAnalysis(petId, refresh: true).timeout(const Duration(seconds: 15));
+        } catch (e) {
+          debugPrint('[ProfileRepositoryImpl] Update pet analysis wait timed out or failed: $e');
+        }
+      } else {
+        unawaited(_requestPetAnalysis(petId, refresh: false));
+      }
     }
 
     return updatedPet;
@@ -411,6 +423,26 @@ class ProfileRepositoryImpl implements ProfileRepository {
     }
   }
 
+  @override
+  Stream<Set<String>> watchFlaggedPetNames() async* {
+    final client = Supabase.instance.client;
+    final uid = client.auth.currentUser?.id;
+    if (uid == null) {
+      yield {};
+      return;
+    }
+
+    // 1. Emit current status immediately
+    yield await getFlaggedPetNames();
+
+    // 2. Realtime listener for incoming warning notifications
+    yield* client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .asyncMap((_) => getFlaggedPetNames());
+  }
+
   Future<void> _requestPetAnalysis(String petId, {bool refresh = false}) async {
     try {
       await _orchestratorClient.post(
@@ -418,6 +450,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
         body: refresh ? {'refresh': true} : null,
       );
       debugPrint('[ProfileRepositoryImpl] AI analysis requested for pet: $petId (refresh=$refresh)');
+    } on OrchestratorException catch (e) {
+      debugPrint('[ProfileRepositoryImpl] Pet AI analysis completed with status ${e.statusCode}: ${e.message}');
     } catch (e) {
       debugPrint('[ProfileRepositoryImpl] Pet AI analysis dispatch deferred: $e');
     }
