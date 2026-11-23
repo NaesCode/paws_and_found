@@ -79,7 +79,7 @@ class FeedRepositoryImpl implements FeedRepository {
   Future<void> markReportAsFound(String reportId) async {
     await Supabase.instance.client
         .from('reports')
-        .update({'status': 'found'})
+        .update({'status': 'safe'})
         .eq('id', reportId);
   }
 
@@ -113,7 +113,8 @@ class FeedRepositoryImpl implements FeedRepository {
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
-      ''').neq('reporter_id', userId);
+      ''').neq('reporter_id', userId)
+      .neq('status', 'safe');
 
       if (filterStatus != null && filterStatus.isNotEmpty) {
         query = query.ilike('status', filterStatus);
@@ -494,6 +495,21 @@ class FeedRepositoryImpl implements FeedRepository {
     } catch (e) {
       throw Exception('Failed to fetch nearby reports: $e');
     }
+  }
+
+  @override
+  Future<bool> hasActiveClaimByOther(String reportId, String currentUserId) async {
+    if (reportId.isEmpty || currentUserId.isEmpty) return false;
+
+    final result = await _supabase.rpc(
+      'has_active_claim_by_other',
+      params: {
+        'p_report_id': reportId,
+        'p_user_id': currentUserId,
+      },
+    );
+
+    return result == true;
   }
 }
 

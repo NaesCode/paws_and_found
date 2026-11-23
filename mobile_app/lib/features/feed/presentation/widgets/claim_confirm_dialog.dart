@@ -2,74 +2,116 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
+import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> showConfirmMyPetDialog(
   BuildContext context,
   FeedPost report,
 ) async {
-  final claimerId = Supabase.instance.client.auth.currentUser?.id;
+  final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+  final isBlocked = await FeedRepositoryImpl().hasActiveClaimByOther(
+    report.id,
+    currentUserId,
+  );
 
-  if (claimerId == null || claimerId.isEmpty){
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('You must be logged in to claim a pet.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
+  if (!context.mounted) return;
 
-  if (claimerId == report.reporterId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('You cannot claim your own report.')),
-    );
-    return;
-  }
+  final String petDisplayName =
+      report.petName.isNotEmpty && report.petName.toLowerCase() != 'unknown'
+          ? report.petName
+          : 'this ${report.species.isNotEmpty ? report.species.toLowerCase() : 'pet'}';
 
-  final rawName = report.petName.trim();
-  final isUnknown = rawName.isEmpty || rawName.toLowerCase() == 'unknown pet';
-  final petLabel = isUnknown ? 'this unknown pet' : rawName;
-
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
+  if (isBlocked) {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        title: const Text(
-          'Claim This Pet?',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: const Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded, color: AppColors.accentOrange),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Claim Currently in Progress',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
         content: Text(
-          'Are you sure $petLabel is yours? You will be redirected to verify ownership.',
+          'You cannot claim $petDisplayName right now because another claimant submitted a request before you and is currently undergoing verification. Please check back later if that claim is not completed.',
+          style: const TextStyle(height: 1.4),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
           ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentOrange,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Yes, My Pet'),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Got it',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
-      );
-    },
-  );
-
-  if (confirmed == true && context.mounted) {
-      context.push(
-      '/claim?reportId=${report.id}',
-      extra: report,
+      ),
     );
+    return;
   }
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      title: Text(
+        'Claim $petDisplayName?',
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      content: Text(
+        'Are you sure $petDisplayName is your pet? Proceeding will start the ownership verification and recovery process with the finder.',
+        style: const TextStyle(height: 1.4),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accentOrange,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: () {
+            Navigator.of(ctx).pop();
+            context.push('/claim?reportId=${report.id}', extra: report);
+          },
+          child: const Text(
+            'Yes, Claim Pet',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    ),
+  );
 }

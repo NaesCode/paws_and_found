@@ -8,15 +8,15 @@ import 'package:paws_and_found/features/feed/presentation/widgets/post_image_pop
 
 class FeedPetInfoCard extends StatelessWidget {
   final String button1Text;
-  final String button2Text;
-  final VoidCallback onButton1Pressed;
-  final VoidCallback onButton2Pressed;
+  final String? button2Text;
+  final VoidCallback? onButton1Pressed;
+  final VoidCallback? onButton2Pressed;
   final String imageUrl;
   final String name;
   final String specie;
   final String description;
   final String petButtonText;
-  final VoidCallback onPetButtonPressed;
+  final VoidCallback? onPetButtonPressed;
 
   const FeedPetInfoCard({
     super.key,
@@ -127,15 +127,17 @@ class FeedPetInfoCard extends StatelessWidget {
                 children: [
                   FeedActionBtns(
                     text: button1Text,
-                    backgroundColor: AppColors.darkCharcoal,
+                    backgroundColor: AppColors.primary,
                     onPressed: onButton1Pressed,
                   ),
-                  const SizedBox(width: 8),
-                  FeedActionBtns(
-                    text: button2Text,
-                    backgroundColor: AppColors.primary,
-                    onPressed: onButton2Pressed,
-                  ),
+                  if (button2Text != null && button2Text!.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    FeedActionBtns(
+                      text: button2Text!,
+                      backgroundColor: AppColors.darkCharcoal,
+                      onPressed: onButton2Pressed,
+                    ),
+                  ],
                 ],
               ),
             ],
