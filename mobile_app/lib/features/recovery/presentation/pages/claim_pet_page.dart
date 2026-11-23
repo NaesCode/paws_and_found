@@ -570,13 +570,27 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
                 isFinder: isFinderView,
               ),
               onConfirmHandoverTap: () async {
-                final confirmed = await showHandoverConfirmDialog(
-                  context,
-                  petName: petTitle,
-                  isFinder: isFinderView,
-                );
-                if (confirmed == true) {
-                  await _repository.confirmHandover(claim, isFinder: isFinderView);
+                try {
+                  final confirmed = await showHandoverConfirmDialog(
+                    context,
+                    petName: petTitle,
+                    isFinder: isFinderView,
+                  );
+                  if (confirmed == true && mounted) {
+                    await _repository.confirmHandover(claim, isFinder: isFinderView);
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Handover confirmation error: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
             ),

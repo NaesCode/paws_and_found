@@ -519,6 +519,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _FilterChipBar(
           activeFilter: _activeFilter,
           notifications: _notifications,
+          pendingDeleteIds: _pendingDeleteIds,
           onFilterChanged: (f) => setState(() => _activeFilter = f),
         ),
 
@@ -637,15 +638,18 @@ class _FilterChipBar extends StatelessWidget {
   final _NotifFilter activeFilter;
   final List<AppNotification> notifications;
   final ValueChanged<_NotifFilter> onFilterChanged;
+  final Set<String> pendingDeleteIds;
 
   const _FilterChipBar({
     required this.activeFilter,
     required this.notifications,
     required this.onFilterChanged,
+    this.pendingDeleteIds = const {},
   });
 
-  int _countFor(_NotifFilter f) =>
-      notifications.where(f.matches).length;
+  int _countFor(_NotifFilter f) => notifications
+    .where((n) => !pendingDeleteIds.contains(n.id) && !n.isRead && f.matches(n))
+    .length;
 
   @override
   Widget build(BuildContext context) {
