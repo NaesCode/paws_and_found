@@ -8,6 +8,7 @@ import '../../features/report/data/models/ai_match_candidate.dart';
 
 /// Contract for the real-time AI in-camera visual scanner.
 abstract class AiPreMatchService {
+  String? get lastQualityWarning;
   Future<List<AiMatchCandidate>> scanForCandidates({
     required Uint8List imageBytes,
     required double lat,
@@ -24,6 +25,10 @@ abstract class AiPreMatchService {
 /// distance calculation so the UI remains fast, accurate, and interactive.
 class AiPreMatchServiceImpl implements AiPreMatchService {
   final http.Client _httpClient;
+  String? _lastQualityWarning;
+
+  @override
+  String? get lastQualityWarning => _lastQualityWarning;
 
   AiPreMatchServiceImpl({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
@@ -37,6 +42,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
     required double lng,
     String animalType = 'canine',
   }) async {
+    _lastQualityWarning = null;
     if (imageBytes.isEmpty) return [];
 
     // 1. Attempt live in-memory scan with backend orchestrator (ResNet-18)
@@ -68,6 +74,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         if (streamedResponse.statusCode == 200) {
           final responseBody = await streamedResponse.stream.bytesToString();
           final data = jsonDecode(responseBody) as Map<String, dynamic>;
+          _lastQualityWarning = data['quality_warning'] as String?;
           final rawList = data['candidates'] as List<dynamic>? ?? [];
           final candidates = rawList
               .map((item) => AiMatchCandidate.fromJson(item as Map<String, dynamic>))
