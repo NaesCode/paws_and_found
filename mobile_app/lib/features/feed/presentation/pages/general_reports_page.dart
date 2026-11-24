@@ -32,11 +32,18 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   String _selectedFilter = 'latest';
   final List<String> _generalFilters = ['Latest', 'Oldest', 'Near Me', 'Missing', 'Found', 'Spotted'];
 
+  String get _currentUserId {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id ??'';
-    _reportsFuture = _repository.getGeneralReports(currentUserId);
+    _reportsFuture = _repository.getGeneralReports(_currentUserId);
   }
 
   Future<List<FeedPost>> _loadNearMeReports(String currentUserId) async {
@@ -65,7 +72,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   }
 
   void _fetchGeneralReports(String filterValue) {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUserId = _currentUserId;
     
     setState(
       () {

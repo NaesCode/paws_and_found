@@ -30,7 +30,18 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   /// Always resolves to a live client. Using [Supabase.instance.client] directly
   /// avoids the silent-null issue that occurred when capturing the client at
   /// construction time before the session was fully established.
-  SupabaseClient get _client => _customClient ?? Supabase.instance.client;
+  SupabaseClient get _client {
+    if (_customClient != null) return _customClient;
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return SupabaseClient(
+        'http://localhost:54321',
+        'dummy-key',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+      );
+    }
+  }
 
   @override
   Future<List<MapReportModel>> getNearbyReports({

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:paws_and_found/core/services/user_restriction_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
+import 'package:paws_and_found/shared/organisms/account_suspended_view.dart';
 import '../widgets/recovery_stepper_header.dart';
 import '../widgets/claimant_selector_bar.dart';
 import '../widgets/stage1_agreement_widget.dart';
@@ -17,11 +20,13 @@ typedef ActiveClaimProgress = Map<String, dynamic>;
 class ClaimPetPage extends StatefulWidget {
   final String reportId;
   final FeedPost? report;
+  final UserRestrictionService? restrictionService;
 
   const ClaimPetPage({
     super.key,
     required this.reportId,
     this.report,
+    this.restrictionService,
   });
 
   @override
@@ -30,6 +35,8 @@ class ClaimPetPage extends StatefulWidget {
 
 class _ClaimPetPageState extends State<ClaimPetPage> {
   final ClaimRepository _repository = ClaimRepository();
+  late final UserRestrictionService _restrictionService;
+  bool _isUserSuspended = false;
   int? _viewingStage;
   int _selectedClaimantIndex = 0;
   late Future<FeedPost?> _reportFuture;
@@ -39,13 +46,43 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
   @override
   void initState() {
     super.initState();
+    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
+    _checkSuspensionStatus();
     _reportFuture = widget.report != null
         ? Future.value(widget.report)
         : FeedRepositoryImpl().getReportById(widget.reportId);
   }
 
+  Future<void> _checkSuspensionStatus() async {
+    final suspended = await _restrictionService.isUserSuspended();
+    if (mounted && _isUserSuspended != suspended) {
+      setState(() => _isUserSuspended = suspended);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isUserSuspended) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: AccountSuspendedView(
+            onRefreshStatus: () async {
+              final suspended = await _restrictionService.isUserSuspended();
+              if (mounted) setState(() => _isUserSuspended = suspended);
+            },
+            onSignOut: () async {
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {}
+              if (mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ),
+      );
+    }
     return FutureBuilder<FeedPost?>(
       future: _reportFuture,
       builder: (context, reportSnapshot) {

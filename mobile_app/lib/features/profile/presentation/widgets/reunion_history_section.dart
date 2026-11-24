@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
 
 class ReunionHistorySection extends StatelessWidget {
   final List<dynamic> history;
 
-  const ReunionHistorySection({
-    super.key,
-    required this.history,
-  });
+  const ReunionHistorySection({super.key, required this.history});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +22,11 @@ class ReunionHistorySection extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.verified_rounded, size: 18, color: AppColors.primary),
+              const Icon(
+                Icons.verified_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
@@ -71,8 +73,18 @@ class _ReunionHistoryCard extends StatelessWidget {
     final parsed = DateTime.tryParse(rawIso)?.toLocal();
     if (parsed == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[parsed.month - 1]} ${parsed.day}, ${parsed.year}';
   }
@@ -118,7 +130,7 @@ class _ReunionHistoryCard extends StatelessWidget {
                       ? Image.network(
                           photoUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(),
+                          errorBuilder: (_, _, _) => _fallbackAvatar(),
                         )
                       : _fallbackAvatar(),
                 ),
@@ -145,7 +157,10 @@ class _ReunionHistoryCard extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(6),
@@ -153,7 +168,11 @@ class _ReunionHistoryCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.check_circle, size: 11, color: AppColors.primary),
+                              const Icon(
+                                Icons.check_circle,
+                                size: 11,
+                                color: AppColors.primary,
+                              ),
                               const SizedBox(width: 3),
                               Text(
                                 badgeText,
@@ -177,11 +196,13 @@ class _ReunionHistoryCard extends StatelessWidget {
                         color: AppColors.text2,
                       ),
                     ),
-                    if ((meetupPlace != null && meetupPlace.isNotEmpty) || completedDate.isNotEmpty) ...[
+                    if ((meetupPlace != null && meetupPlace.isNotEmpty) ||
+                        completedDate.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Text(
                         [
-                          if (meetupPlace != null && meetupPlace.isNotEmpty) meetupPlace,
+                          if (meetupPlace != null && meetupPlace.isNotEmpty)
+                            meetupPlace,
                           if (completedDate.isNotEmpty) completedDate,
                         ].join(' • '),
                         maxLines: 1,

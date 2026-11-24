@@ -50,7 +50,19 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final SupabaseClient supabase;
 
   ProfileRemoteDataSourceImpl({SupabaseClient? supabaseClient})
-    : supabase = supabaseClient ?? Supabase.instance.client;
+    : supabase = supabaseClient ?? _safeGetClient();
+
+  static SupabaseClient _safeGetClient() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return SupabaseClient(
+        'http://localhost:54321',
+        'dummy-key',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+      );
+    }
+  }
 
   String? get _currentUserId => supabase.auth.currentUser?.id;
 
@@ -79,17 +91,22 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
     final updatePayload = <String, dynamic>{};
     if (fields.containsKey('name')) updatePayload['name'] = fields['name'];
-    if (fields.containsKey('phoneNumber'))
+    if (fields.containsKey('phoneNumber')) {
       updatePayload['phone_number'] = fields['phoneNumber'];
-    if (fields.containsKey('phone_number'))
+    }
+    if (fields.containsKey('phone_number')) {
       updatePayload['phone_number'] = fields['phone_number'];
-    if (fields.containsKey('address'))
+    }
+    if (fields.containsKey('address')) {
       updatePayload['address'] = fields['address'];
+    }
     if (fields.containsKey('bio')) updatePayload['bio'] = fields['bio'];
-    if (fields.containsKey('profilePhotoURL'))
+    if (fields.containsKey('profilePhotoURL')) {
       updatePayload['profile_photo_url'] = fields['profilePhotoURL'];
-    if (fields.containsKey('profile_photo_url'))
+    }
+    if (fields.containsKey('profile_photo_url')) {
       updatePayload['profile_photo_url'] = fields['profile_photo_url'];
+    }
 
     final data = await supabase
         .from('profiles')
@@ -231,8 +248,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (breed != null) 'breed': breed.trim(),
       if (color != null) 'color': color.trim(),
       if (description != null) 'description': description.trim(),
-      if (photoUrls != null) 'photo_urls': photoUrls,
-      if (alertSound != null) 'alert_sound': alertSound,
+      'photo_urls': ?photoUrls,
+      'alert_sound': ?alertSound,
     };
 
     final data = await supabase
