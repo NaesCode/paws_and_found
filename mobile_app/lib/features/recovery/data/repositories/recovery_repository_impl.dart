@@ -78,24 +78,22 @@ class ClaimRepository {
 
   /// Stage 3: Confirm handover & auto-close report if both confirmed
   Future<void> confirmHandover(PetClaim claim, {required bool isFinder}) async {
-    final nowBothConfirmed = isFinder
-        ? claim.claimerConfirmedHandover
-        : claim.finderConfirmedHandover;
+    final finderConfirmed = isFinder ? true : claim.finderConfirmedHandover;
+    final claimerConfirmed = !isFinder ? true : claim.claimerConfirmedHandover;
+    final bothConfirmed = finderConfirmed && claimerConfirmed;
 
-    final Map<String, dynamic> updates = {
+    await _client.from('pet_claims').update({
       if (isFinder) 'finder_confirmed_handover': true,
       if (!isFinder) 'claimer_confirmed_handover': true,
+      if (bothConfirmed) 'status': 'completed',
       'updated_at': DateTime.now().toIso8601String(),
-    };
+    }).eq('id', claim.id);
 
-    if (nowBothConfirmed) {
-      updates['status'] = 'completed';
+    if (bothConfirmed && claim.reportId.isNotEmpty) {
+      await _client.from('reports').update({
+        'status': 'safe',
+      }).eq('id', claim.reportId);
     }
-
-    await _client
-        .from('pet_claims')
-        .update(updates)
-        .eq('id', claim.id);
   }
 
   /// Fetches the reporter/owner ID of a report
@@ -116,23 +114,46 @@ class ClaimRepository {
   /// Claimer initiates a new claim request (auto-resolves finderId if empty)
   Future<void> createClaimRequest({
     required String reportId,
-    String? finderId,
+    required String finderId,
     required String claimerId,
   }) async {
-    final resolvedFinderId = (finderId != null && finderId.isNotEmpty)
-        ? finderId
-        : await getReportOwnerId(reportId);
+    // Check if this user previously had a declined/cancelled claim on this report
+    final existing = await _client
+        .from('pet_claims')
+        .select('id, status')
+        .eq('report_id', reportId)
+        .eq('claimer_id', claimerId)
+        .maybeSingle();
 
-    if (resolvedFinderId == claimerId) {
-      throw Exception('You cannot submit a claim on your own report.');
+    if (existing != null) {
+      final status = (existing['status'] ?? '').toString().toLowerCase();
+      if (status == 'declined' || status == 'cancelled' || status == 'rejected') {
+        await _client.from('pet_claims').update({
+          'status': 'pending_agreement',
+          'current_stage': 1,
+          'stage1_request_sent': true,
+          'stage1_approved': false,
+          'stage2_proof_submitted': false,
+          'stage2_approved': false,
+          'stage2_feedback': null,
+          'meetup_confirmed_by_finder': false,
+          'meetup_confirmed_by_claimer': false,
+          'finder_confirmed_handover': false,
+          'claimer_confirmed_handover': false,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', existing['id']);
+        return;
+      }
     }
 
     await _client.from('pet_claims').insert({
       'report_id': reportId,
-      'finder_id': resolvedFinderId,
+      'finder_id': finderId,
       'claimer_id': claimerId,
+      'status': 'pending_agreement',
       'current_stage': 1,
       'stage1_request_sent': true,
+      'stage1_approved': false,
     });
   }
 
@@ -269,6 +290,11 @@ Future<String> uploadClaimProofFile({
     }).eq('id', claimId);
   }
 
-  
+  Future<void> cancelClaim(String claimId) async {
+    await _client
+        .from('pet_claims')
+        .delete()
+        .eq('id', claimId);
+  }
 }
 

@@ -3,13 +3,13 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 
 class FeedActionBtns extends StatelessWidget {
 
-  final String text;
+  final String? text;
   final Color backgroundColor;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const FeedActionBtns({
     super.key, 
-    required this.text, 
+    this.text, 
     required this.backgroundColor, 
     required this.onPressed,
   });
@@ -23,9 +23,11 @@ class FeedActionBtns extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: backgroundColor,
             foregroundColor: AppColors.background,
+            disabledBackgroundColor: const Color(0xFFE2E8F0),
+            disabledForegroundColor: AppColors.textMuted,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(10),
             ),
             padding: EdgeInsets.zero,
           ),
@@ -33,7 +35,7 @@ class FeedActionBtns extends StatelessWidget {
           child: FittedBox( 
             fit: BoxFit.scaleDown,
             child: Text(
-              text,
+              text!,
               maxLines: 1, 
               style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500),
             ),

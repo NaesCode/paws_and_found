@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void showUserProfilePreviewDialog(
   BuildContext context, {
@@ -63,11 +64,25 @@ void showUserProfilePreviewDialog(
                   _contactRow(
                     Icons.email_outlined,
                     email.isNotEmpty ? email : 'No email provided',
+                    onTap: email.isNotEmpty
+                        ? () => _launchExternalUri(
+                              context,
+                              Uri(scheme: 'mailto', path: email.trim()),
+                              'Could not open email app',
+                            )
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   _contactRow(
                     Icons.phone_outlined,
                     phone.isNotEmpty ? phone : 'No phone number provided',
+                    onTap: phone.isNotEmpty
+                        ? () => _launchExternalUri(
+                              context,
+                              Uri(scheme: 'sms', path: phone.trim()),
+                              'Could not open messaging app',
+                            )
+                        : null,
                   ),
                 ],
               ),
@@ -96,19 +111,61 @@ void showUserProfilePreviewDialog(
   );
 }
 
-Widget _contactRow(IconData icon, String value) {
-  return Row(
-    children: [
-      Icon(icon, size: 16, color: AppColors.primary),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Text(
-          value,
-          style: const TextStyle(fontSize: 12.5, color: AppColors.darkCharcoal),
-          overflow: TextOverflow.ellipsis,
-        ),
+Future<void> _launchExternalUri(
+  BuildContext context,
+  Uri uri,
+  String errorMessage,
+) async {
+  try {
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  } catch (e) {
+    debugPrint('Launch error: $e');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
+}
+
+
+Widget _contactRow(IconData icon, String value, {VoidCallback? onTap}) {
+  final isClickable = onTap != null;
+
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(8),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: isClickable ? AppColors.primary : AppColors.darkCharcoal,
+                decoration: isClickable ? TextDecoration.underline : TextDecoration.none,
+                decorationColor: AppColors.primary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isClickable)
+            const Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.primary),
+        ],
       ),
-    ],
+    ),
   );
 }
 

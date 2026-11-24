@@ -104,6 +104,7 @@ class NotificationsPage extends StatefulWidget {
   final bool isActiveTab;
   final bool showBottomNavPlaceholder;
   final void Function(String reportId, double? lat, double? lng)? onViewOnMap;
+  final void Function(String reportId)? onViewInFeed;
 
   const NotificationsPage({
     super.key,
@@ -111,6 +112,7 @@ class NotificationsPage extends StatefulWidget {
     this.isActiveTab = true,
     this.showBottomNavPlaceholder = false,
     this.onViewOnMap,
+    this.onViewInFeed,
   });
 
   @override

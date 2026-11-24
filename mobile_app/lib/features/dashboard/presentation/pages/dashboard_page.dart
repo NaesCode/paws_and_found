@@ -34,10 +34,14 @@ class DashboardPage extends StatefulWidget {
   final int initialIndex;
   final UserRestrictionService? restrictionService;
 
+  /// Allows opening the Feed tab with a specific report highlighted / isolated.
+  final String? initialFeedReportId;
+
   const DashboardPage({
     super.key,
     this.initialIndex = 0,
     this.restrictionService,
+    this.initialFeedReportId,
   });
 
   @override
@@ -52,6 +56,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   String? _selectedMapReportId;
   LatLng? _selectedMapCenter;
+  String? _selectedFeedReportId;
 
   // Notification badge count — fetched once on mount and kept in sync via stream.
   int _unreadCount = 0;
@@ -65,6 +70,7 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _visitedTabs.add(_currentIndex);
+    _selectedFeedReportId = widget.initialFeedReportId;
     _restrictionService = widget.restrictionService ?? const UserRestrictionService();
     _isSuspended = _restrictionService.isUserSuspendedSync();
     _checkSuspensionStatus();
@@ -86,6 +92,25 @@ class _DashboardPageState extends State<DashboardPage> {
         _subscribeToNotificationAlerts();
         _initNativeNotifications();
       }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      setState(() {
+        _currentIndex = widget.initialIndex;
+        _visitedTabs.add(widget.initialIndex);
+      });
+    }
+    if (widget.initialFeedReportId != oldWidget.initialFeedReportId &&
+        widget.initialFeedReportId != null) {
+      setState(() {
+        _selectedFeedReportId = widget.initialFeedReportId;
+        _currentIndex = 1;
+        _visitedTabs.add(1);
+      });
     }
   }
 
@@ -197,17 +222,6 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant DashboardPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialIndex != widget.initialIndex) {
-      setState(() {
-        _currentIndex = widget.initialIndex;
-        _visitedTabs.add(widget.initialIndex);
-      });
-    }
-  }
-
   Future<void> _fetchUnreadCount() async {
     try {
       final count = await NotificationRepositoryImpl().getUnreadCount();
@@ -232,7 +246,14 @@ class _DashboardPageState extends State<DashboardPage> {
           initialCenter: _selectedMapCenter,
         );
       case 1:
-        return const FeedPage();
+        return FeedPage(
+          isolatedReportId: _selectedFeedReportId,
+          onClearIsolation: () {
+            setState(() {
+              _selectedFeedReportId = null;
+            });
+          },
+        );
       case 2:
         return CameraReportPage(
           showBottomNavPlaceholder: false,
@@ -252,6 +273,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 _selectedMapCenter = LatLng(lat, lng);
               }
               _currentIndex = 0;
+            });
+          },
+          onViewInFeed: (reportId) {
+            // Switch to Feed tab and isolate the specific post
+            setState(() {
+              _selectedFeedReportId = reportId;
+              _currentIndex = 1;
+              _visitedTabs.add(1);
             });
           },
         );
@@ -326,4 +355,3 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 }
-

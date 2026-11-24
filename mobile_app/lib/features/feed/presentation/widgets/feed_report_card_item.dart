@@ -8,10 +8,10 @@ import './feed_status_banner.dart';
 class ReportCardItem extends StatelessWidget {
   final String? id;
   final String button1Text;
-  final String button2Text;
-  final VoidCallback onButton1Pressed;
-  final VoidCallback onButton2Pressed;
-  final VoidCallback onPetButtonPressed;
+  final String? button2Text;
+  final VoidCallback? onButton1Pressed;
+  final VoidCallback? onButton2Pressed;
+  final VoidCallback? onPetButtonPressed;
 
   final String petButtonText;
 

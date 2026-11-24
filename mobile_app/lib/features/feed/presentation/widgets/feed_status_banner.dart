@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 enum BannerType{
   missing,
   spotted,
-  found
+  found,
+  safe
 }
 
 class FeedStatusBanner extends StatelessWidget {
@@ -32,8 +33,11 @@ class FeedStatusBanner extends StatelessWidget {
         break;
       case BannerType.found:
         statusText = "FOUND";
-        bgColor = AppColors.primary;
+        bgColor = AppColors.foundBg;
         break;
+      case BannerType.safe:
+        statusText = "SAFE";
+        bgColor = AppColors.primary;
     }
     return Container(
       color: bgColor, 

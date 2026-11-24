@@ -50,6 +50,7 @@ class FeedRepositoryImpl implements FeedRepository {
         animal_name,
         description,
         photo_url,
+        location,
         location_name,
         status,
         analysis_status,
@@ -101,7 +102,7 @@ class FeedRepositoryImpl implements FeedRepository {
   Future<void> markReportAsFound(String reportId) async {
     await Supabase.instance.client
         .from('reports')
-        .update({'status': 'found'})
+        .update({'status': 'safe'})
         .eq('id', reportId);
   }
 
@@ -133,6 +134,7 @@ class FeedRepositoryImpl implements FeedRepository {
         animal_type, 
         description, 
         photo_url, 
+        location,
         location_name, 
         status, 
         animal_name,
@@ -142,7 +144,8 @@ class FeedRepositoryImpl implements FeedRepository {
         profiles(name, profile_photo_url),
         pets(name)
       ''')
-          .neq('reporter_id', userId);
+          .neq('reporter_id', userId)
+          .neq('status', 'safe');
 
       if (filterStatus != null && filterStatus.isNotEmpty) {
         query = query.ilike('status', filterStatus);
@@ -162,29 +165,61 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Future<FeedPost?> getReportById(String reportId) async {
     try {
-      final response = await _supabase
-          .from('reports')
-          .select('''
-        id, 
-        reporter_id, 
-        pet_id, 
-        animal_type, 
-        description, 
-        photo_url, 
-        location_name, 
-        status, 
-        animal_name,
-        analysis_status, 
-        moderation_status,
-        created_at,
-        profiles(name, profile_photo_url),
-        pets(name)
-      ''')
-          .eq('id', reportId)
-          .maybeSingle();
+      final cleanId = reportId.replaceFirst('#', '').trim();
+      final isUuid = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      ).hasMatch(cleanId);
 
-      if (response == null) return null;
-      return FeedPost.fromJson(response);
+      if (isUuid) {
+        final response = await _supabase.from('reports').select('''
+          id, 
+          reporter_id, 
+          pet_id, 
+          animal_type, 
+          description, 
+          photo_url, 
+          location,
+          location_name, 
+          status, 
+          animal_name,
+          analysis_status, 
+          moderation_status,
+          created_at,
+          profiles(name, profile_photo_url),
+          pets(name)
+        ''').eq('id', cleanId).maybeSingle();
+
+        if (response != null) return FeedPost.fromJson(response);
+      } else {
+        // Fallback for short hex prefixes (e.g. #BDC2 or BDC2)
+        final cleanShort = cleanId.replaceAll('-', '').toLowerCase();
+        final response = await _supabase.from('reports').select('''
+          id, 
+          reporter_id, 
+          pet_id, 
+          animal_type, 
+          description, 
+          photo_url, 
+          location,
+          location_name, 
+          status, 
+          animal_name,
+          analysis_status, 
+          moderation_status,
+          created_at,
+          profiles(name, profile_photo_url),
+          pets(name)
+        ''').order('created_at', ascending: false).limit(50);
+
+        for (final row in response) {
+          final rowId = (row['id'] ?? '').toString().replaceAll('-', '').toLowerCase();
+          if (rowId.startsWith(cleanShort)) {
+            return FeedPost.fromJson(row);
+          }
+        }
+      }
+
+      return null;
     } catch (e) {
       return null;
     }
@@ -278,6 +313,7 @@ class FeedRepositoryImpl implements FeedRepository {
             animal_type,
             description,
             photo_url,
+            location,
             location_name,
             status,
             analysis_status,
@@ -533,5 +569,19 @@ class FeedRepositoryImpl implements FeedRepository {
     } catch (e) {
       throw Exception('Failed to fetch nearby reports: $e');
     }
+  }
+
+  Future<bool> hasActiveClaimByOther(String reportId, String currentUserId) async {
+    if (reportId.isEmpty || currentUserId.isEmpty) return false;
+
+    final result = await _supabase.rpc(
+      'has_active_claim_by_other',
+      params: {
+        'p_report_id': reportId,
+        'p_user_id': currentUserId,
+      },
+    );
+
+    return result == true;
   }
 }
