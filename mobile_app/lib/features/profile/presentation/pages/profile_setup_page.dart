@@ -99,10 +99,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     } catch (e) {
       if (mounted) {
         // Fallback: If offline or initial load fails, check local Supabase session
-        Session? session;
-        try {
-          session = Supabase.instance.client.auth.currentSession;
-        } catch (_) {}
+        final session = Supabase.instance.client.auth.currentSession;
         final email = session?.user.email ?? 'user@pawsandfound.org';
         final name = (session?.user.userMetadata?['name'] as String?) ?? 'Pet Owner';
 

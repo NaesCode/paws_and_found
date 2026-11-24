@@ -14,7 +14,6 @@ import '../../features/report/presentation/pages/camera_report_page.dart';
 import '../../features/recovery/presentation/pages/claim_pet_page.dart';
 import '../../features/feed/data/models/feed_post_model.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
-import '../../shared/organisms/account_suspended_view.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -82,25 +81,6 @@ class AppRouter {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginPage(),
-      ),
-
-      GoRoute(
-        path: '/suspended',
-        name: 'suspended',
-        builder: (context, state) => Scaffold(
-          body: SafeArea(
-            child: AccountSuspendedView(
-              onSignOut: () async {
-                try {
-                  await Supabase.instance.client.auth.signOut();
-                } catch (_) {}
-                if (context.mounted) {
-                  context.go('/login');
-                }
-              },
-            ),
-          ),
-        ),
       ),
 
       GoRoute(

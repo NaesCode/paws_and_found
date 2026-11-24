@@ -3,15 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:paws_and_found/core/services/location_service.dart';
 import 'package:paws_and_found/core/services/user_restriction_service.dart';
-import 'package:paws_and_found/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:paws_and_found/features/profile/domain/entities/pet.dart';
 import 'package:paws_and_found/features/profile/presentation/widgets/report_missing_sheet.dart';
-import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
 import 'package:paws_and_found/features/report/presentation/providers/camera_report_controller.dart';
-import 'package:paws_and_found/features/report/presentation/widgets/camera_viewfinder_placeholder.dart';
-import 'package:paws_and_found/features/report/presentation/widgets/create_report_form.dart';
-import 'package:paws_and_found/shared/organisms/account_suspended_view.dart';
-import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TestMockLocationService implements LocationService {
@@ -145,14 +139,12 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       // Tap Broadcast Alert
       await tester.ensureVisible(find.text('Broadcast Alert'));
       await tester.tap(find.text('Broadcast Alert'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       // Alert dialog should appear stating account is suspended
       expect(find.text('Account Suspended'), findsOneWidget);
@@ -184,8 +176,7 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       // Enter prohibited note
       final noteField = find.byType(TextField);
@@ -196,112 +187,11 @@ void main() {
       // Tap Broadcast Alert
       await tester.ensureVisible(find.text('Broadcast Alert'));
       await tester.tap(find.text('Broadcast Alert'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       // Community Warning dialog should appear
       expect(find.text('Community Warning'), findsOneWidget);
       expect(find.text('Detected: "buang"'), findsOneWidget);
-    });
-  });
-
-  group('DashboardPage Full Account Suspension Restrictions', () {
-    testWidgets('renders full AccountSuspendedView and hides CustomAppBar when suspended', (tester) async {
-      const restrictionService = UserRestrictionService();
-      // Record 5 violations to reach suspension
-      for (int i = 0; i < 5; i++) {
-        await restrictionService.recordViolation(
-          userId: 'current_user',
-          prohibitedWord: 'buang',
-        );
-      }
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: DashboardPage(
-            restrictionService: restrictionService,
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // AccountSuspendedView must be rendered
-      expect(find.byType(AccountSuspendedView), findsOneWidget);
-      expect(find.text('Account Suspended'), findsOneWidget);
-      expect(find.text('Contact Admin'), findsOneWidget);
-      expect(find.text('Check Account Status'), findsOneWidget);
-
-      // Bottom navigation bar and tabs must NOT be rendered (full lockout)
-      expect(find.byType(CustomAppBar), findsNothing);
-      expect(find.byType(IndexedStack), findsNothing);
-
-      // Tapping Contact Admin opens dialog with support email
-      await tester.tap(find.byKey(const Key('contact_admin_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Contact Administration'), findsOneWidget);
-      expect(find.text('pawsandfound26@gmail.com'), findsOneWidget);
-      expect(find.byKey(const Key('copy_admin_email_button')), findsOneWidget);
-
-      // Close dialog
-      await tester.tap(find.text('Close'));
-      await tester.pumpAndSettle();
-      expect(find.text('Contact Administration'), findsNothing);
-    });
-
-    testWidgets('renders normal CustomAppBar and tabs when account is active', (tester) async {
-      const restrictionService = UserRestrictionService();
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: DashboardPage(
-            restrictionService: restrictionService,
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // CustomAppBar is present
-      expect(find.byType(CustomAppBar), findsOneWidget);
-      expect(find.byType(IndexedStack), findsOneWidget);
-      expect(find.byType(AccountSuspendedView), findsNothing);
-    });
-  });
-
-  group('CameraReportPage Full Account Suspension Restrictions', () {
-    testWidgets('renders AccountSuspendedView and blocks camera viewfinder/form when suspended', (tester) async {
-      const restrictionService = UserRestrictionService();
-      for (int i = 0; i < 5; i++) {
-        await restrictionService.recordViolation(
-          userId: 'current_user',
-          prohibitedWord: 'buang',
-        );
-      }
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: CameraReportPage(
-            restrictionService: restrictionService,
-            showBottomNavPlaceholder: true,
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Full suspension prompt is rendered
-      expect(find.byType(AccountSuspendedView), findsOneWidget);
-      expect(find.text('Account Suspended'), findsOneWidget);
-      expect(find.text('Contact Admin'), findsOneWidget);
-
-      // Camera viewfinder, report form, and navigation must NOT be rendered
-      expect(find.byType(CameraViewfinderPlaceholder), findsNothing);
-      expect(find.byType(CreateReportForm), findsNothing);
-      expect(find.byType(CustomAppBar), findsNothing);
-      expect(find.text('CREATE REPORT'), findsNothing);
-      expect(find.text('Submit Sighting Report'), findsNothing);
     });
   });
 }

@@ -3,18 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:paws_and_found/core/services/audio_alert_service.dart';
 import 'package:paws_and_found/core/services/local_notification_service.dart';
-import 'package:paws_and_found/core/services/user_restriction_service.dart';
-import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
 import 'package:paws_and_found/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:paws_and_found/features/notifications/domain/entities/app_notification.dart';
 import 'package:paws_and_found/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:paws_and_found/features/profile/presentation/pages/profile_setup_page.dart';
 import 'package:paws_and_found/features/report/presentation/pages/camera_report_page.dart';
-import 'package:paws_and_found/shared/organisms/account_suspended_view.dart';
 import 'package:paws_and_found/shared/organisms/custom_app_bar.dart';
 import 'package:paws_and_found/features/feed/presentation/pages/feed_page.dart';
 
@@ -32,7 +28,6 @@ import 'package:paws_and_found/features/feed/presentation/pages/feed_page.dart';
 class DashboardPage extends StatefulWidget {
   /// Allows injection of the starting tab index (e.g. from a deep-link).
   final int initialIndex;
-  final UserRestrictionService? restrictionService;
 
   /// Allows opening the Feed tab with a specific report highlighted / isolated.
   final String? initialFeedReportId;
@@ -40,7 +35,6 @@ class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
     this.initialIndex = 0,
-    this.restrictionService,
     this.initialFeedReportId,
   });
 
@@ -50,9 +44,6 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late int _currentIndex;
-  final Set<int> _visitedTabs = {};
-  late final UserRestrictionService _restrictionService;
-  bool _isSuspended = false;
 
   String? _selectedMapReportId;
   LatLng? _selectedMapCenter;
@@ -69,57 +60,32 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _visitedTabs.add(_currentIndex);
     _selectedFeedReportId = widget.initialFeedReportId;
-    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
-    _isSuspended = _restrictionService.isUserSuspendedSync();
-    _checkSuspensionStatus();
-    if (!_isSuspended) {
-      _fetchUnreadCount();
-      _subscribeToUnreadCount();
-      _subscribeToNotificationAlerts();
-      _initNativeNotifications();
-    }
-  }
-
-  Future<void> _checkSuspensionStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (mounted && _isSuspended != suspended) {
-      setState(() => _isSuspended = suspended);
-      if (!suspended) {
-        _fetchUnreadCount();
-        _subscribeToUnreadCount();
-        _subscribeToNotificationAlerts();
-        _initNativeNotifications();
-      }
-    }
+    _fetchUnreadCount();
+    _subscribeToUnreadCount();
+    _subscribeToNotificationAlerts();
+    _initNativeNotifications();
   }
 
   @override
   void didUpdateWidget(covariant DashboardPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialIndex != widget.initialIndex) {
-      setState(() {
-        _currentIndex = widget.initialIndex;
-        _visitedTabs.add(widget.initialIndex);
-      });
+      setState(() => _currentIndex = widget.initialIndex);
     }
     if (widget.initialFeedReportId != oldWidget.initialFeedReportId &&
         widget.initialFeedReportId != null) {
       setState(() {
         _selectedFeedReportId = widget.initialFeedReportId;
         _currentIndex = 1;
-        _visitedTabs.add(1);
       });
     }
   }
 
   void _initNativeNotifications() {
-    try {
-      unawaited(LocalNotificationService.instance.requestPermission());
-      LocalNotificationService.instance.onNotificationTapped
-          .addListener(_onNativeNotificationTapped);
-    } catch (_) {}
+    unawaited(LocalNotificationService.instance.requestPermission());
+    LocalNotificationService.instance.onNotificationTapped
+        .addListener(_onNativeNotificationTapped);
   }
 
   void _onNativeNotificationTapped() {
@@ -215,12 +181,11 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _unreadSub?.cancel();
     _notifSub?.cancel();
-    try {
-      LocalNotificationService.instance.onNotificationTapped
-          .removeListener(_onNativeNotificationTapped);
-    } catch (_) {}
+    LocalNotificationService.instance.onNotificationTapped
+        .removeListener(_onNativeNotificationTapped);
     super.dispose();
   }
+
 
   Future<void> _fetchUnreadCount() async {
     try {
@@ -280,7 +245,6 @@ class _DashboardPageState extends State<DashboardPage> {
             setState(() {
               _selectedFeedReportId = reportId;
               _currentIndex = 1;
-              _visitedTabs.add(1);
             });
           },
         );
@@ -289,69 +253,27 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _handleRefreshStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (!mounted) return;
-    setState(() => _isSuspended = suspended);
-    if (!suspended) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account privileges restored!'),
-          backgroundColor: AppColors.statusSafe,
-        ),
-      );
-    }
-  }
-
-  Future<void> _handleSignOut() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
-    if (!mounted) return;
-    context.go('/login');
-  }
-
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    if (_isSuspended) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: AccountSuspendedView(
-            onRefreshStatus: _handleRefreshStatus,
-            onSignOut: _handleSignOut,
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       // IndexedStack keeps all tab pages alive (no re-mount on tab switch).
       body: IndexedStack(
         index: _currentIndex,
-        children: List.generate(
-          5,
-          (i) => _visitedTabs.contains(i) ? _pageFor(i) : const SizedBox.shrink(),
-        ),
+        children: List.generate(5, _pageFor),
       ),
       bottomNavigationBar: CustomAppBar(
         currentIndex: _currentIndex,
         hasUnreadNotifications: _unreadCount > 0,
-        onTabSelected: (index) async {
-          if (_isSuspended) return;
-          await _checkSuspensionStatus();
-          if (_isSuspended) return;
-          setState(() {
-            _currentIndex = index;
-            _visitedTabs.add(index);
-          });
+        onTabSelected: (index) {
+          setState(() => _currentIndex = index);
           _fetchUnreadCount();
         },
       ),
     );
   }
 }
+

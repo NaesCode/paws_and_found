@@ -20,11 +20,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
       return Supabase.instance.client;
     } catch (_) {
       // For disconnected testing environments
-      return SupabaseClient(
-        'http://localhost:54321',
-        'dummy-key',
-        authOptions: const AuthClientOptions(autoRefreshToken: false),
-      );
+      return SupabaseClient('http://localhost:54321', 'dummy-key');
     }
   }
 

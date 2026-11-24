@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../core/theme/app_colors.dart';
 
 class PendingMeetupsSection extends StatelessWidget {
   final List<Map<String, dynamic>> meetups;
 
-  const PendingMeetupsSection({super.key, required this.meetups});
+  const PendingMeetupsSection({
+    super.key,
+    required this.meetups,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,11 +22,7 @@ class PendingMeetupsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.handshake_outlined,
-                size: 18,
-                color: AppColors.primary,
-              ),
+              const Icon(Icons.handshake_outlined, size: 18, color: AppColors.primary),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
@@ -82,9 +80,7 @@ class _PendingMeetupCard extends StatelessWidget {
     String statusLabel;
     Color statusColor;
     if (currentStage < 3) {
-      statusLabel = currentStage == 1
-          ? 'STAGE 1 • AGREEMENT'
-          : 'STAGE 2 • VERIFICATION';
+      statusLabel = currentStage == 1 ? 'STAGE 1 • AGREEMENT' : 'STAGE 2 • VERIFICATION';
       statusColor = AppColors.accentOrange;
     } else if (myHandoverConfirmed) {
       statusLabel = 'AWAITING HANDOVER CONFIRM';
@@ -126,7 +122,7 @@ class _PendingMeetupCard extends StatelessWidget {
                       ? Image.network(
                           photoUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _fallbackAvatar(),
+                          errorBuilder: (_, __, ___) => _fallbackAvatar(),
                         )
                       : _fallbackAvatar(),
                 ),
@@ -153,10 +149,7 @@ class _PendingMeetupCard extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(6),

@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:paws_and_found/core/services/user_restriction_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
-import 'package:paws_and_found/shared/organisms/account_suspended_view.dart';
 import '../widgets/recovery_stepper_header.dart';
 import '../widgets/claimant_selector_bar.dart';
 import '../widgets/stage1_agreement_widget.dart';
@@ -14,19 +10,19 @@ import '../widgets/stage3_meetup_widget.dart';
 import '../widgets/popups/handover_confirm_dialog.dart';
 import '../../data/repositories/recovery_repository_impl.dart';
 import '../../data/models/recovery_claim_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 typedef ActiveClaimProgress = Map<String, dynamic>;
 
 class ClaimPetPage extends StatefulWidget {
   final String reportId;
   final FeedPost? report;
-  final UserRestrictionService? restrictionService;
 
   const ClaimPetPage({
     super.key,
     required this.reportId,
     this.report,
-    this.restrictionService,
   });
 
   @override
@@ -36,8 +32,6 @@ class ClaimPetPage extends StatefulWidget {
 class _ClaimPetPageState extends State<ClaimPetPage> {
   final ClaimRepository _repository = ClaimRepository();
   final FeedRepositoryImpl _feedRepository = FeedRepositoryImpl();
-  late final UserRestrictionService _restrictionService;
-  bool _isUserSuspended = false;
   int? _viewingStage;
   int _selectedClaimantIndex = 0;
   late Future<({FeedPost? report, bool isBlockedByOther})> _initFuture;
@@ -53,17 +47,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
   @override
   void initState() {
     super.initState();
-    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
-    _isUserSuspended = _restrictionService.isUserSuspendedSync();
-    _checkSuspensionStatus();
     _initFuture = _loadInitialState();
-  }
-
-  Future<void> _checkSuspensionStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (mounted && _isUserSuspended != suspended) {
-      setState(() => _isUserSuspended = suspended);
-    }
   }
 
   Future<({FeedPost? report, bool isBlockedByOther})> _loadInitialState() async {
@@ -153,33 +137,8 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
     }
   }
 
-  Future<void> _handleSignOut() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
-    if (!mounted) return;
-    context.go('/login');
-  }
-
-  Future<void> _handleRefreshStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (mounted) setState(() => _isUserSuspended = suspended);
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isUserSuspended) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: AccountSuspendedView(
-            onRefreshStatus: _handleRefreshStatus,
-            onSignOut: _handleSignOut,
-          ),
-        ),
-      );
-    }
-
     return FutureBuilder<({FeedPost? report, bool isBlockedByOther})>(
       future: _initFuture,
       builder: (context, initSnapshot) {
@@ -387,7 +346,7 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               future: otherUserId.isNotEmpty
                   ? _repository.getUserProfileSummary(otherUserId)
                   : Future.value(<String, dynamic>{}),
-              builder: (_, profileSnap) {
+              builder: (context, profileSnap) {
                 final profile = profileSnap.data ?? <String, dynamic>{};
                 final fallbackName = isFinderView
                     ? (claim?.claimerName ?? 'Claimant')

@@ -1,14 +1,14 @@
+import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
+import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
+import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_footer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:camera/camera.dart';
-import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/location_constants.dart';
 import '../../../../core/services/location_service.dart';
-import '../../../../core/services/user_restriction_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/organisms/account_suspended_view.dart';
 import '../../../../shared/organisms/location_pin_picker_sheet.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../widgets/ai_match_scanner_card.dart';
@@ -19,9 +19,6 @@ import '../../../../core/services/backend_status_service.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../domain/repositories/report_repository.dart';
 import '../providers/camera_report_controller.dart';
-import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
-import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
-import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_footer.dart';
 
 /// Camera and Animal Report Creation screen (SDD Screen 05).
 ///
@@ -37,7 +34,6 @@ import 'package:paws_and_found/features/feed/presentation/widgets/feed_card_foot
 class CameraReportPage extends StatefulWidget {
   final ReportRepository? repository;
   final LocationService? locationService;
-  final UserRestrictionService? restrictionService;
   final bool showBottomNavPlaceholder;
   final bool isActiveTab;
   final String? threadId;
@@ -48,7 +44,6 @@ class CameraReportPage extends StatefulWidget {
     super.key,
     this.repository,
     this.locationService,
-    this.restrictionService,
     this.showBottomNavPlaceholder = true,
     this.isActiveTab = true,
     this.threadId,
@@ -62,23 +57,23 @@ class CameraReportPage extends StatefulWidget {
 
 class _CameraReportPageState extends State<CameraReportPage> with WidgetsBindingObserver {
   late final CameraReportController _controller;
-  late final UserRestrictionService _restrictionService;
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isTakingPicture = false;
-  bool _isUserSuspended = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
     _controller = CameraReportController(
       repository: widget.repository,
       locationService: widget.locationService,
-      restrictionService: _restrictionService,
     );
     _controller.addListener(_onControllerUpdate);
+    // _controller.fetchDeviceLocation();
+    _controller.fetchDeviceLocation().then((_) {
+      _controller.reverseGeocodeCurrentCoords(); 
+    });
 
     if (widget.threadId != null) {
       _controller.setThreadContext(
@@ -90,21 +85,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
       _controller.setStatus(widget.defaultStatus!);
     }
 
-    _checkSuspensionStatus();
-  }
-
-  Future<void> _checkSuspensionStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (mounted) {
-      setState(() => _isUserSuspended = suspended);
-    }
-    if (!suspended) {
-      _controller.fetchDeviceLocation().then((_) {
-        _controller.reverseGeocodeCurrentCoords();
-      });
-      if (widget.isActiveTab) {
-        _initLiveCamera();
-      }
+    if (widget.isActiveTab) {
+      _initLiveCamera();
     }
   }
 
@@ -615,37 +597,8 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     }
   }
 
-  Future<void> _handleRefreshStatus() async {
-    final suspended = await _restrictionService.isUserSuspended();
-    if (!mounted) return;
-    setState(() => _isUserSuspended = suspended);
-    if (!suspended && widget.isActiveTab) {
-      _initLiveCamera();
-    }
-  }
-
-  Future<void> _handleSignOut() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
-    if (!mounted) return;
-    context.go('/login');
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isUserSuspended) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: AccountSuspendedView(
-            onRefreshStatus: _handleRefreshStatus,
-            onSignOut: _handleSignOut,
-          ),
-        ),
-      );
-    }
-
     Widget? livePreview;
     if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized) {
       livePreview = SizedBox(

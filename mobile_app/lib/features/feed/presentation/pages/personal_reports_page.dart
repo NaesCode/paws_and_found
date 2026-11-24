@@ -38,46 +38,34 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     _subscribeToReportUpdates();
   }
 
-  String get _currentUserId {
-    try {
-      return Supabase.instance.client.auth.currentUser?.id ?? '';
-    } catch (_) {
-      return '';
-    }
-  }
-
   void _subscribeToReportUpdates() {
-    final currentUserId = _currentUserId;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
     if (currentUserId.isEmpty) return;
 
-    try {
-      _reportsChannel = Supabase.instance.client
-          .channel('personal_reports_$currentUserId')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.update,
-            schema: 'public',
-            table: 'reports',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'reporter_id', 
-              value: currentUserId,
-            ),
-            callback: (_) {
-              if (mounted) {
-                _fetchPersonalReports(_selectedFilter);
-              }
-            },
-          )
-          .subscribe();
-    } catch (_) {}
+    _reportsChannel = Supabase.instance.client
+        .channel('personal_reports_$currentUserId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'reports',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'reporter_id', 
+            value: currentUserId,
+          ),
+          callback: (_) {
+            if (mounted) {
+              _fetchPersonalReports(_selectedFilter);
+            }
+          },
+        )
+        .subscribe();
   }
 
   @override
   void dispose() {
     if (_reportsChannel != null) {
-      try {
-        Supabase.instance.client.removeChannel(_reportsChannel!);
-      } catch (_) {}
+      Supabase.instance.client.removeChannel(_reportsChannel!);
     }
     super.dispose();
   }

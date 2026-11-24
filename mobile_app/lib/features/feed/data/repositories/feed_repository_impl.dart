@@ -1,6 +1,5 @@
 // ignore_for_file: use_null_aware_elements
 import 'dart:async' show unawaited;
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -19,30 +18,13 @@ class FeedRepositoryImpl implements FeedRepository {
   FeedRepositoryImpl({
     SupabaseClient? supabaseClient,
     OrchestratorClient? orchestratorClient,
-  }) : _supabase = supabaseClient ?? _safeGetClient(),
-       _orchestratorClient = orchestratorClient ?? OrchestratorClient();
-
-  static SupabaseClient _safeGetClient() {
-    try {
-      return Supabase.instance.client;
-    } catch (_) {
-      return SupabaseClient(
-        'http://localhost:54321',
-        'dummy-key',
-        authOptions: const AuthClientOptions(autoRefreshToken: false),
-      );
-    }
-  }
+  })  : _supabase = supabaseClient ?? Supabase.instance.client,
+        _orchestratorClient = orchestratorClient ?? OrchestratorClient();
 
   @override
-  Future<List<FeedPost>> getPersonalReports(
-    String userId, {
-    String? filterStatus,
-  }) async {
+  Future<List<FeedPost>> getPersonalReports(String userId, {String? filterStatus}) async {
     try {
-      var query = _supabase
-          .from('reports')
-          .select('''
+      var query = _supabase.from('reports').select('''
         id,
         reporter_id,
         pet_id,
@@ -58,17 +40,13 @@ class FeedRepositoryImpl implements FeedRepository {
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
-      ''')
-          .eq('reporter_id', userId);
+      ''').eq('reporter_id', userId);
 
       if (filterStatus != null && filterStatus.isNotEmpty) {
-        query = query.ilike('status', filterStatus);
+        query = query.ilike('status', filterStatus); 
       }
 
-      final List<Map<String, dynamic>> response = await query.order(
-        'created_at',
-        ascending: false,
-      );
+      final List<Map<String, dynamic>> response = await query.order('created_at', ascending: false);
 
       return response.map((json) => FeedPost.fromJson(json)).toList();
     } catch (e) {
@@ -118,16 +96,10 @@ class FeedRepositoryImpl implements FeedRepository {
         .eq('user_id', currentUserId);
   }
 
-  @override
-  Future<List<FeedPost>> getGeneralReports(
-    String userId, {
-    String? filterStatus,
-    bool sortOldest = false,
-  }) async {
+  @override 
+  Future<List<FeedPost>> getGeneralReports(String userId, {String? filterStatus, bool sortOldest = false}) async {
     try {
-      var query = _supabase
-          .from('reports')
-          .select('''
+      var query = _supabase.from('reports').select('''
         id, 
         reporter_id, 
         pet_id, 
@@ -143,16 +115,15 @@ class FeedRepositoryImpl implements FeedRepository {
         created_at,
         profiles(name, profile_photo_url),
         pets(name)
-      ''')
-          .neq('reporter_id', userId)
-          .neq('status', 'safe');
+      ''').neq('reporter_id', userId)
+      .neq('status', 'safe');
 
       if (filterStatus != null && filterStatus.isNotEmpty) {
         query = query.ilike('status', filterStatus);
       }
 
       final List<Map<String, dynamic>> response = await query.order(
-        'created_at',
+        'created_at', 
         ascending: sortOldest,
       );
 
@@ -260,10 +231,7 @@ class FeedRepositoryImpl implements FeedRepository {
 
       return typedComments.map((c) {
         final uid = c['user_id'] as String?;
-        return FeedComment.fromJson(
-          c,
-          profile: uid != null ? profileMap[uid] : null,
-        );
+        return FeedComment.fromJson(c, profile: uid != null ? profileMap[uid] : null);
       }).toList();
     } catch (e) {
       return [];
@@ -271,26 +239,18 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
-  Future<FeedComment> addComment(
-    String reportId,
-    String content, {
-    String? parentId,
-  }) async {
+  Future<FeedComment> addComment(String reportId, String content, {String? parentId}) async {
     final currentUserId = _supabase.auth.currentUser?.id;
     if (currentUserId == null) {
       throw Exception('Must be logged in to comment');
     }
 
-    final inserted = await _supabase
-        .from('comments')
-        .insert({
-          'post_id': reportId,
-          'user_id': currentUserId,
-          'content': content.trim(),
-          if (parentId != null) 'parent_id': parentId,
-        })
-        .select()
-        .single();
+    final inserted = await _supabase.from('comments').insert({
+      'post_id': reportId,
+      'user_id': currentUserId,
+      'content': content.trim(),
+      if (parentId != null) 'parent_id': parentId,
+    }).select().single();
 
     final profile = await _supabase
         .from('profiles')
@@ -353,47 +313,27 @@ class FeedRepositoryImpl implements FeedRepository {
   }
 
   @override
-  Future<void> deleteReport(
-    String reportId, {
-    String? reason,
-    String? details,
-  }) async {
+  Future<void> deleteReport(String reportId, {String? reason, String? details}) async {
     try {
-      await _supabase.rpc(
-        'delete_report',
-        params: {
-          'p_report_id': reportId,
-          'p_reason': reason ?? 'Mistake / False Alarm',
-          if (details != null && details.trim().isNotEmpty)
-            'p_details': details.trim(),
-        },
-      );
+      await _supabase.rpc('delete_report', params: {
+        'p_report_id': reportId,
+        'p_reason': reason ?? 'Mistake / False Alarm',
+        if (details != null && details.trim().isNotEmpty) 'p_details': details.trim(),
+      });
     } catch (_) {
       // Direct deletion fallback if RPC is not yet migrated in database
       final currentUserId = _supabase.auth.currentUser?.id;
       if (currentUserId != null) {
-        final row = await _supabase
-            .from('reports')
-            .select('pet_id')
-            .eq('id', reportId)
-            .maybeSingle();
+        final row = await _supabase.from('reports').select('pet_id').eq('id', reportId).maybeSingle();
         if (row != null && row['pet_id'] != null) {
-          await _supabase
-              .from('pets')
-              .update({
-                'status': 'safe',
-                'missing_since': null,
-                'last_known_location': null,
-              })
-              .eq('id', row['pet_id'])
-              .eq('owner_id', currentUserId);
+          await _supabase.from('pets').update({
+            'status': 'safe',
+            'missing_since': null,
+            'last_known_location': null,
+          }).eq('id', row['pet_id']).eq('owner_id', currentUserId);
         }
         await _supabase.from('matches').delete().eq('report_id', reportId);
-        await _supabase
-            .from('reports')
-            .delete()
-            .eq('id', reportId)
-            .eq('reporter_id', currentUserId);
+        await _supabase.from('reports').delete().eq('id', reportId).eq('reporter_id', currentUserId);
       }
     } finally {
       // Purge from in-memory map cache so the marker immediately vanishes from the map canvas
@@ -411,16 +351,14 @@ class FeedRepositoryImpl implements FeedRepository {
     const uuid = Uuid();
     final path = '$uid/${uuid.v4()}.$extension';
 
-    await _supabase.storage
-        .from('animal-photos')
-        .uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(
-            contentType: 'image/$extension',
-            upsert: false,
-          ),
-        );
+    await _supabase.storage.from('animal-photos').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: 'image/$extension',
+        upsert: false,
+      ),
+    );
     return _supabase.storage.from('animal-photos').getPublicUrl(path);
   }
 
@@ -444,7 +382,7 @@ class FeedRepositoryImpl implements FeedRepository {
       if (locationName != null) updates['location_name'] = locationName.trim();
       if (status != null) updates['status'] = status.toLowerCase();
       if (animalType != null) updates['animal_type'] = animalType.trim();
-
+      
       if (petId == null && specie != null && specie.isNotEmpty) {
         updates['animal_type'] = specie.trim();
       }
@@ -467,7 +405,7 @@ class FeedRepositoryImpl implements FeedRepository {
 
         // Fetch the current report from the database to see if a photo already exists
         final currentReport = await getReportById(reportId);
-
+        
         if (currentReport != null && currentReport.imageUrl.isNotEmpty) {
           final oldUrl = currentReport.imageUrl;
 
@@ -475,22 +413,19 @@ class FeedRepositoryImpl implements FeedRepository {
           if (oldUrl != photoUrl) {
             try {
               // Extract the relative storage path out of the full Public URL
-              final String storageUrlMatchToken =
-                  '/storage/v1/object/public/animal-photos/';
-
+              final String storageUrlMatchToken = '/storage/v1/object/public/animal-photos/';
+              
               if (oldUrl.contains(storageUrlMatchToken)) {
                 final relativePath = oldUrl.split(storageUrlMatchToken).last;
-
+                
                 // Delete the old photo from the bucket immediately
-                await _supabase.storage.from('animal-photos').remove([
-                  relativePath,
-                ]);
+                await _supabase.storage
+                  .from('animal-photos')
+                  .remove([relativePath]);
               }
             } catch (storageError) {
               // Log the error but don't crash the application; let the DB update proceed
-              debugPrint(
-                '[FeedRepositoryImpl] Failed to delete orphaned storage file: $storageError',
-              );
+              debugPrint('[FeedRepositoryImpl] Failed to delete orphaned storage file: $storageError');
             }
           }
         }
@@ -513,13 +448,9 @@ class FeedRepositoryImpl implements FeedRepository {
   Future<void> _requestReportAnalysis(String reportId) async {
     try {
       await _orchestratorClient.post('/api/reports/$reportId/analyze/');
-      debugPrint(
-        '[FeedRepositoryImpl] AI re-analysis requested for report: $reportId',
-      );
+      debugPrint('[FeedRepositoryImpl] AI re-analysis requested for report: $reportId');
     } catch (e) {
-      debugPrint(
-        '[FeedRepositoryImpl] AI re-analysis dispatch deferred (orchestrator offline): $e',
-      );
+      debugPrint('[FeedRepositoryImpl] AI re-analysis dispatch deferred (orchestrator offline): $e');
     }
   }
 
@@ -571,6 +502,7 @@ class FeedRepositoryImpl implements FeedRepository {
     }
   }
 
+  @override
   Future<bool> hasActiveClaimByOther(String reportId, String currentUserId) async {
     if (reportId.isEmpty || currentUserId.isEmpty) return false;
 
@@ -585,3 +517,4 @@ class FeedRepositoryImpl implements FeedRepository {
     return result == true;
   }
 }
+

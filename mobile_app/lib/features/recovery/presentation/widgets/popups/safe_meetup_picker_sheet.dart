@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
@@ -85,10 +84,7 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(trimmed)}&format=json&limit=5&countrycodes=ph',
       );
-      final res = await http.get(
-        uri,
-        headers: {'User-Agent': 'paws_and_found_app'},
-      );
+      final res = await http.get(uri, headers: {'User-Agent': 'paws_and_found_app'});
       if (res.statusCode == 200 && mounted) {
         final data = jsonDecode(res.body) as List<dynamic>;
         setState(() {
@@ -106,19 +102,12 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?lat=${point.latitude}&lon=${point.longitude}&format=json',
       );
-      final res = await http.get(
-        uri,
-        headers: {'User-Agent': 'paws_and_found_app'},
-      );
+      final res = await http.get(uri, headers: {'User-Agent': 'paws_and_found_app'});
       if (res.statusCode == 200 && mounted) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final display = data['display_name']?.toString() ?? '';
         if (display.isNotEmpty) {
-          final parts = display
-              .split(',')
-              .map((e) => e.trim())
-              .take(3)
-              .join(', ');
+          final parts = display.split(',').map((e) => e.trim()).take(3).join(', ');
           setState(() => _resolvedAddress = parts);
         }
       }
@@ -164,11 +153,7 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                 const Expanded(
                   child: Text(
                     'Pin Safe Meetup Location',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkCharcoal,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkCharcoal),
                   ),
                 ),
                 IconButton(
@@ -187,29 +172,22 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
               onChanged: _searchPlaces,
               decoration: InputDecoration(
                 hintText: 'Search mall, barangay hall, police station...',
-                hintStyle: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.text3,
-                ),
+                hintStyle: const TextStyle(fontSize: 13, color: AppColors.text3),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _isSearching
                     ? const Padding(
                         padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                        child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                       )
                     : (_searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchResults = []);
-                              },
-                            )
-                          : null),
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchResults = []);
+                            },
+                          )
+                        : null),
                 filled: true,
                 fillColor: AppColors.background,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -234,8 +212,7 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.paws_and_found',
                     ),
                     MarkerLayer(
@@ -262,10 +239,7 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                   right: 16,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black87,
                         borderRadius: BorderRadius.circular(20),
@@ -291,32 +265,19 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: _searchResults.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, idx) {
                           final item = _searchResults[idx];
                           final name = item['display_name']?.toString() ?? '';
                           return ListTile(
                             dense: true,
-                            leading: const Icon(
-                              Icons.place_outlined,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                            title: Text(
-                              name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12.5),
-                            ),
+                            leading: const Icon(Icons.place_outlined, color: AppColors.primary, size: 20),
+                            title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
                             onTap: () {
                               final lat = double.parse(item['lat'].toString());
                               final lng = double.parse(item['lon'].toString());
                               final point = LatLng(lat, lng);
-                              final shortName = name
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .take(3)
-                                  .join(', ');
+                              final shortName = name.split(',').map((e) => e.trim()).take(3).join(', ');
                               setState(() {
                                 _pinnedLocation = point;
                                 _resolvedAddress = shortName;
@@ -355,24 +316,14 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                 children: [
                   const Text(
                     'SELECTED MEETUP SPOT:',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.text3,
-                    ),
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.text3),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _isReverseGeocoding
-                        ? 'Resolving address...'
-                        : _resolvedAddress,
+                    _isReverseGeocoding ? 'Resolving address...' : _resolvedAddress,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkCharcoal,
-                    ),
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.darkCharcoal),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -381,21 +332,12 @@ class _MeetupMapPickerSheetState extends State<_MeetupMapPickerSheet> {
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(
-                        Icons.push_pin_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                      icon: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 18),
                       label: const Text(
                         'Use This Pinned Location',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       onPressed: () {
                         Navigator.pop(

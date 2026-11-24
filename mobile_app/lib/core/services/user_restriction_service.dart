@@ -44,7 +44,6 @@ class UserRestrictionService {
   final SharedPreferences? preferences;
   static const String _prefPrefix = 'user_violations_';
   static final Map<String, int> _inMemoryViolations = {};
-  static final Map<String, String> _inMemoryStatuses = {};
   static SharedPreferences? _cachedPrefs;
 
   const UserRestrictionService({this.supabaseClient, this.preferences});
@@ -115,7 +114,6 @@ class UserRestrictionService {
       newStatus = 'Suspended';
       isSuspended = true;
       shouldNotify = true;
-      _inMemoryStatuses[userId] = 'Suspended';
       await _updateAccountStatus(
         userId,
         'Suspended',
@@ -125,14 +123,11 @@ class UserRestrictionService {
       newStatus = 'Warning';
       isWarning = true;
       shouldNotify = true;
-      _inMemoryStatuses[userId] = 'Warning';
       await _updateAccountStatus(
         userId,
         'Warning',
         'Warning: Repeated use of prohibited language will lead to account suspension ($newCount violations recorded).',
       );
-    } else {
-      _inMemoryStatuses[userId] = 'Active';
     }
 
     return UserViolationRecord(
@@ -153,19 +148,6 @@ class UserRestrictionService {
     }
   }
 
-  /// Checks whether [userId] (or the currently authenticated user) is suspended synchronously
-  /// using in-memory cached state.
-  bool isUserSuspendedSync([String? userId]) {
-    final uid = userId ?? _getCurrentUserId();
-    final count = _inMemoryViolations[uid] ?? 0;
-    if (count >= 5) return true;
-    final inMem = _inMemoryStatuses[uid];
-    if (inMem != null && inMem.toLowerCase().contains('suspend')) {
-      return true;
-    }
-    return false;
-  }
-
   /// Checks whether [userId] (or the currently authenticated user) is suspended.
   Future<bool> isUserSuspended([String? userId]) async {
     final status = await getUserStatus(userId);
@@ -176,22 +158,10 @@ class UserRestrictionService {
   Future<String> getUserStatus([String? userId]) async {
     final uid = userId ?? _getCurrentUserId();
 
-    // 0. Fast-path check in-memory status
-    final inMem = _inMemoryStatuses[uid];
-    if (inMem != null && inMem.isNotEmpty) {
-      if (inMem.toLowerCase().contains('suspend')) return 'Suspended';
-    }
-
     // 1. If local strikes reached suspension threshold, enforce immediately
     final localStrikes = await getViolationCount(uid);
-    if (localStrikes >= 5) {
-      _inMemoryStatuses[uid] = 'Suspended';
-      return 'Suspended';
-    }
-    if (localStrikes >= 3) {
-      _inMemoryStatuses[uid] = 'Warning';
-      return 'Warning';
-    }
+    if (localStrikes >= 5) return 'Suspended';
+    if (localStrikes >= 3) return 'Warning';
 
     // 2. Query Supabase profiles table if available
     try {
@@ -203,50 +173,18 @@ class UserRestrictionService {
             .eq('id', uid)
             .maybeSingle();
         if (res != null && res['status'] != null) {
-          final fetchedStatus = res['status'] as String;
-          _inMemoryStatuses[uid] = fetchedStatus;
-          try {
-            final prefs = await _getPrefs();
-            if (prefs != null) {
-              await prefs.setString('user_status_$uid', fetchedStatus);
-            }
-          } catch (_) {}
-          return fetchedStatus;
+          return res['status'] as String;
         }
       }
     } catch (e) {
       debugPrint('[UserRestrictionService] Error fetching profile status: $e');
     }
 
-    // 3. Check locally cached status
-    try {
-      final prefs = await _getPrefs();
-      if (prefs != null) {
-        final cached = prefs.getString('user_status_$uid');
-        if (cached != null && cached.isNotEmpty) {
-          _inMemoryStatuses[uid] = cached;
-          return cached;
-        }
-      }
-    } catch (_) {}
-
-    return inMem ?? 'Active';
-  }
-
-  /// Sets user status in local storage (useful for immediate offline updates and testing).
-  Future<void> setUserStatus(String userId, String status) async {
-    _inMemoryStatuses[userId] = status;
-    try {
-      final prefs = await _getPrefs();
-      if (prefs != null) {
-        await prefs.setString('user_status_$userId', status);
-      }
-    } catch (_) {}
+    return 'Active';
   }
 
   /// Updates status in profiles and creates notification in Supabase.
   Future<void> _updateAccountStatus(String userId, String status, String notificationMessage) async {
-    _inMemoryStatuses[userId] = status;
     try {
       final client = _client;
       if (client != null) {
@@ -269,12 +207,10 @@ class UserRestrictionService {
   /// Resets violation strikes for [userId] (used in testing and admin resets).
   Future<void> clearViolations(String userId) async {
     _inMemoryViolations.remove(userId);
-    _inMemoryStatuses.remove(userId);
     try {
       final prefs = await _getPrefs();
       if (prefs != null) {
         await prefs.remove('$_prefPrefix$userId');
-        await prefs.remove('user_status_$userId');
       }
     } catch (_) {}
   }
