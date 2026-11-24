@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/services/user_restriction_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/app_logo.dart';
 import '../../../../shared/atoms/current_location_button.dart';
 import '../../../../shared/molecules/app_overflow_menu.dart';
+import '../../../../shared/organisms/account_suspended_view.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../data/models/map_report_model.dart';
 import '../widgets/interactive_map_canvas.dart';
@@ -34,6 +37,7 @@ import '../providers/map_controller.dart';
 class MapPage extends StatefulWidget {
   final MapRepository? repository;
   final LocationService? locationService;
+  final UserRestrictionService? restrictionService;
   final bool showBottomNavPlaceholder;
   final String? initialReportId;
   final LatLng? initialCenter;
@@ -42,6 +46,7 @@ class MapPage extends StatefulWidget {
     super.key,
     this.repository,
     this.locationService,
+    this.restrictionService,
     this.showBottomNavPlaceholder = true,
     this.initialReportId,
     this.initialCenter,
@@ -54,6 +59,8 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   late final MapController _controller;
   late final fmap.MapController _fmapController;
+  late final UserRestrictionService _restrictionService;
+  bool _isUserSuspended = false;
 
   void _safeMoveCamera(LatLng center, double zoom) {
     try {
@@ -126,6 +133,8 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+    _restrictionService = widget.restrictionService ?? const UserRestrictionService();
+    _checkSuspensionStatus();
     _fmapController = fmap.MapController();
     _controller = MapController(
       repository: widget.repository,
@@ -280,8 +289,41 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  Future<void> _checkSuspensionStatus() async {
+    final suspended = await _restrictionService.isUserSuspended();
+    if (mounted && _isUserSuspended != suspended) {
+      setState(() => _isUserSuspended = suspended);
+    }
+  }
+
+  Future<void> _handleRefreshStatus() async {
+    final suspended = await _restrictionService.isUserSuspended();
+    if (!mounted) return;
+    setState(() => _isUserSuspended = suspended);
+  }
+
+  Future<void> _handleSignOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
+    if (!mounted) return;
+    context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isUserSuspended) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: AccountSuspendedView(
+            onRefreshStatus: _handleRefreshStatus,
+            onSignOut: _handleSignOut,
+          ),
+        ),
+      );
+    }
+
     final selected = _controller.selectedReport;
 
     return MapScreenTemplate(

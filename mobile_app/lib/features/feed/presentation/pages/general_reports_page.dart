@@ -15,7 +15,7 @@ import 'package:geolocator/geolocator.dart';
 
 // SHOWS THE GENERAL REPORTS (ALL) EXCEPT THE USER'S POST
 
-class GeneralReportsPage extends StatefulWidget{
+class GeneralReportsPage extends StatefulWidget {
   final String? isolatedReportId;
   final VoidCallback? onClearIsolation;
 
@@ -38,6 +38,14 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   String _selectedFilter = 'latest';
   final List<String> _generalFilters = ['Latest', 'Oldest', 'Near Me', 'Missing', 'Found', 'Spotted'];
 
+  String get _currentUserId {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,8 +53,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
     if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
       _loadIsolatedReport(_isolatedReportId!);
     } else {
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id ??'';
-      _reportsFuture = _repository.getGeneralReports(currentUserId);
+      _reportsFuture = _repository.getGeneralReports(_currentUserId);
     }
   }
 
@@ -108,10 +115,9 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   }
 
   void _fetchGeneralReports(String filterValue) {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUserId = _currentUserId;
     
-    setState(
-      () {
+    setState(() {
       _isolatedReportId = null;
       _selectedFilter = filterValue;
       String dbFilterValue = filterValue;
@@ -122,7 +128,7 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
       switch (filterValue.toLowerCase()) {
         case 'missing':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
-            break;
+          break;
         case 'found':
           _reportsFuture = _repository.getGeneralReports(currentUserId, filterStatus: filterValue);
           break;
@@ -142,9 +148,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
         default:
           _reportsFuture = _repository.getGeneralReports(currentUserId);
           break;
-        }
       }
-    );
+    });
   }
 
   BannerType _getBannerType(String status){
@@ -317,22 +322,21 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                       _fetchGeneralReports(_selectedFilter);
                     }
                   },
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween<double>(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, opacityValue, child) {
-                        return Opacity(
-                          opacity: opacityValue,
-                          child: child,
-                        );
-                      },
-                      // this is where the cards are shown - called the ReportCardItem (the widget that holds the ui of necessary detail posts while calling other widgets needed for a clean structure)
-                      child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: reports.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 15),
-                        itemBuilder: (context, index) {
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, opacityValue, child) {
+                      return Opacity(
+                        opacity: opacityValue,
+                        child: child,
+                      );
+                    },
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: reports.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 15),
+                      itemBuilder: (context, index) {
                         final report = reports[index];
                         final statusLower = report.status.toLowerCase();
                         final isSafe = statusLower == 'safe';
@@ -341,58 +345,58 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                         final isFound = statusLower == 'found';
 
                         return ReportCardItem(
-                        id: report.id,
-                        bannerType: _getBannerType(report.status),
-                        petName: report.petName,
-                        postedBy: report.postedBy,
-                        species: report.species,
-                        location: report.location,
-                        description: report.description,
-                        formattedTime: report.formattedTime,
-                        imageURL: report.imageUrl.isNotEmpty
-                            ? report.imageUrl
-                            : AppAssets.petPlaceholder,
-                        userImageUrl: report.userImageUrl,
-                        isFlagged: report.isFlagged,
-                        petButtonText: isSafe
-                        ? "Claimed"
-                        : (isMissing || isSpotted) ? "View on Map" : "This is my pet",
-                        button1Text: isFound
-                            ? "View on Map"
-                            : (isSpotted ? "Found" : "Spotted"),
-                        button2Text: (isFound || isSpotted) ? null : "Found",
-                        onPetButtonPressed: isSafe
-                          ? null
-                          : () {
-                              if (isMissing || isSpotted) {
-                                context.push('/map?reportId=${report.id}');
-                              } else {
-                                showConfirmMyPetDialog(context, report);
-                              }
-                            },
-                        onButton1Pressed: isSafe
-                          ? null
-                          : () {
-                              if (isFound) {
-                                context.push('/map?reportId=${report.id}');
-                              } else if (isSpotted) {
-                                context.push(
-                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
-                                );
-                              } else {
-                                context.push(
-                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray',
-                                );
-                              }
-                            },
-                        onButton2Pressed: (isSafe || isFound || isSpotted)
-                            ? null
-                            : () {
-                                context.push(
-                                  '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
-                                );
-                              },
-                      );
+                          id: report.id,
+                          bannerType: _getBannerType(report.status),
+                          petName: report.petName,
+                          postedBy: report.postedBy,
+                          species: report.species,
+                          location: report.location,
+                          description: report.description,
+                          formattedTime: report.formattedTime,
+                          imageURL: report.imageUrl.isNotEmpty
+                              ? report.imageUrl
+                              : AppAssets.petPlaceholder,
+                          userImageUrl: report.userImageUrl,
+                          isFlagged: report.isFlagged,
+                          petButtonText: isSafe
+                              ? "Claimed"
+                              : (isMissing || isSpotted) ? "View on Map" : "This is my pet",
+                          button1Text: isFound
+                              ? "View on Map"
+                              : (isSpotted ? "Found" : "Spotted"),
+                          button2Text: (isFound || isSpotted) ? null : "Found",
+                          onPetButtonPressed: isSafe
+                              ? null
+                              : () {
+                                  if (isMissing || isSpotted) {
+                                    context.push('/map?reportId=${report.id}');
+                                  } else {
+                                    showConfirmMyPetDialog(context, report);
+                                  }
+                                },
+                          onButton1Pressed: isSafe
+                              ? null
+                              : () {
+                                  if (isFound) {
+                                    context.push('/map?reportId=${report.id}');
+                                  } else if (isSpotted) {
+                                    context.push(
+                                      '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
+                                    );
+                                  } else {
+                                    context.push(
+                                      '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=stray',
+                                    );
+                                  }
+                                },
+                          onButton2Pressed: (isSafe || isFound || isSpotted)
+                              ? null
+                              : () {
+                                  context.push(
+                                    '/camera?threadId=${report.id}&petName=${Uri.encodeComponent(report.petName)}&status=found',
+                                  );
+                                },
+                        );
                       },
                     ),
                   ),

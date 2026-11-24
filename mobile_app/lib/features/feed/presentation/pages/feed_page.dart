@@ -17,6 +17,8 @@ class FeedPage extends StatefulWidget {
   final VoidCallback? onClearIsolation;
 
   final UserRestrictionService? restrictionService;
+  final String? isolatedReportId;
+  final VoidCallback? onClearIsolation;
 
   const FeedPage({
     super.key,
@@ -25,6 +27,8 @@ class FeedPage extends StatefulWidget {
     this.isolatedReportId,
     this.onClearIsolation,
     this.restrictionService,
+    this.isolatedReportId,
+    this.onClearIsolation,
   });
 
   @override
