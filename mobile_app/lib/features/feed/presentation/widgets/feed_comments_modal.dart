@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paws_and_found/core/constants/app_assets.dart';
-import 'package:paws_and_found/core/services/profanity_filter_service.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/data/models/comment_model.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
@@ -542,23 +541,31 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         final matchConfidence = match?.group(1);
         final cleanDesc = sighting.description.replaceAll(matchRegex, '').trim();
 
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.text1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.go('/feed?reportId=${sighting.id}');
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.text1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Row(
                 children: [
                   CircleAvatar(
@@ -732,35 +739,65 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 ],
               ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.2,
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: ValueKey('btn_sighting_view_post_${sighting.id}'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.article_outlined, size: 15),
+                      label: const Text(
+                        'View Post',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        context.go('/feed?reportId=${sighting.id}');
+                      },
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      key: ValueKey('btn_sighting_view_map_${sighting.id}'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.map_rounded, size: 15),
+                      label: const Text(
+                        'View Map',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        context.go('/map?reportId=${sighting.id}');
+                      },
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
-                  icon: const Icon(Icons.map_rounded, size: 16),
-                  label: const Text(
-                    'View Sighting on Map →',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    context.go('/map?reportId=${sighting.id}');
-                  },
-                ),
+                ],
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  },
     );
   }
 
@@ -809,30 +846,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
       }
       return; // Stop submission immediately
     }
-    // Bad words / profanity validation across English, Filipino, and Bisaya
-    final badWords = ProfanityFilterService.findProfanities(text);
-    if (badWords.isNotEmpty) {
-      String? uid;
-      try {
-        uid = Supabase.instance.client.auth.currentUser?.id;
-      } catch (_) {}
-      final targetUid = uid ?? 'current_user';
-
-      // Keep UserRestrictionService strike count synchronized with profanity infractions
-      final violation = await _restrictionService.recordViolation(
-        userId: targetUid,
-        prohibitedWord: badWords.first,
-      );
-
-      final result = await ProfanityFilterService.instance.recordInfraction(badWords);
-      if (mounted) {
-        if (violation.isSuspended) {
-          setState(() => _isUserSuspended = true);
-        }
-        _showProfanityBlockedDialog(badWords, result);
-      }
-      return; // Stop submission
-    }
 
     try {
       if (_editingComment != null) {
@@ -873,86 +886,6 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
         );
       }
     }
-  }
-
-  void _showProfanityBlockedDialog(
-    List<String> badWords,
-    ProfanityInfractionResult result,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(
-                result.isSuspended ? Icons.block_rounded : Icons.warning_amber_rounded,
-                color: result.isSuspended ? AppColors.error : AppColors.accentOrange,
-                size: 26,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  result.isSuspended
-                      ? 'Account Suspended'
-                      : result.isWarned
-                          ? 'Community Warning'
-                          : 'Prohibited Language',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Your comment was not posted because it contains prohibited language in our community guidelines.',
-                style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(
-                  'Detected: "${badWords.join(', ')}"',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.error,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                result.message,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: result.isSuspended ? AppColors.error : AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<void> _confirmAndDeleteComment(FeedComment comment) async {
@@ -1223,6 +1156,7 @@ class _FeedCommentsModalState extends State<FeedCommentsModal> {
                 isReply: row.isReply,
                 isCurrentUser:
                     currentUserId != null && comment.userId == currentUserId,
+                linkedReportId: comment.linkedReportId,
                 onReplyTap: () {
                   setState(() {
                     _editingComment = null;
@@ -1374,4 +1308,7 @@ class _EmptyFeedRepository implements FeedRepository {
     double? lng,
     String? specie,
   }) async {}
+
+  @override
+  Future<bool> hasActiveClaimByOther(String reportId, String currentUserId) async => false;
 }

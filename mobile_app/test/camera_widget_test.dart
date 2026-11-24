@@ -64,6 +64,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: Scaffold(
             body: CameraViewfinderPlaceholder(
               onGalleryTap: () => galleryTapped = true,
@@ -89,6 +90,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: Scaffold(
             body: SingleChildScrollView(
               child: CreateReportForm(
@@ -122,6 +124,7 @@ void main() {
     testWidgets('CustomAppBar renders Camera active on index 2', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: Scaffold(
             bottomNavigationBar: CustomAppBar(
               currentIndex: 2,
@@ -137,6 +140,7 @@ void main() {
     testWidgets('CameraReportPage full wireframe screen renders and is interactive', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraReportPage(
             repository: _MockCameraReportRepository(),
             showBottomNavPlaceholder: true,

@@ -9,7 +9,6 @@ import '../../features/report/data/models/ai_match_candidate.dart';
 /// Contract for the real-time AI in-camera visual scanner.
 abstract class AiPreMatchService {
   String? get lastQualityWarning;
-
   Future<List<AiMatchCandidate>> scanForCandidates({
     required Uint8List imageBytes,
     required double lat,
@@ -43,6 +42,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
     required double lng,
     String animalType = 'canine',
   }) async {
+    _lastQualityWarning = null;
     if (imageBytes.isEmpty) return [];
 
     // 1. Attempt live in-memory scan with backend orchestrator (ResNet-18)
@@ -68,7 +68,7 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         );
 
         final streamedResponse = await _httpClient.send(request).timeout(
-              const Duration(seconds: 8),
+              const Duration(seconds: 30),
             );
 
         if (streamedResponse.statusCode == 200) {
@@ -141,16 +141,12 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         // Skip flagged content
         if (row['moderation_status'] == 'flagged') continue;
 
-        final rawPetName = (row['pet_name'] as String? ?? '').trim();
-        final rawAnimalName = (row['animal_name'] as String? ?? '').trim();
-        final petName = rawPetName.isNotEmpty &&
-                rawPetName.toLowerCase() != 'unnamed pet' &&
-                rawPetName.toLowerCase() != 'unknown pet'
-            ? rawPetName
-            : (rawAnimalName.isNotEmpty ? rawAnimalName : 'Missing Pet');
-
+        final petName = row['pet_name'] as String? ?? 'Missing Pet';
         final species = row['animal_type'] as String? ?? animalType;
         final isSameSpecies = species.toLowerCase() == animalType.toLowerCase();
+
+        // Enforce strict species matching — never match a feline to a canine
+        if (!isSameSpecies) continue;
 
         // Calculate real GPS Haversine distance if coordinates are present
         double? distanceKm;

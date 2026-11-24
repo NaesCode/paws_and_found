@@ -25,7 +25,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-f&0u7lk$v$#6#l420d&qo
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(',')
+raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,10.0.2.2')
+ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(',') if h.strip()]
 
 # Reverse proxy SSL header (essential when behind ngrok or HTTPS reverse proxy)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -159,7 +160,10 @@ if _max_radius > _max_tier_dist:
         f"last tier max_distance ({_max_tier_dist}m)."
     )
 
-CORS_ALLOW_ALL_ORIGINS = True  # fine for development; tighten before any public deployment
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "True").lower() in ("true", "1", "t")
+raw_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if raw_cors_origins:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()]
 
 
 # Password validation

@@ -446,28 +446,32 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
         activePosts.where((p) => p.isMissing).length.toDouble();
     final strayCount = activePosts.where((p) => p.isStray).length.toDouble();
     final foundCount = activePosts.where((p) => p.isFound).length.toDouble();
+    final safeCount = activePosts.where((p) => p.isSafe).length.toDouble();
 
-    final total = missingCount + strayCount + foundCount;
-    final fallbackMissing = total == 0 ? 1.0 : missingCount;
-    final fallbackStray = total == 0 ? 1.0 : strayCount;
-    final fallbackFound = total == 0 ? 1.0 : foundCount;
+    final total = missingCount + strayCount + foundCount + safeCount;
 
     return [
       PieChartSegment(
         label: 'Missing Pets',
-        value: total == 0 ? fallbackMissing : missingCount,
+        value: total == 0 ? 1.0 : missingCount,
         color: const Color(0xFFEF4444), // Coral Red
         icon: Icons.search_rounded,
       ),
       PieChartSegment(
         label: 'Stray Sightings',
-        value: total == 0 ? fallbackStray : strayCount,
+        value: total == 0 ? 1.0 : strayCount,
         color: const Color(0xFFF59E0B), // Warning Amber
         icon: Icons.pets_rounded,
       ),
       PieChartSegment(
-        label: 'Found / Reunited',
-        value: total == 0 ? fallbackFound : foundCount,
+        label: 'Found',
+        value: total == 0 ? 1.0 : foundCount,
+        color: const Color(0xFF0EA5E9), // Sky Blue
+        icon: Icons.pets_rounded,
+      ),
+      PieChartSegment(
+        label: 'Safe / Reunited',
+        value: total == 0 ? 1.0 : safeCount,
         color: const Color(0xFF10B981), // Emerald Green
         icon: Icons.check_circle_rounded,
       ),
@@ -1716,6 +1720,7 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
     final missingCount = activePosts.where((p) => p.isMissing).length;
     final strayCount = activePosts.where((p) => p.isStray).length;
     final foundCount = activePosts.where((p) => p.isFound).length;
+    final safeCount = activePosts.where((p) => p.isSafe).length;
 
     final flaggedCount =
         _posts.where((p) => p.isFlagged || p.isModerationFlagged).length;
@@ -1846,7 +1851,10 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
                         'Stray', strayCount, const Color(0xFFF59E0B)),
                     const SizedBox(width: 6),
                     _buildPostCountChip(
-                        'Found', foundCount, const Color(0xFF10B981)),
+                        'Found', foundCount, const Color(0xFF0EA5E9)),
+                    const SizedBox(width: 6),
+                    _buildPostCountChip(
+                        'Safe', foundCount, const Color(0xFF10B981)),
                   ],
                 ),
               ],
@@ -1892,8 +1900,15 @@ class _AdminAnalyticsPageState extends State<AdminAnalyticsPage> {
           ),
           const SizedBox(height: 8),
           _buildStatusProgressRow(
-            'Found / Reunited',
+            'Found',
             foundCount,
+            totalInPeriod,
+            const Color(0xFF0EA5E9),
+          ),
+          const SizedBox(height: 8),
+          _buildStatusProgressRow(
+            'Safe / Reunited',
+            safeCount,
             totalInPeriod,
             const Color(0xFF10B981),
           ),

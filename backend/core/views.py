@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 import requests
 from django.conf import settings
@@ -83,11 +83,15 @@ class HealthView(APIView):
     """
     Health check endpoint.
     Proves JWT verification and database connectivity.
+    Authenticated users receive 200 OK; unauthenticated requests receive 401.
+    The mobile app sends the user's Supabase JWT with the ping so this always
+    returns 200 for logged-in users.
     """
 
     def get(self, request):
         Profile.objects.exists()
         return Response({
+            "status": "ok",
             "user_id": str(request.user.id),
             "db": "ok",
         })
@@ -149,6 +153,7 @@ class ReportAnalyzeView(APIView):
                     Notification.objects.create(
                         user_id=report.reporter_id,
                         type="warning",
+                        related_report=report,
                         message=(
                             f"Post Under Review: Sighting #{report_short_id} was flagged by AI as no clear animal was detected. "
                             f"If this was a mistake, an admin will review and verify it shortly."
@@ -259,10 +264,17 @@ class PetAnalyzeView(APIView):
                 # Cap at 5 photos
                 candidate_urls = pet.photo_urls[:5]
 
+                valid_animal_photos = 0
+                max_detector_score = 0.0
+
                 for photo_url in candidate_urls:
                     try:
                         img_bytes = _download_image(photo_url)
                         emb = embed_image(img_bytes)
+                        if emb.used_crop or emb.detector_score >= 0.25:
+                            valid_animal_photos += 1
+                        if emb.detector_score > max_detector_score:
+                            max_detector_score = emb.detector_score
                         vectors.append(emb.vector)
                     except Exception as ex:
                         logger.warning("Could not process pet photo %s: %s", photo_url, ex)
@@ -273,32 +285,61 @@ class PetAnalyzeView(APIView):
                         status=status.HTTP_502_BAD_GATEWAY,
                     )
 
+                # Smart Content Moderation check via SSDLite320:
+                # If none of the candidate photos contain a recognized animal (confidence < 0.25 and no animal crop),
+                # flag the profile as unrelated/non-animal content. Do not store embeddings or allow matching.
+                if valid_animal_photos == 0:
+                    logger.warning(
+                        "Pet %s flagged by AI moderation: No clear animal detected in photos (max detector score: %.2f)",
+                        pet.id,
+                        max_detector_score,
+                    )
+                    Notification.objects.create(
+                        user_id=pet.owner_id,
+                        type="warning",
+                        message=(
+                            f"Pet Profile Under Review: '{pet.name}' was flagged by AI as no clear animal was "
+                            f"detected in the uploaded photo(s). Please update with a clear photo of your pet."
+                        ),
+                    )
+                    return Response(
+                        {
+                            "status": "flagged_unrelated",
+                            "error": "No clear animal (dog or cat) detected in the uploaded photo(s). Please upload a clear photo of your pet.",
+                            "detector_score": max_detector_score,
+                        },
+                        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    )
+
                 # Centroid average and re-normalize across photos
                 final_vector = average_embeddings(vectors)
 
                 # Poser & Duplicate Moderation: Prevent malicious users from registering or claiming
                 # a pet using photos stolen from another user's registered pet
                 for photo_url in candidate_urls:
-                    dup_pet = Pet.objects.filter(
-                        photo_urls__contains=[photo_url]
-                    ).exclude(owner_id=pet.owner_id).exclude(id=pet.id).first()
-                    if dup_pet:
-                        logger.warning("Duplicate pet photo detected: Pet %s reused photo from Pet %s", pet.id, dup_pet.id)
-                        Notification.objects.create(
-                            user_id=pet.owner_id,
-                            type="warning",
-                            message=(
-                                f"Duplicate Photo Alert: The photo uploaded for '{pet.name}' matches another registered pet "
-                                f"('{dup_pet.name}'). Please verify ownership or use your own original photos."
-                            ),
-                        )
-                        return Response(
-                            {
-                                "status": "flagged_duplicate",
-                                "error": f"Photo matches another registered pet '{dup_pet.name}'. Please upload original photos of your pet.",
-                            },
-                            status=status.HTTP_409_CONFLICT,
-                        )
+                    try:
+                        dup_pet = Pet.objects.filter(
+                            photo_urls__contains=[photo_url]
+                        ).exclude(owner_id=pet.owner_id).exclude(id=pet.id).first()
+                        if dup_pet:
+                            logger.warning("Duplicate pet photo detected: Pet %s reused photo from Pet %s", pet.id, dup_pet.id)
+                            Notification.objects.create(
+                                user_id=pet.owner_id,
+                                type="warning",
+                                message=(
+                                    f"Duplicate Photo Alert: The photo uploaded for '{pet.name}' matches another registered pet "
+                                    f"('{dup_pet.name}'). Please verify ownership or use your own original photos."
+                                ),
+                            )
+                            return Response(
+                                {
+                                    "status": "flagged_duplicate",
+                                    "error": f"Photo matches another registered pet '{dup_pet.name}'. Please upload original photos of your pet.",
+                                },
+                                status=status.HTTP_409_CONFLICT,
+                            )
+                    except Exception as dup_err:
+                        logger.debug("Error checking duplicate photo in PetAnalyzeView: %s", dup_err)
 
                 # Visual cosine similarity check (>= 0.98) across other users' pets
                 try:
@@ -337,6 +378,16 @@ class PetAnalyzeView(APIView):
                     },
                 )
                 photos_analyzed = len(vectors)
+
+                # If previously flagged under review, remove warning notification since pet now verified
+                try:
+                    Notification.objects.filter(
+                        user_id=pet.owner_id,
+                        type="warning",
+                        message__icontains=f"'{pet.name}' was flagged by AI",
+                    ).delete()
+                except Exception as del_err:
+                    logger.debug("Failed cleaning up warning notification: %s", del_err)
 
             # 2. If pet is currently missing, run reverse matching against recent sightings
             matches_created = 0
@@ -527,16 +578,23 @@ class MatchCandidatesView(APIView):
             is_blurry, var = check_image_blur(arr, threshold=50.0)
             if is_blurry:
                 quality_warning = "Photo appears blurry or out of focus. For better AI matching, consider retaking a clearer photo."
-        except Exception:
-            pass
+                return Response({
+                    "candidates": [],
+                    "quality_warning": quality_warning,
+                })
+        except Exception as e:
+            logger.debug("Blur check error in MatchCandidatesView: %s", e)
 
         # Gate: Do not suggest missing pet matches if no animal was detected in the photo
-        if not emb_result.used_crop and emb_result.detector_score < 0.25:
+        if not emb_result.used_crop and emb_result.detector_score < 0.35:
             logger.info(
                 "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
                 emb_result.detector_score,
             )
-            return Response({"candidates": [], "quality_warning": quality_warning})
+            return Response({
+                "candidates": [],
+                "quality_warning": "No clear animal detected in photo. Please frame the pet clearly.",
+            })
 
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
@@ -593,8 +651,8 @@ class MatchCandidatesView(APIView):
 
             score = cosine(query_vector, target_vector)
 
-            # Require minimum visual similarity threshold (>= 0.60) to consider a plausible match
-            if score < 0.60:
+            # Require minimum visual similarity threshold (>= 0.68) for real visual matches
+            if score < 0.68:
                 continue
 
             distance_km = None

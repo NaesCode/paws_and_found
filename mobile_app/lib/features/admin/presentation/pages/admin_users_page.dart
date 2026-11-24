@@ -130,37 +130,60 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
 
             // 2. Search Field
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(10.0),
-                  border: Border.all(color: AppColors.border, width: 1.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 10.0),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterUsers,
+                textAlignVertical: TextAlignVertical.center,
+                style: const TextStyle(
+                  fontSize: 14.0,
+                  color: AppColors.darkCharcoal,
                 ),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _filterUsers,
-                  style: const TextStyle(
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  hintText: 'Search users by name or email...',
+                  hintStyle: const TextStyle(
+                    color: AppColors.inputHint,
                     fontSize: 13.5,
-                    color: AppColors.darkCharcoal,
                   ),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    icon: Icon(
-                      Icons.search_rounded,
-                      size: 20,
-                      color: AppColors.textMuted,
-                    ),
-                    hintText: 'Search users...',
-                    hintStyle: TextStyle(
-                      color: AppColors.inputHint,
-                      fontSize: 13.5,
-                    ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterUsers('');
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 12.0,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: AppColors.border, width: 1.0),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: AppColors.border, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                   ),
                 ),
               ),

@@ -1,10 +1,14 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/content_moderation_service.dart';
+import '../../../../core/services/user_restriction_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/drag_handle.dart';
 import '../../../../shared/atoms/paw_button.dart';
 import '../../../../shared/atoms/paw_text_field.dart';
+import '../../../../shared/molecules/community_warning_dialog.dart';
 import '../../../../shared/molecules/sound_type_selector_tile.dart';
 import '../../domain/entities/pet.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -53,6 +57,7 @@ class _AddPetSheetState extends State<AddPetSheet> {
   String _selectedSpecies = 'Dog';
   final List<String> _speciesOptions = ['Dog', 'Cat', 'Bird', 'Rabbit', 'Other'];
 
+  static const int _maxPhotoSizeBytes = 2 * 1024 * 1024; // 2 MB limit (matches Supabase Storage bucket limit)
   final List<({Uint8List bytes, String extension})> _photos = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -74,32 +79,37 @@ class _AddPetSheetState extends State<AddPetSheet> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       if (source == ImageSource.gallery) {
-        final List<XFile> files = await _picker.pickMultiImage(
-          maxWidth: 1024,
-          maxHeight: 1024,
-          imageQuality: 85,
-        );
+        final List<XFile> files = await _picker.pickMultiImage();
         if (files.isNotEmpty) {
           final remaining = 5 - _photos.length;
           final toAdd = files.take(remaining);
+          String? sizeWarning;
+
           for (final f in toAdd) {
             final bytes = await f.readAsBytes();
+            if (bytes.lengthInBytes > _maxPhotoSizeBytes) {
+              final mb = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+              sizeWarning = 'Photo "${f.name}" ($mb MB) exceeds the 2 MB storage limit. Please choose a photo under 2 MB.';
+              continue;
+            }
             final ext = f.name.split('.').last.toLowerCase();
             final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
             _photos.add((bytes: bytes, extension: cleanExt));
           }
-          setState(() => _generalError = null);
+          setState(() => _generalError = sizeWarning);
         }
       } else {
-        final XFile? file = await _picker.pickImage(
-          source: source,
-          maxWidth: 1024,
-          maxHeight: 1024,
-          imageQuality: 85,
-        );
+        final XFile? file = await _picker.pickImage(source: source);
 
         if (file != null && _photos.length < 5) {
           final bytes = await file.readAsBytes();
+          if (bytes.lengthInBytes > _maxPhotoSizeBytes) {
+            final mb = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+            setState(() {
+              _generalError = 'Captured photo ($mb MB) exceeds the 2 MB storage limit. Please choose a photo under 2 MB.';
+            });
+            return;
+          }
           final ext = file.name.split('.').last.toLowerCase();
           final cleanExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
           setState(() {
@@ -187,21 +197,68 @@ class _AddPetSheetState extends State<AddPetSheet> {
       return;
     }
 
+    // 0. Account suspension check
+    final isSuspended = await const UserRestrictionService().isUserSuspended();
+    if (isSuspended) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.block_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Account Suspended'),
+            ],
+          ),
+          content: const Text(
+            'Your account has been suspended by administration. Suspended accounts cannot register pets.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final name = _nameController.text.trim();
+    final breed = _breedController.text.trim().isNotEmpty ? _breedController.text.trim() : null;
+    final color = _colorController.text.trim().isNotEmpty ? _colorController.text.trim() : null;
+    final description = _descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null;
+
+    final finalSpecies = _selectedSpecies == 'Other' && _customSpeciesController.text.trim().isNotEmpty
+        ? _customSpeciesController.text.trim()
+        : _selectedSpecies;
+
+    // 0.1 Prohibited language check across pet textual fields
+    final textToCheck = '$name ${breed ?? ""} ${color ?? ""} ${description ?? ""} $finalSpecies';
+    final modResult = const ContentModerationService().checkContent(textToCheck);
+    if (modResult.isBlocked) {
+      final uid = Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+      final record = await const UserRestrictionService().recordViolation(
+        userId: uid,
+        prohibitedWord: modResult.detectedWord ?? '',
+      );
+      if (!mounted) return;
+      await CommunityWarningDialog.show(
+        context: context,
+        detectedWord: modResult.detectedWord ?? '',
+        violationCount: record.count,
+        isSuspended: record.isSuspended,
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _generalError = null;
     });
 
     try {
-      final name = _nameController.text.trim();
-      final breed = _breedController.text.trim().isNotEmpty ? _breedController.text.trim() : null;
-      final color = _colorController.text.trim().isNotEmpty ? _colorController.text.trim() : null;
-      final description = _descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null;
-
-      final finalSpecies = _selectedSpecies == 'Other' && _customSpeciesController.text.trim().isNotEmpty
-          ? _customSpeciesController.text.trim()
-          : _selectedSpecies;
-
       List<String> photoUrls = [];
 
       // 1. Upload photos to Supabase Storage (up to 5 for multi-angle AI embeddings)

@@ -6,6 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_cached_pdfview/flutter_cached_pdfview.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/core/services/profanity_filter_service.dart';
+import 'package:paws_and_found/core/services/user_restriction_service.dart';
+import 'package:paws_and_found/shared/molecules/community_warning_dialog.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/recovery_repository_impl.dart';
 
 class Stage2VerificationWidget extends StatefulWidget {
@@ -363,12 +366,21 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
               if (text.isNotEmpty) {
                 final badWords = ProfanityFilterService.findProfanities(text);
                 if (badWords.isNotEmpty) {
-                  final result = await ProfanityFilterService.instance.recordInfraction(badWords);
+                  final targetUid = Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+                  final violation = await const UserRestrictionService().recordViolation(
+                    userId: targetUid,
+                    prohibitedWord: badWords.first,
+                  );
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
                   }
                   if (mounted) {
-                    _showProfanityBlockedDialog(badWords, result);
+                    await CommunityWarningDialog.show(
+                      context: context,
+                      detectedWord: badWords.first,
+                      violationCount: violation.count,
+                      isSuspended: violation.isSuspended,
+                    );
                   }
                   return;
                 }
@@ -389,72 +401,6 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
         );
       }
     }
-  }
-
-  void _showProfanityBlockedDialog(List<String> badWords, ProfanityInfractionResult result) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              result.isSuspended ? Icons.block_rounded : Icons.warning_amber_rounded,
-              color: result.isSuspended ? AppColors.error : AppColors.accentOrange,
-              size: 26,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                result.isSuspended
-                    ? 'Account Suspended'
-                    : result.isWarned
-                        ? 'Community Warning'
-                        : 'Language Prohibited',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              result.message,
-              style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppColors.darkCharcoal),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-              ),
-              child: Text(
-                'Detected: ${badWords.map((w) => '"$w"').join(', ')}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.error,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Understand', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -752,9 +698,18 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                         final note = _featuresController.text.trim();
                         final badWords = ProfanityFilterService.findProfanities(note);
                         if (badWords.isNotEmpty) {
-                          final result = await ProfanityFilterService.instance.recordInfraction(badWords);
+                          final targetUid = Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+                          final violation = await const UserRestrictionService().recordViolation(
+                            userId: targetUid,
+                            prohibitedWord: badWords.first,
+                          );
                           if (mounted) {
-                            _showProfanityBlockedDialog(badWords, result);
+                            await CommunityWarningDialog.show(
+                              context: context,
+                              detectedWord: badWords.first,
+                              violationCount: violation.count,
+                              isSuspended: violation.isSuspended,
+                            );
                           }
                           return;
                         }

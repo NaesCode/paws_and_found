@@ -8,6 +8,7 @@ import '../widgets/admin_bottom_nav_bar.dart';
 import '../widgets/admin_header.dart';
 import '../widgets/admin_moderation_pill.dart';
 import '../widgets/admin_post_status_pill.dart';
+import '../widgets/admin_post_card_details.dart';
 
 /// Screen 10 — ADMIN · POSTS (Post Management)
 ///
@@ -213,11 +214,23 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       _allPosts.where((p) => p.isFlagged).length;
 
   void _showActionFeedback(String actionName, String details) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$actionName: $details'),
         duration: const Duration(seconds: 2),
         backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  void _showErrorFeedback(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 4),
+        backgroundColor: const Color(0xFFDC2626),
       ),
     );
   }
@@ -1121,16 +1134,17 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         reason: reason,
                         notifyUser: notifyUser,
                       );
-                    } catch (_) {
-                      // Handled gracefully in offline or restricted mode
-                    }
 
-                    if (!mounted) return;
-                    setState(() {
-                      _allPosts.removeWhere((p) =>
-                          p.rawId == post.rawId || p.id == post.id);
-                    });
-                    _showActionFeedback('Deleted Post', post.id);
+                      if (!mounted) return;
+                      setState(() {
+                        _allPosts.removeWhere((p) =>
+                            p.rawId == post.rawId || p.id == post.id);
+                      });
+                      _showActionFeedback('Deleted Post', post.id);
+                    } catch (e) {
+                      debugPrint('[AdminPostsPage] Delete post error: $e');
+                      _showErrorFeedback('Failed to delete post: $e');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDC2626),
@@ -1672,66 +1686,6 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
 
             const SizedBox(height: 8),
 
-            // 3. Table Column Headers (ID, ANIMAL STATUS, USER, ACT.)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                children: const [
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'ID',
-                      style: TextStyle(
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      'ANIMAL STATUS',
-                      style: TextStyle(
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      'USER',
-                      style: TextStyle(
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'ACT.',
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
             const Divider(height: 1, thickness: 1, color: AppColors.divider),
 
             // 4. Posts Table List (with Pull-to-Refresh & Live Data)
@@ -1861,156 +1815,15 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       color: AppColors.primary,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        padding: const EdgeInsets.fromLTRB(16.0, 6.0, 16.0, 20.0),
         itemCount: posts.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final post = posts[index];
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ID Column
-              Expanded(
-                flex: 2,
-                child: Text(
-                  post.id,
-                  style: const TextStyle(
-                    fontSize: 12.0,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-
-              // ANIMAL STATUS Column
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.title,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.darkCharcoal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (post.subtitle != null &&
-                            post.subtitle!.isNotEmpty) ...[
-                          Flexible(
-                            child: Text(
-                              post.subtitle!,
-                              style: const TextStyle(
-                                fontSize: 12.0,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        AdminPostStatusPill(status: post.status),
-                        if (post.isFlagged || post.isModerationFlagged) ...[
-                          const SizedBox(width: 6),
-                          AdminModerationPill(status: post.moderationStatus),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      post.dateFormatted,
-                      style: const TextStyle(
-                        fontSize: 11.0,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // USER Column
-              Expanded(
-                flex: 3,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2.0),
-                  child: Text(
-                    post.username,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.darkCharcoal,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-
-              // ACT. Column
-              Expanded(
-                flex: 2,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Flagged Indicator Icon
-                    if (post.isFlagged)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6.0),
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            '!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12.0,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Three Dots Action Button
-                    InkWell(
-                      onTap: () => _showPostActionMenu(post),
-                      borderRadius: BorderRadius.circular(6.0),
-                      child: Container(
-                        width: 28,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(6.0),
-                          border: Border.all(color: AppColors.border, width: 1.0),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          '···',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w900,
-                            height: 0.8,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          return AdminPostCard(
+            post: post,
+            onTap: () => _showSightingDetailsModal(post),
+            onActionTap: () => _showPostActionMenu(post),
           );
         },
       ),

@@ -37,6 +37,7 @@ class AdminPostItem {
   bool get isMissing => status.toLowerCase() == 'missing';
   bool get isStray => status.toLowerCase() == 'stray';
   bool get isFound => status.toLowerCase() == 'found';
+  bool get isSafe => status.toLowerCase() == 'safe';
   bool get isModerationFlagged => moderationStatus.toLowerCase() == 'flagged';
   bool get isModerationRejected => moderationStatus.toLowerCase() == 'rejected';
   bool get isModerationApproved => moderationStatus.toLowerCase() == 'approved';

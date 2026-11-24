@@ -13,28 +13,32 @@ import 'pet_item.dart';
 /// - Loading state indicator
 class PawsProfileSection extends StatelessWidget {
   final List<Pet> pets;
+  final Set<String> flaggedPetNames;
   final bool isLoading;
   final ValueChanged<Pet> onStatusToggle;
   final ValueChanged<Pet>? onEditPet;
   final ValueChanged<Pet>? onDeletePet;
   final ValueChanged<Pet>? onPetTap;
+  final ValueChanged<Pet>? onPhotoTap;
   final VoidCallback? onAddPetPressed;
 
   const PawsProfileSection({
     super.key,
     required this.pets,
+    this.flaggedPetNames = const {},
     this.isLoading = false,
     required this.onStatusToggle,
     this.onEditPet,
     this.onDeletePet,
     this.onPetTap,
+    this.onPhotoTap,
     this.onAddPetPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background2,
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -138,9 +142,11 @@ class PawsProfileSection extends StatelessWidget {
             ...pets.map(
               (pet) => PetItem(
                 pet: pet,
+                isFlagged: flaggedPetNames.contains(pet.name),
                 onStatusActionPressed: () => onStatusToggle(pet),
                 onEditPressed: onEditPet != null ? () => onEditPet!(pet) : null,
                 onDeletePressed: onDeletePet != null ? () => onDeletePet!(pet) : null,
+                onPhotoTap: () => (onPhotoTap ?? onPetTap)?.call(pet),
                 onTap: () => onPetTap?.call(pet),
               ),
             ),

@@ -198,10 +198,13 @@ class _DeleteReportSheetState extends State<DeleteReportSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Row(
                     children: [
+                      // ignore: deprecated_member_use
                       Radio<String>(
                         value: reason,
+                        // ignore: deprecated_member_use
                         groupValue: _selectedReason,
                         activeColor: AppColors.contrast2,
+                        // ignore: deprecated_member_use
                         onChanged: (val) {
                           if (val != null) {
                             setState(() {

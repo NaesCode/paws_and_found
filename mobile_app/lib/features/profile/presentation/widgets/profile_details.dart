@@ -28,7 +28,7 @@ class ProfileDetails extends StatelessWidget {
         children: [
           // Thin horizontal divider spanning ~60% width of the card
           FractionallySizedBox(
-            widthFactor: 0.60,
+            widthFactor: 1.0,
             alignment: Alignment.centerLeft,
             child: Container(
               height: 1.0,

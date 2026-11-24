@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,6 +17,7 @@ import '../widgets/delete_pet_sheet.dart';
 import '../../../../core/services/location_service.dart';
 import '../widgets/paws_profile_section.dart';
 import '../widgets/pending_meetup_section.dart';
+import '../widgets/pet_photo_gallery_modal.dart';
 import '../widgets/report_missing_sheet.dart';
 import '../widgets/reunion_history_section.dart';
 
@@ -41,15 +43,30 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   UserProfile? _user;
   List<Pet> _pets = [];
+  Set<String> _flaggedPetNames = {};
   bool _isLoading = true;
   String? _errorMessage;
   bool _hasPromptedOnboarding = false;
+  StreamSubscription<Set<String>>? _flaggedPetsSub;
 
   @override
   void initState() {
     super.initState();
     _repository = widget.repository ?? ProfileRepositoryImpl();
     _loadProfileData();
+    _flaggedPetsSub = _repository.watchFlaggedPetNames().listen((flagged) {
+      if (mounted) {
+        setState(() {
+          _flaggedPetNames = flagged;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _flaggedPetsSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProfileData() async {
@@ -61,11 +78,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     try {
       final profile = await _repository.getProfile();
       final pets = await _repository.getPets();
+      final flagged = await _repository.getFlaggedPetNames();
 
       if (mounted) {
         setState(() {
           _user = profile;
           _pets = pets;
+          _flaggedPetNames = flagged;
           _isLoading = false;
         });
 
@@ -150,6 +169,44 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   Future<void> _handlePetStatusToggle(Pet pet) async {
+    // If flagged by AI moderation as unverified/non-animal, disallow reporting missing
+    if (_flaggedPetNames.contains(pet.name)) {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Text('Verification Required'),
+            ],
+          ),
+          content: Text(
+            '${pet.name} is currently flagged under review because no clear animal (dog or cat) was recognized in its photo(s).\n\nTo prevent false alarms in the community, unverified pets cannot be reported missing. Please edit ${pet.name}\'s profile and upload a clear photo of your pet first.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Understood'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _showEditPetSheet(pet);
+              },
+              child: const Text('Edit Photo'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final isSafe = pet.status == PetStatus.safe;
 
     if (isSafe) {
@@ -280,9 +337,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     if (deleted == true && mounted) {
       setState(() => _isLoading = true);
       final updatedPets = await _repository.getPets();
+      final flagged = await _repository.getFlaggedPetNames();
       if (!mounted) return;
       setState(() {
         _pets = updatedPets;
+        _flaggedPetNames = flagged;
         _isLoading = false;
       });
 
@@ -321,9 +380,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     if (updatedPet != null && mounted) {
       setState(() => _isLoading = true);
       final updatedPets = await _repository.getPets();
+      final flagged = await _repository.getFlaggedPetNames();
       if (!mounted) return;
       setState(() {
         _pets = updatedPets;
+        _flaggedPetNames = flagged;
         _isLoading = false;
       });
 
@@ -336,6 +397,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
+  void _showPetPhotoGallery(Pet pet) {
+    PetPhotoGalleryModal.show(
+      context: context,
+      pet: pet,
+      onEditPressed: pet.status == PetStatus.safe ? () => _showEditPetSheet(pet) : null,
+    );
+  }
+
   Future<void> _showAddPetSheet() async {
     final newPet = await AddPetSheet.show(
       context: context,
@@ -344,9 +413,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
     if (newPet != null && mounted) {
       final updatedPets = await _repository.getPets();
+      final flagged = await _repository.getFlaggedPetNames();
       if (!mounted) return;
       setState(() {
         _pets = updatedPets;
+        _flaggedPetNames = flagged;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -475,12 +546,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     hasScrollBody: false,
                     child: PawsProfileSection(
                       pets: _pets,
+                      flaggedPetNames: _flaggedPetNames,
                       isLoading: _isLoading && _pets.isEmpty,
                       onStatusToggle: _handlePetStatusToggle,
                       onEditPet: _showEditPetSheet,
                       onDeletePet: _showDeletePetSheet,
                       onAddPetPressed: _showAddPetSheet,
-                      onPetTap: _showEditPetSheet,
+                      onPhotoTap: _showPetPhotoGallery,
+                      onPetTap: _showPetPhotoGallery,
                     ),
                   ),
                 ],

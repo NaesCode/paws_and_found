@@ -168,6 +168,8 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
         return BannerType.spotted;
       case 'found':
         return BannerType.found;
+      case 'safe':
+        return BannerType.safe;        
       default:
         return BannerType.missing;
     }
@@ -249,7 +251,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         itemBuilder: (context, index) {
                         final report = reports[index];
                         final isMissing = report.status.toLowerCase() == 'missing';
-                        final isFound = report.status.toLowerCase() == 'found';
+                        final isSafe = report.status.toLowerCase() == 'safe';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
                         final isWithinGracePeriod =
                             DateTime.now().difference(report.createdAt).inMinutes <= 360;
@@ -266,37 +268,40 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                           imageURL: report.imageUrl.isNotEmpty
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
-                          button1Text: isMissing ? "View Map" : "Edit",
-                          button2Text: isMissing ? "Edit" : (isFound? "Reunited" : "Found"),
+                          petButtonText: isSafe
+                              ? "He is Safe"
+                              : (isMissing ? "Mark as Safe" : "View on Map"),
+                          button1Text: isMissing
+                              ? "View Map"
+                              : (isSafe ? "Reunited" : "Edit"),
+                          button2Text: isMissing ? "Edit": "Safe",
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
-                          petButtonText: isMissing? "Mark as Found": "View on Map",
-                          onPetButtonPressed: () {
-                            if(isMissing){
-                              _handleMarkAsFound(report);
-                            }
-                            else{
-                              context.go('/map?reportId=${report.id}');
-                            }
-                          },
-                          onButton1Pressed: () {
-                            if (!isMissing) {
-                              _handleEditReport(report);
-                            } else {
-                              // Navigate to Community Map and focus the pin for this report
-                              context.push('/map?reportId=${report.id}');
-                            }
-                          },
-                          onButton2Pressed: () {
-                            if(isMissing){
-                              _handleEditReport(report);
-                            } else if (isFound) {
-                              // mark found or like the pet is already found chuchu or the automatic after the pipeline
-                            }
-                            else{
-                              _handleMarkAsFound(report);
-                            }
-                          },
+                          onPetButtonPressed: isSafe
+                              ? null
+                              : () {
+                                  if (isMissing) {
+                                    _handleMarkAsFound(report);
+                                  } else {
+                                    context.push('/map?reportId=${report.id}');
+                                  }
+                                },
+                          onButton1Pressed: isSafe
+                              ? null
+                              : () {
+                                  if (isMissing) {
+                                    context.push('/map?reportId=${report.id}');
+                                  } else {
+                                    _handleEditReport(report);
+                                  }
+                                },
+                          onButton2Pressed: isSafe ? null : () {
+                                  if (isMissing) {
+                                    _handleEditReport(report);
+                                  } else {
+                                    _handleMarkAsFound(report);
+                                  }
+                                },
                           onUndoPressed: isWithinGracePeriod
                               ? () => _handleUndoReport(report)
                               : null,
@@ -320,7 +325,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Mark "$petTitle" as Found?'),
+        title: Text('Mark "$petTitle" as Safe?'),
         content: Text(
           'Confirming that $petTitle has been found will update the post status to FOUND, remove the active alert from the community map, and close any open claim requests.',
         ),

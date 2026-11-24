@@ -8,7 +8,10 @@ class ApiConstants {
   static const String localhost = '127.0.0.1';
   static const int port = 8000;
 
-  static const String djangoBaseUrl = String.fromEnvironment('DJANGO_BASE_URL');
+  static const String djangoBaseUrl = String.fromEnvironment(
+    'DJANGO_BASE_URL',
+    defaultValue: 'https://paws-backend-lraw.onrender.com',
+  );
   static const String ngrokUrl = String.fromEnvironment('NGROK_URL');
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',

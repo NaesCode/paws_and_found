@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import '../../features/notifications/domain/entities/app_notification.dart';
 
 /// Singleton service responsible for native pop-up (heads-up) notifications.
@@ -32,6 +34,9 @@ class LocalNotificationService {
     if (_isInitialized) return;
 
     try {
+      tz.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Manila'));
+
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: false,
@@ -162,6 +167,102 @@ class LocalNotificationService {
     } catch (e) {
       debugPrint('[LocalNotificationService] showAppNotification error: $e');
     }
+  }
+
+  /// Schedules native reminders 1 hour and 15 minutes before [meetupTime].
+  Future<void> scheduleMeetupReminders({
+    required String claimId,
+    required String petName,
+    required String locationName,
+    required DateTime meetupTime,
+    String? reportId,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    try {
+      await cancelMeetupReminders(claimId);
+
+      final now = DateTime.now();
+      final oneHourBefore = meetupTime.subtract(const Duration(hours: 1));
+      final fifteenMinsBefore = meetupTime.subtract(const Duration(minutes: 15));
+
+      const androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'Paws and Found Meetup Reminder',
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+      );
+
+      final payload = (reportId != null && reportId.isNotEmpty)
+          ? '/claim?reportId=$reportId'
+          : claimId;
+
+      if (oneHourBefore.isAfter(now)) {
+        await _plugin.zonedSchedule(
+          _meetupReminderId(claimId, slot: 1),
+          'Upcoming Pet Meetup in 1 Hour 🐾',
+          'Handover for $petName at $locationName.',
+          tz.TZDateTime.from(oneHourBefore, tz.local),
+          details,
+          payload: payload,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      }
+
+      if (fifteenMinsBefore.isAfter(now)) {
+        await _plugin.zonedSchedule(
+          _meetupReminderId(claimId, slot: 2),
+          'Pet Meetup Starting in 15 Mins 📍',
+          'Head to $locationName for $petName\'s handover.',
+          tz.TZDateTime.from(fifteenMinsBefore, tz.local),
+          details,
+          payload: payload,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      }
+    } catch (e) {
+      debugPrint('[LocalNotificationService] scheduleMeetupReminders error: $e');
+    }
+  }
+
+  /// Cancels scheduled meetup reminders if rescheduled, rejected, or completed.
+  Future<void> cancelMeetupReminders(String claimId) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    try {
+      await _plugin.cancel(_meetupReminderId(claimId, slot: 1));
+      await _plugin.cancel(_meetupReminderId(claimId, slot: 2));
+    } catch (e) {
+      debugPrint('[LocalNotificationService] cancelMeetupReminders error: $e');
+    }
+  }
+
+  int _meetupReminderId(String claimId, {required int slot}) {
+    return ((claimId.hashCode & 0x7FFFFFF) * 10) + slot;
   }
 
   /// Resolves an intuitive title based on the notification type.

@@ -298,8 +298,8 @@ void main() {
       // Step 2: Enter new password and confirm
       final newPassField = find.widgetWithText(TextField, 'New Password');
       final confirmPassField = find.widgetWithText(TextField, 'Confirm New Password');
-      await tester.enterText(newPassField, 'newsecret123');
-      await tester.enterText(confirmPassField, 'newsecret123');
+      await tester.enterText(newPassField, 'NewSecret123!');
+      await tester.enterText(confirmPassField, 'NewSecret123!');
       await tester.tap(find.text('Update Password'));
       await tester.pumpAndSettle();
 

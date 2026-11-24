@@ -35,21 +35,17 @@ def _load_detector():
         model = ssdlite320_mobilenet_v3_large(weights=weights)
         model.eval()
 
-        # Extract animal category indices dynamically by class name from weights metadata
+        # Extract target category indices dynamically by class name from weights metadata
         categories = weights.meta.get("categories", [])
-        animal_classes = {
-            "cat", "dog", "bird", "horse", "sheep", "cow",
-            "elephant", "bear", "zebra", "giraffe",
-        }
-        target_indices = {idx for idx, cat in enumerate(categories) if cat in animal_classes}
+        target_indices = {idx for idx, cat in enumerate(categories) if cat in ("cat", "dog")}
         if not target_indices:
             # Fallback if categories metadata format varies
-            target_indices = {16, 17, 18, 19, 20, 21, 22, 23, 24, 25}
+            target_indices = {16, 17, 18}
 
         _detector_model = model
         _detector_transforms = weights.transforms()
         _target_categories = target_indices
-        logger.info("SSDLite320 detector loaded. Target animal classes (indices %s)", target_indices)
+        logger.info("SSDLite320 detector loaded. Target classes: cat, dog (indices %s)", target_indices)
 
 
 def detect_and_crop_animal(

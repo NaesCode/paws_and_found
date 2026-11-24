@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/core/utils/password_validator.dart';
 import 'package:paws_and_found/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:paws_and_found/features/auth/domain/repositories/auth_repository.dart';
 import 'package:paws_and_found/shared/atoms/drag_handle.dart';
 import 'package:paws_and_found/shared/atoms/google_logo.dart';
 import 'package:paws_and_found/shared/atoms/paw_button.dart';
 import 'package:paws_and_found/shared/atoms/paw_text_field.dart';
+import 'package:paws_and_found/shared/molecules/password_requirements_view.dart';
 import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 
 class AuthTray extends StatefulWidget {
@@ -49,6 +50,18 @@ class _AuthTrayState extends State<AuthTray> {
   bool _obscureConfirmPassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    if (!widget.isLogin && mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant AuthTray oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isLogin != widget.isLogin) {
@@ -67,6 +80,7 @@ class _AuthTrayState extends State<AuthTray> {
 
   @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -110,6 +124,12 @@ class _AuthTrayState extends State<AuthTray> {
       if (password.isEmpty) {
         _passwordError = 'Password is required';
         isValid = false;
+      } else if (!widget.isLogin) {
+        final passResult = PasswordValidator.validate(password);
+        if (!passResult.isValid) {
+          _passwordError = passResult.errorMessage;
+          isValid = false;
+        }
       } else if (password.length < 6) {
         _passwordError = 'Password must be at least 6 characters';
         isValid = false;
@@ -553,6 +573,12 @@ class _AuthTrayState extends State<AuthTray> {
                 ),
               ),
 
+              if (!widget.isLogin)
+                PasswordRequirementsView(
+                  result: PasswordValidator.validate(_passwordController.text),
+                  isVisible: _passwordController.text.isNotEmpty,
+                ),
+
               if (!widget.isLogin) ...[
                 const SizedBox(height: 14),
                 PawTextField(
@@ -688,10 +714,18 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
     super.initState();
     _emailController = TextEditingController(text: widget.initialEmail);
     _targetEmail = widget.initialEmail;
+    _newPasswordController.addListener(_onNewPasswordChanged);
+  }
+
+  void _onNewPasswordChanged() {
+    if (_step == 2 && mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _newPasswordController.removeListener(_onNewPasswordChanged);
     _emailController.dispose();
     _otpController.dispose();
     _newPasswordController.dispose();
@@ -846,9 +880,10 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
       return;
     }
 
-    if (newPassword.length < 6) {
+    final passResult = PasswordValidator.validate(newPassword);
+    if (!passResult.isValid) {
       setState(() {
-        _error = 'Password must be at least 6 characters.';
+        _error = passResult.errorMessage;
         _success = null;
       });
       return;
@@ -1120,6 +1155,10 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                     });
                   },
                 ),
+              ),
+              PasswordRequirementsView(
+                result: PasswordValidator.validate(_newPasswordController.text),
+                isVisible: _newPasswordController.text.isNotEmpty,
               ),
               const SizedBox(height: 14),
               PawTextField(

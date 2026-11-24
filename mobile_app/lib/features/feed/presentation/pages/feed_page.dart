@@ -13,6 +13,9 @@ import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 class FeedPage extends StatefulWidget {
   final Widget? generalReportsView;
   final Widget? personalReportsView;
+  final String? isolatedReportId;
+  final VoidCallback? onClearIsolation;
+
   final UserRestrictionService? restrictionService;
   final String? isolatedReportId;
   final VoidCallback? onClearIsolation;
@@ -21,6 +24,8 @@ class FeedPage extends StatefulWidget {
     super.key,
     this.generalReportsView,
     this.personalReportsView,
+    this.isolatedReportId,
+    this.onClearIsolation,
     this.restrictionService,
     this.isolatedReportId,
     this.onClearIsolation,
@@ -36,12 +41,38 @@ class _FeedPageState extends State<FeedPage> {
   bool _isFabExtended = true;
   bool _isFabVisible = true;
   bool _isUserSuspended = false;
+  String? _isolatedReportId;
 
   @override
   void initState() {
     super.initState();
     _restrictionService = widget.restrictionService ?? const UserRestrictionService();
     _checkSuspensionStatus();
+    
+    _isolatedReportId = widget.isolatedReportId;
+    if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
+      _isGeneralSelected = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isolatedReportId != oldWidget.isolatedReportId) {
+      setState(() {
+        _isolatedReportId = widget.isolatedReportId;
+        if (_isolatedReportId != null && _isolatedReportId!.isNotEmpty) {
+          _isGeneralSelected = true;
+        }
+      });
+    }
+  }
+
+  void _clearIsolation() {
+    setState(() {
+      _isolatedReportId = null;
+    });
+    widget.onClearIsolation?.call();
   }
 
   Future<void> _checkSuspensionStatus() async {
@@ -121,7 +152,10 @@ class _FeedPageState extends State<FeedPage> {
                       child: NotificationListener<ScrollNotification>(
                         onNotification: _onScrollNotification,
                         child: _isGeneralSelected
-                            ? (widget.generalReportsView ?? const GeneralReportsPage())
+                            ? (widget.generalReportsView ?? GeneralReportsPage(
+                              isolatedReportId: _isolatedReportId,
+                              onClearIsolation: _clearIsolation,
+                            ))
                             : (widget.personalReportsView ?? const PersonalReportsPage()),
                       ),
                     ),

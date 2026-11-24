@@ -14,6 +14,8 @@ import '../../../../core/constants/app_assets.dart';
 import '../widgets/ai_match_scanner_card.dart';
 import '../widgets/camera_viewfinder_placeholder.dart';
 import '../widgets/create_report_form.dart';
+import '../../../../shared/atoms/backend_status_chip.dart';
+import '../../../../core/services/backend_status_service.dart';
 import '../../../../shared/organisms/custom_app_bar.dart';
 import '../../domain/repositories/report_repository.dart';
 import '../providers/camera_report_controller.dart';
@@ -269,11 +271,9 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
           maxChildSize: 0.9,
           expand: false,
           builder: (ctx, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
+            return Material(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -674,6 +674,22 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
                 onCaptureTap: _handleCaptureTap,
                 onGalleryTap: _controller.pickFromGallery,
                 onRetakeTap: _controller.clearPhoto,
+              ),
+
+              // Backend AI status chip — shows Render warm/cold state
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 2),
+                child: Row(
+                  children: [
+                    ValueListenableBuilder<BackendStatus>(
+                      valueListenable: BackendStatusService.instance.status,
+                      builder: (context, backendStatus, _) => BackendStatusChip(
+                        status: backendStatus,
+                        onTap: () => BackendStatusService.instance.ping(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // AI Visual Pre-Match Scanner / Thread Link
