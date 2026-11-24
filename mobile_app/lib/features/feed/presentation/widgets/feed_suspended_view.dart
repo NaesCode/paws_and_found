@@ -16,7 +16,7 @@ class FeedSuspendedView extends StatelessWidget {
   const FeedSuspendedView({
     super.key,
     this.onRefreshStatus,
-    this.adminEmail = 'support@pawsandfound.org',
+    this.adminEmail = 'pawsandfound26@gmail.com',
   });
 
   void _showContactAdminDialog(BuildContext context) {
