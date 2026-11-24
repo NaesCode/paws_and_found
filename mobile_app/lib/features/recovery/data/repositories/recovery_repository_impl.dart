@@ -296,5 +296,13 @@ Future<String> uploadClaimProofFile({
         .delete()
         .eq('id', claimId);
   }
+
+  /// Declines or rejects a claim at any stage (sets status to 'declined')
+  Future<void> declineClaim(String claimId) async {
+    await _client.from('pet_claims').update({
+      'status': 'declined',
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', claimId);
+  }
 }
 

@@ -24,6 +24,7 @@ class Stage2VerificationWidget extends StatefulWidget {
   final VoidCallback onApproveVerification;
   final Future<void> Function(String feedback) onRequestMoreInfo;
   final String? finderFeedback;
+  final VoidCallback? onDeclineClaim;
 
   const Stage2VerificationWidget({
     super.key,
@@ -39,6 +40,7 @@ class Stage2VerificationWidget extends StatefulWidget {
     required this.onApproveVerification,
     required this.onRequestMoreInfo,
     this.finderFeedback,
+    this.onDeclineClaim,
   });
 
   @override
@@ -759,6 +761,23 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.text2),
             ),
+            if (widget.onDeclineClaim != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.close_rounded, size: 16, color: Colors.redAccent),
+                label: const Text(
+                  'Cancel / Decline Claim',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                ),
+                onPressed: widget.onDeclineClaim,
+              ),
+            ],
           ],
         ),
       );
@@ -979,6 +998,32 @@ class _Stage2VerificationWidgetState extends State<Stage2VerificationWidget> {
                 ),
               ],
             ),
+            if (widget.onDeclineClaim != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.35)),
+                    ),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.redAccent),
+                  label: const Text(
+                    'Decline Claim (Not a Match)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                      fontSize: 13,
+                    ),
+                  ),
+                  onPressed: widget.onDeclineClaim,
+                ),
+              ),
+            ],
           ],
         ],
       ),

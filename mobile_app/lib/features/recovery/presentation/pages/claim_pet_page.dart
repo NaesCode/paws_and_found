@@ -66,30 +66,38 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
     );
   }
 
-  Future<void> _confirmAndCancelClaim(PetClaim claim, String petTitle) async {
+  Future<void> _confirmAndCancelClaim(
+    PetClaim claim,
+    String petTitle, {
+    bool isFinder = false,
+  }) async {
+    final claimantName =
+        claim.claimerName.isNotEmpty ? claim.claimerName : 'the claimant';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        title: const Text(
-          'Cancel Claim Progress?',
-          style: TextStyle(
+        title: Text(
+          isFinder ? 'Decline / Cancel Claim?' : 'Cancel Claim Progress?',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Are you sure you want to drop your claim for $petTitle? Your current progress will be cancelled and this report will reopen for other potential owners.',
+          isFinder
+              ? 'Are you sure you want to decline $claimantName\'s claim for $petTitle? This will cancel their claim and reopen this sighting for other potential owners.'
+              : 'Are you sure you want to drop your claim for $petTitle? Your current progress will be cancelled and this report will reopen for other potential owners.',
           style: const TextStyle(height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
-              'Keep Claim',
-              style: TextStyle(color: AppColors.textMuted),
+            child: Text(
+              isFinder ? 'Keep Reviewing' : 'Keep Claim',
+              style: const TextStyle(color: AppColors.textMuted),
             ),
           ),
           ElevatedButton(
@@ -101,9 +109,9 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               ),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Yes, Cancel Claim',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            child: Text(
+              isFinder ? 'Yes, Decline Claim' : 'Yes, Cancel Claim',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -113,14 +121,25 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
     if (confirmed != true) return;
 
     try {
-      await _repository.cancelClaim(claim.id);
+      if (isFinder) {
+        await _repository.declineClaim(claim.id);
+      } else {
+        await _repository.cancelClaim(claim.id);
+      }
+
       if (mounted) {
         setState(() {
           _viewingStage = null;
+          if (isFinder) {
+            _declinedClaimIds.add(claim.id);
+            _lastDeclinedClaim = claim;
+          }
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Your claim has been cancelled.'),
+          SnackBar(
+            content: Text(isFinder
+                ? 'Claim request has been declined.'
+                : 'Your claim has been cancelled.'),
           ),
         );
         Navigator.of(context).pop();
@@ -499,6 +518,11 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               finderFeedback: claim.stage2Feedback,
               uploadedProofLabels: claim.proofImageUrls,
               uploadedDocLabels: claim.docUrls,
+              onDeclineClaim: () => _confirmAndCancelClaim(
+                claim,
+                petTitle,
+                isFinder: isFinderView,
+              ),
               onSubmitVerification: (note, proofs, docs) =>
                   _repository.submitStage2Proof(
                 claimId: claim.id,
@@ -610,9 +634,9 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
       );
     }
 
-    final canCancelClaim = !isFinderView &&
-        claim != null &&
+    final canCancelClaim = claim != null &&
         !isDeclined &&
+        !isCompleted &&
         (claim.stage1RequestSent || claim.currentStage > 1);
 
     if (!canCancelClaim) return stageContent;
@@ -633,11 +657,17 @@ class _ClaimPetPageState extends State<ClaimPetPage> {
               ),
             ),
             icon: const Icon(Icons.close_rounded, size: 18),
-            label: const Text(
-              'Cancel Claim & Drop Progress',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            label: Text(
+              isFinderView
+                  ? 'Decline Claim & Reopen Report'
+                  : 'Cancel Claim & Drop Progress',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            onPressed: () => _confirmAndCancelClaim(claim, petTitle),
+            onPressed: () => _confirmAndCancelClaim(
+              claim,
+              petTitle,
+              isFinder: isFinderView,
+            ),
           ),
         ),
       ],
