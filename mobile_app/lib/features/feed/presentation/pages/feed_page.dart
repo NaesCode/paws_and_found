@@ -14,12 +14,16 @@ class FeedPage extends StatefulWidget {
   final Widget? generalReportsView;
   final Widget? personalReportsView;
   final UserRestrictionService? restrictionService;
+  final String? isolatedReportId;
+  final VoidCallback? onClearIsolation;
 
   const FeedPage({
     super.key,
     this.generalReportsView,
     this.personalReportsView,
     this.restrictionService,
+    this.isolatedReportId,
+    this.onClearIsolation,
   });
 
   @override
