@@ -83,11 +83,15 @@ class HealthView(APIView):
     """
     Health check endpoint.
     Proves JWT verification and database connectivity.
+    Authenticated users receive 200 OK; unauthenticated requests receive 401.
+    The mobile app sends the user's Supabase JWT with the ping so this always
+    returns 200 for logged-in users.
     """
 
     def get(self, request):
         Profile.objects.exists()
         return Response({
+            "status": "ok",
             "user_id": str(request.user.id),
             "db": "ok",
         })

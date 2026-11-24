@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/analysis_retry_service.dart';
+import 'core/services/backend_status_service.dart';
 import 'core/services/fcm_token_service.dart';
 import 'core/services/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
@@ -19,6 +20,10 @@ Future<void> main() async {
 
   // Initialize FCM Cloud Messaging service
   await FcmTokenService.instance.initialize();
+
+  // Warm up the Render backend immediately on launch and keep it alive every
+  // 15 minutes so the AI scanner is never cold when the user opens the camera.
+  BackendStatusService.instance.initialize();
 
   // Background retry sweep for pending AI analyses and FCM token sync.
   // Runs once on startup if already signed in, or on a fresh sign-in event.
