@@ -214,11 +214,23 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
       _allPosts.where((p) => p.isFlagged).length;
 
   void _showActionFeedback(String actionName, String details) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$actionName: $details'),
         duration: const Duration(seconds: 2),
         backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  void _showErrorFeedback(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 4),
+        backgroundColor: const Color(0xFFDC2626),
       ),
     );
   }
@@ -1122,16 +1134,17 @@ class _AdminPostsPageState extends State<AdminPostsPage> {
                         reason: reason,
                         notifyUser: notifyUser,
                       );
-                    } catch (_) {
-                      // Handled gracefully in offline or restricted mode
-                    }
 
-                    if (!mounted) return;
-                    setState(() {
-                      _allPosts.removeWhere((p) =>
-                          p.rawId == post.rawId || p.id == post.id);
-                    });
-                    _showActionFeedback('Deleted Post', post.id);
+                      if (!mounted) return;
+                      setState(() {
+                        _allPosts.removeWhere((p) =>
+                            p.rawId == post.rawId || p.id == post.id);
+                      });
+                      _showActionFeedback('Deleted Post', post.id);
+                    } catch (e) {
+                      debugPrint('[AdminPostsPage] Delete post error: $e');
+                      _showErrorFeedback('Failed to delete post: $e');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDC2626),
