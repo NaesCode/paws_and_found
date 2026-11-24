@@ -571,6 +571,31 @@ class MatchCandidatesView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # Check image blur / clarity
+        quality_warning = None
+        try:
+            arr = decode_and_preprocess(image_bytes)
+            is_blurry, var = check_image_blur(arr, threshold=50.0)
+            if is_blurry:
+                quality_warning = "Photo appears blurry or out of focus. For better AI matching, consider retaking a clearer photo."
+                return Response({
+                    "candidates": [],
+                    "quality_warning": quality_warning,
+                })
+        except Exception as e:
+            logger.debug("Blur check error in MatchCandidatesView: %s", e)
+
+        # Gate: Do not suggest missing pet matches if no animal was detected in the photo
+        if not emb_result.used_crop and emb_result.detector_score < 0.35:
+            logger.info(
+                "MatchCandidatesView: No animal detected in query image (score=%.2f); skipping suggestions.",
+                emb_result.detector_score,
+            )
+            return Response({
+                "candidates": [],
+                "quality_warning": "No clear animal detected in photo. Please frame the pet clearly.",
+            })
+
         # 2. Parse GPS coordinates and animal type
         lat_raw = request.data.get("lat")
         lng_raw = request.data.get("lng")
@@ -621,15 +646,13 @@ class MatchCandidatesView(APIView):
             elif report_embedding and report_embedding.vector:
                 target_vector = report_embedding.vector
 
-            if target_vector:
-                score = cosine(query_vector, target_vector)
-            else:
-                is_same_species = (
-                    animal_type and report.animal_type and animal_type in report.animal_type.lower()
-                )
-                score = 0.72 if is_same_species else 0.55
+            if not target_vector:
+                continue
 
-            if score < 0.60:
+            score = cosine(query_vector, target_vector)
+
+            # Require minimum visual similarity threshold (>= 0.68) for real visual matches
+            if score < 0.68:
                 continue
 
             distance_km = None
@@ -665,4 +688,7 @@ class MatchCandidatesView(APIView):
             reverse=True,
         )
 
-        return Response({"candidates": candidates[:5]})
+        return Response({
+            "candidates": candidates[:5],
+            "quality_warning": quality_warning,
+        })

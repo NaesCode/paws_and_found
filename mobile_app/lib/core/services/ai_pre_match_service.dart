@@ -76,12 +76,9 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
           final data = jsonDecode(responseBody) as Map<String, dynamic>;
           _lastQualityWarning = data['quality_warning'] as String?;
           final rawList = data['candidates'] as List<dynamic>? ?? [];
-          final candidates = rawList
+          return rawList
               .map((item) => AiMatchCandidate.fromJson(item as Map<String, dynamic>))
               .toList();
-          if (candidates.isNotEmpty) {
-            return candidates;
-          }
         }
       } catch (e) {
         debugPrint('[AiPreMatchService] Host $base unavailable ($e), falling back to proximity scan...');
@@ -147,6 +144,9 @@ class AiPreMatchServiceImpl implements AiPreMatchService {
         final petName = row['pet_name'] as String? ?? 'Missing Pet';
         final species = row['animal_type'] as String? ?? animalType;
         final isSameSpecies = species.toLowerCase() == animalType.toLowerCase();
+
+        // Enforce strict species matching — never match a feline to a canine
+        if (!isSameSpecies) continue;
 
         // Calculate real GPS Haversine distance if coordinates are present
         double? distanceKm;

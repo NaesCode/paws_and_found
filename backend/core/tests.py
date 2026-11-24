@@ -663,8 +663,8 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
 
             mock_pet_emb.side_effect = pet_emb_side_effect
 
-            # Cosine scores: Dog Low = 0.64, Dog High = 0.85
-            mock_cosine.side_effect = [0.64, 0.85]
+            # Cosine scores: Dog Low = 0.70, Dog High = 0.85 (>= 0.68 threshold)
+            mock_cosine.side_effect = [0.70, 0.85]
 
             fake_file = BytesIO(b"fake_jpeg_data")
             fake_file.name = "query.jpg"
@@ -677,12 +677,12 @@ class OrchestratorOwnershipAndWorkflowTests(SimpleTestCase):
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             candidates = response.data["candidates"]
-            # Georgei the cat has no embedding, fallback is 0.55 < 0.60 -> excluded
-            # Tucker (0.85) ranked first, Pinky (0.64) ranked second
+            # Georgei the cat has no embedding -> excluded
+            # Tucker (0.85) ranked first, Pinky (0.70) ranked second
             self.assertEqual(len(candidates), 2)
             self.assertEqual(candidates[0]["pet_name"], "Tucker")
             self.assertEqual(candidates[0]["similarity_percent"], 85)
             self.assertEqual(candidates[1]["pet_name"], "Pinky")
-            self.assertEqual(candidates[1]["similarity_percent"], 64)
+            self.assertEqual(candidates[1]["similarity_percent"], 70)
 
 
