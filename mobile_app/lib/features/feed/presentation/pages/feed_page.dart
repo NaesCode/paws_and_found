@@ -13,9 +13,6 @@ import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 class FeedPage extends StatefulWidget {
   final Widget? generalReportsView;
   final Widget? personalReportsView;
-  final String? isolatedReportId;
-  final VoidCallback? onClearIsolation;
-
   final UserRestrictionService? restrictionService;
   final String? isolatedReportId;
   final VoidCallback? onClearIsolation;
@@ -24,8 +21,6 @@ class FeedPage extends StatefulWidget {
     super.key,
     this.generalReportsView,
     this.personalReportsView,
-    this.isolatedReportId,
-    this.onClearIsolation,
     this.restrictionService,
     this.isolatedReportId,
     this.onClearIsolation,
