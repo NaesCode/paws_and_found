@@ -241,7 +241,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Contact Administration'), findsOneWidget);
-      expect(find.text('support@pawsandfound.org'), findsOneWidget);
+      expect(find.text('pawsandfound26@gmail.com'), findsOneWidget);
       expect(find.byKey(const Key('copy_admin_email_button')), findsOneWidget);
 
       // Close dialog

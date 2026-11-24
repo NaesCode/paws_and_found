@@ -21,7 +21,7 @@ class AccountSuspendedView extends StatelessWidget {
     this.onRefreshStatus,
     this.onSignOut,
     this.onContactAdmin,
-    this.adminEmail = 'support@pawsandfound.org',
+    this.adminEmail = 'pawsandfound26@gmail.com',
     this.customMessage,
   });
 
