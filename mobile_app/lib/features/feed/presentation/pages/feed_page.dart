@@ -13,18 +13,17 @@ import 'package:paws_and_found/shared/molecules/paw_segmented_control.dart';
 class FeedPage extends StatefulWidget {
   final Widget? generalReportsView;
   final Widget? personalReportsView;
+  final UserRestrictionService? restrictionService;
   final String? isolatedReportId;
   final VoidCallback? onClearIsolation;
-
-  final UserRestrictionService? restrictionService;
 
   const FeedPage({
     super.key,
     this.generalReportsView,
     this.personalReportsView,
+    this.restrictionService,
     this.isolatedReportId,
     this.onClearIsolation,
-    this.restrictionService,
   });
 
   @override
