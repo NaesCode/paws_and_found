@@ -956,7 +956,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   void _showUpdateStatusModal(AdminUserItem user) {
     String selectedStatus = user.status;
     if (selectedStatus.toLowerCase().contains('suspend')) {
-      selectedStatus = 'Suspension';
+      selectedStatus = 'Suspended';
     } else if (selectedStatus.toLowerCase() == 'warning') {
       selectedStatus = 'Warning';
     } else {
@@ -967,6 +967,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       switch (status) {
         case 'Warning':
           return 'Your account has received an administrative warning regarding community guidelines.';
+        case 'Suspended':
         case 'Suspension':
           return 'Your account has been suspended by administration. If you have questions, please contact support.';
         case 'Active':
@@ -1095,15 +1096,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     const SizedBox(height: 8),
 
                     _buildStatusOption(
-                      title: 'Suspension',
+                      title: 'Suspended',
                       description: 'Suspends user account and restricts posting privileges.',
                       icon: Icons.block_rounded,
                       iconColor: Colors.redAccent,
-                      isSelected: selectedStatus == 'Suspension',
+                      isSelected: selectedStatus == 'Suspended',
                       onTap: () {
                         setModalState(() {
-                          selectedStatus = 'Suspension';
-                          messageController.text = defaultMessageFor('Suspension');
+                          selectedStatus = 'Suspended';
+                          messageController.text = defaultMessageFor('Suspended');
                         });
                       },
                     ),

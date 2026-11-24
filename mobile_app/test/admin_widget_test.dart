@@ -811,7 +811,7 @@ void main() {
       expect(find.text('Update User Status'), findsOneWidget);
       expect(find.text('SELECT STATUS'), findsOneWidget);
       expect(find.text('Warning'), findsOneWidget);
-      expect(find.text('Suspension'), findsOneWidget);
+      expect(find.text('Suspended'), findsOneWidget);
 
       // Select 'Warning' status
       await tester.tap(find.text('Warning'));
