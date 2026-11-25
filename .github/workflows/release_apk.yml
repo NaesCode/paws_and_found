@@ -56,10 +56,13 @@ jobs:
           import os, re, base64
           raw = re.sub(r"[^A-Za-z0-9+/=]", "", os.environ["ANDROID_KEYSTORE_BASE64"])
           raw += "=" * ((4 - len(raw) % 4) % 4)
-          with open(os.path.expanduser("~/.android/debug.keystore"), "wb") as f:
-              f.write(base64.b64decode(raw, validate=True))
+          data = base64.b64decode(raw, validate=True)
+          for dest in [os.path.expanduser("~/.android/debug.keystore"), "mobile_app/android/app/ci-debug.keystore"]:
+              with open(dest, "wb") as f:
+                  f.write(data)
           print("Restored debug.keystore successfully.")
           '
+            keytool -list -v -keystore "mobile_app/android/app/ci-debug.keystore" -alias androiddebugkey -storepass android | grep -E "SHA1:|SHA256:" || true
           fi
 
       - name: Build universal release APK
@@ -68,7 +71,11 @@ jobs:
 
       - name: Print APK signing certificate SHA-1
         shell: bash
-        run: keytool -printcert -jarfile mobile_app/build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA1:|SHA256:" || true
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs mobile_app/build/app/outputs/flutter-apk/app-release.apk | grep -iE "SHA-1|SHA-256" || true
+          fi
 
       - name: Determine release tag
         id: release_tag

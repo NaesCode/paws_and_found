@@ -141,10 +141,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return response;
     } on GoogleSignInException catch (e) {
       debugPrint('[AuthRemoteDataSource] GoogleSignInException: code=${e.code}, description=${e.description}');
-      // On Android, wrong package name or SHA-1 fingerprint can also report as canceled
+      // On Android, wrong package name or SHA-1 fingerprint can also report as canceled.
+      // Only treat as a silent user cancellation when there is no developer/config error detail.
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        debugPrint('[AuthRemoteDataSource] Google Sign-In was canceled by user or signing key mismatch.');
-        return null;
+        final desc = (e.description ?? '').trim();
+        final isPlainUserCancel = desc.isEmpty ||
+            desc.toLowerCase().contains('cancel');
+        if (isPlainUserCancel) {
+          debugPrint('[AuthRemoteDataSource] Google Sign-In was canceled by user or signing key mismatch.');
+          return null;
+        }
+        throw AuthException('Google Sign-In failed ($desc)');
       }
       throw AuthException('Google Sign-In failed: ${e.description ?? e.code.name}');
     } catch (e) {
