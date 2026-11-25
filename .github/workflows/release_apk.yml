@@ -50,7 +50,14 @@ jobs:
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             mkdir -p "$HOME/.android"
-            echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$HOME/.android/debug.keystore"
+            python3 -c '
+          import os, re, base64
+          raw = re.sub(r"[^A-Za-z0-9+/=]", "", os.environ["ANDROID_KEYSTORE_BASE64"])
+          raw += "=" * ((4 - len(raw) % 4) % 4)
+          with open(os.path.expanduser("~/.android/debug.keystore"), "wb") as f:
+              f.write(base64.b64decode(raw, validate=True))
+          print("Restored debug.keystore successfully.")
+          '
           fi
 
       - name: Build universal release APK
