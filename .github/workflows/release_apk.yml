@@ -43,6 +43,13 @@ jobs:
         working-directory: mobile_app
         run: flutter pub get
 
+      - name: Restore Android signing keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.android"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\r\n ' | base64 -d > "$HOME/.android/debug.keystore"
+
       - name: Build universal release APK
         working-directory: mobile_app
         run: flutter build apk --release
