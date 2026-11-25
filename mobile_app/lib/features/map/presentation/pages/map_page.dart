@@ -58,6 +58,33 @@ class _MapPageState extends State<MapPage> {
   late final fmap.MapController _fmapController;
   final RouteDirectionService _routeService = const RouteDirectionService();
   List<LatLng> _routePoints = const [];
+  RouteDirectionResult? _activeRoute;
+  MapReportEntity? _routeTarget;
+  double? _estimatedRadiusMeters;
+
+  double _estimateMovementRadiusMeters(MapReportEntity report) {
+    final species = report.animalType.toLowerCase();
+    final hoursElapsed =
+        DateTime.now().difference(report.createdAt).inHours.clamp(0, 48);
+
+    if (species.contains('feline') || species.contains('cat')) {
+      return (400.0 + hoursElapsed * 60.0).clamp(400.0, 1500.0);
+    }
+    if (species.contains('canine') || species.contains('dog')) {
+      return (800.0 + hoursElapsed * 120.0).clamp(800.0, 3000.0);
+    }
+    return (500.0 + hoursElapsed * 80.0).clamp(500.0, 2000.0);
+  }
+
+  void _clearRoute() {
+    if (_routePoints.isEmpty && _routeTarget == null) return;
+    setState(() {
+      _routePoints = const [];
+      _activeRoute = null;
+      _routeTarget = null;
+      _estimatedRadiusMeters = null;
+    });
+  }
 
   Future<void> _handleReportDirections(MapReportEntity report) async {
     _controller.selectReport(report);
@@ -73,8 +100,13 @@ class _MapPageState extends State<MapPage> {
     );
     if (!mounted) return;
 
+    final radiusMeters = _estimateMovementRadiusMeters(report);
+
     setState(() {
       _routePoints = result.points;
+      _activeRoute = result;
+      _routeTarget = report;
+      _estimatedRadiusMeters = radiusMeters;
     });
 
     try {
@@ -82,35 +114,11 @@ class _MapPageState extends State<MapPage> {
         _fmapController.fitCamera(
           fmap.CameraFit.bounds(
             bounds: fmap.LatLngBounds.fromPoints(result.points),
-            padding: const EdgeInsets.fromLTRB(48, 110, 48, 170),
+            padding: const EdgeInsets.fromLTRB(48, 120, 48, 180),
           ),
         );
       }
     } catch (_) {}
-
-    final durationPart = result.formattedDuration != null
-        ? ' • ~${result.formattedDuration}'
-        : '';
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Direction to ${report.title}: ${result.formattedDistance}$durationPart',
-          ),
-          backgroundColor: AppColors.primary,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Clear',
-            textColor: Colors.white,
-            onPressed: () {
-              if (mounted) {
-                setState(() => _routePoints = const []);
-              }
-            },
-          ),
-        ),
-      );
   }
 
   void _safeMoveCamera(LatLng center, double zoom) {
@@ -374,6 +382,10 @@ class _MapPageState extends State<MapPage> {
         selectedReportId: selected?.id,
         userLocation: _controller.userLocation,
         routePoints: _routePoints,
+        routeTarget: _routeTarget,
+        activeRoute: _activeRoute,
+        estimatedRadiusMeters: _estimatedRadiusMeters,
+        onClearRoute: _clearRoute,
         mapController: _fmapController,
         onReportTap: (report) {
           _controller.selectReport(report);
@@ -389,9 +401,7 @@ class _MapPageState extends State<MapPage> {
         onReportLongPress: _handleReportDirections,
         onCanvasTap: () {
           _controller.clearSelection();
-          if (_routePoints.isNotEmpty) {
-            setState(() => _routePoints = const []);
-          }
+          _clearRoute();
         },
       ),
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show CircleLayer, PolylineLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:paws_and_found/core/services/location_service.dart';
+import 'package:paws_and_found/core/services/route_direction_service.dart';
 import 'package:paws_and_found/features/map/data/models/map_report_model.dart';
 import 'package:paws_and_found/features/map/domain/entities/map_report_entity.dart';
 import 'package:paws_and_found/features/map/presentation/pages/map_page.dart';
@@ -478,6 +480,62 @@ void main() {
       canvas = tester.widget<InteractiveMapCanvas>(find.byType(InteractiveMapCanvas));
       expect(canvas.reports.length, 1);
       expect(canvas.reports.first.status.toLowerCase(), 'found');
+    });
+
+    testWidgets('InteractiveMapCanvas renders CircleLayer movement radius, PolylineLayer, focused pin, and route banner', (tester) async {
+      final reports = MapReportModel.getMockReports();
+      final target = reports.first;
+      bool cleared = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InteractiveMapCanvas(
+              center: LatLng(target.latitude, target.longitude),
+              reports: reports,
+              userLocation: const LatLng(10.3157, 123.8854),
+              routeTarget: target,
+              routePoints: [
+                const LatLng(10.3157, 123.8854),
+                LatLng(target.latitude, target.longitude),
+              ],
+              activeRoute: const RouteDirectionResult(
+                points: [
+                  LatLng(10.3157, 123.8854),
+                  LatLng(10.2579, 123.8208),
+                ],
+                distanceMeters: 1500,
+                durationSeconds: 300,
+              ),
+              estimatedRadiusMeters: 1200,
+              onClearRoute: () => cleared = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // 1. Movement radius CircleLayer renders 2 concentric meter-based circles
+      final circleLayer = tester.widget<CircleLayer>(find.byType(CircleLayer));
+      expect(circleLayer.circles.length, 2);
+      expect(circleLayer.circles[0].useRadiusInMeter, isTrue);
+      expect(circleLayer.circles[0].radius, 1200.0);
+      expect(circleLayer.circles[1].useRadiusInMeter, isTrue);
+      expect(circleLayer.circles[1].radius, closeTo(540.0, 0.01));
+
+      // 2. PolylineLayer renders route line
+      expect(find.byType(PolylineLayer), findsOneWidget);
+
+      // 3. Only the focused pin is shown (other pins hidden)
+      expect(find.byType(MapPinBadge), findsOneWidget);
+
+      // 4. In-page route banner shows target, distance, ETA, and km radius
+      expect(find.text('Route to ${target.title}'), findsOneWidget);
+      expect(find.textContaining('1.2 km area'), findsOneWidget);
+
+      // 5. Clear button works
+      await tester.tap(find.byTooltip('Clear route'));
+      expect(cleared, isTrue);
     });
   });
 }
