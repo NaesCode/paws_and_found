@@ -8,6 +8,7 @@ import 'package:paws_and_found/features/report/presentation/providers/camera_rep
 
 class MockReportRepository implements ReportRepository {
   String? lastCreatedLinkedReportId;
+  String? lastCreatedAnimalName;
 
   @override
   Future<List<SightingReport>> getNearbyReports({
@@ -31,8 +32,10 @@ class MockReportRepository implements ReportRepository {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   }) async {
     lastCreatedLinkedReportId = linkedReportId;
+    lastCreatedAnimalName = animalName;
     return 'mock-report-123';
   }
 
@@ -261,6 +264,19 @@ void main() {
 
       expect(success, isTrue);
       expect(mockRepo.lastCreatedLinkedReportId, equals('rep-luna-missing'));
+      expect(mockRepo.lastCreatedAnimalName, equals('Luna'));
+      expect(controller.petNameController.text, equals('Luna'));
+    });
+
+    test('submitReport passes manually entered petNameController value when not linked', () async {
+      controller.petNameController.text = 'Bantay';
+      controller.setImageData(Uint8List.fromList([1, 2, 3]), 'sample.jpg');
+
+      final success = await controller.submitReport();
+
+      expect(success, isTrue);
+      expect(mockRepo.lastCreatedLinkedReportId, isNull);
+      expect(mockRepo.lastCreatedAnimalName, equals('Bantay'));
     });
   });
 }

@@ -42,6 +42,13 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }) async {
     List<MapReportModel> reports = [];
 
+    String? currentUserId;
+    try {
+      currentUserId = _client.auth.currentUser?.id;
+    } catch (_) {
+      currentUserId = null;
+    }
+
     // Localized to Cebu with nationwide fallback coverage.
     // If the provided GPS coordinates fall outside Cebu province (e.g. the Android
     // emulator's default location is Googleplex, California at 37.42, -122.08),
@@ -64,80 +71,118 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
     }
     final queryRadius = radiusMeters < 2000000 ? 2000000.0 : radiusMeters;
 
-    // Attempt live Supabase RPC query
-    try {
-      debugPrint(
-        '[MapRemoteDataSourceImpl] Calling nearby_reports '
-        'lat=$queryLat lng=$queryLng radius=$queryRadius',
-      );
+    if (filterType == MapFilterType.forYou) {
+      // "For You" strictly surfaces only reports created by the signed-in user.
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        try {
+          final personalRows = await _client
+              .from('feed_reports')
+              .select(
+                'id, reporter_id, pet_id, animal_name, animal_type, description, '
+                'location_name, photo_url, status, created_at, latitude, longitude',
+              )
+              .eq('reporter_id', currentUserId)
+              .inFilter('status', ['missing', 'stray', 'found'])
+              .order('created_at', ascending: false)
+              .limit(150);
 
-      final response = await _client.rpc(
-        'nearby_reports',
-        params: {
-          'p_lat': queryLat,
-          'p_lng': queryLng,
-          'p_radius_m': queryRadius,
-          // Omit p_animal_type when null or when filtering by 'Other', so the SQL query
-          // returns all animals and the client-side filter captures custom species (e.g. Rabbit, Bird).
-          if (animalType != null &&
-              animalType.toLowerCase() != 'other' &&
-              animalType.toLowerCase() != 'other animals')
-            'p_animal_type': animalType,
-          'p_limit': 150,
-        },
-      );
-
-      debugPrint('[MapRemoteDataSourceImpl] RPC response type: ${response.runtimeType}');
-
-      if (response is List && response.isNotEmpty) {
-        reports = response
-            .map((row) => MapReportModel.fromJson(row as Map<String, dynamic>))
-            .toList();
-        debugPrint('[MapRemoteDataSourceImpl] Parsed ${reports.length} reports from RPC.');
-      } else {
-        debugPrint('[MapRemoteDataSourceImpl] RPC returned empty or null.');
+          if (personalRows.isNotEmpty) {
+            reports = personalRows
+                .map((row) => MapReportModel.fromViewJson(row))
+                .whereType<MapReportModel>()
+                .toList();
+          }
+        } catch (e) {
+          debugPrint('[MapRemoteDataSourceImpl] Personal reports query error: $e');
+        }
       }
-    } catch (e) {
-      debugPrint('[MapRemoteDataSourceImpl] Supabase RPC error: $e');
-    }
 
-    // If RPC returned nothing, fall back to the feed_reports view which unpacks
-    // PostGIS geometry into plain lat/lng columns and includes location_name.
-    if (reports.isEmpty) {
+      // Merge only session-injected reports created by the current user
+      for (final dynamicReport in MapReportModel.dynamicReports) {
+        final isOwnDynamic = (currentUserId != null &&
+                currentUserId.isNotEmpty &&
+                dynamicReport.reporterId == currentUserId) ||
+            dynamicReport.reporterId == 'current_user';
+        if (isOwnDynamic && !reports.any((r) => r.id == dynamicReport.id)) {
+          reports.insert(0, dynamicReport);
+        }
+      }
+    } else {
+      // Attempt live Supabase RPC query
       try {
-        debugPrint('[MapRemoteDataSourceImpl] RPC empty — attempting feed_reports view fallback.');
-        final fallback = await _client
-            .from('feed_reports')
-            .select(
-              'id, reporter_id, pet_id, animal_name, animal_type, description, '
-              'location_name, photo_url, status, created_at, latitude, longitude',
-            )
-            .inFilter('status', ['missing', 'stray', 'found'])
-            .order('created_at', ascending: false)
-            .limit(150);
+        debugPrint(
+          '[MapRemoteDataSourceImpl] Calling nearby_reports '
+          'lat=$queryLat lng=$queryLng radius=$queryRadius',
+        );
 
-        if (fallback.isNotEmpty) {
-          reports = fallback
-              .map((row) => MapReportModel.fromViewJson(row))
-              .whereType<MapReportModel>()
+        final response = await _client.rpc(
+          'nearby_reports',
+          params: {
+            'p_lat': queryLat,
+            'p_lng': queryLng,
+            'p_radius_m': queryRadius,
+            // Omit p_animal_type when null or when filtering by 'Other', so the SQL query
+            // returns all animals and the client-side filter captures custom species (e.g. Rabbit, Bird).
+            if (animalType != null &&
+                animalType.toLowerCase() != 'other' &&
+                animalType.toLowerCase() != 'other animals')
+              'p_animal_type': animalType,
+            'p_limit': 150,
+          },
+        );
+
+        debugPrint('[MapRemoteDataSourceImpl] RPC response type: ${response.runtimeType}');
+
+        if (response is List && response.isNotEmpty) {
+          reports = response
+              .map((row) => MapReportModel.fromJson(row as Map<String, dynamic>))
               .toList();
-          debugPrint(
-            '[MapRemoteDataSourceImpl] View fallback returned ${reports.length} reports.',
-          );
+          debugPrint('[MapRemoteDataSourceImpl] Parsed ${reports.length} reports from RPC.');
+        } else {
+          debugPrint('[MapRemoteDataSourceImpl] RPC returned empty or null.');
         }
       } catch (e) {
-        debugPrint('[MapRemoteDataSourceImpl] feed_reports view fallback error: $e');
+        debugPrint('[MapRemoteDataSourceImpl] Supabase RPC error: $e');
       }
-    }
 
-    // If still empty, use calibrated mock baseline so the map is never blank
-    if (reports.isEmpty) {
-      reports = MapReportModel.getMockReports();
-    } else {
-      // Merge in any newly pinned reports from the current active session
-      for (final dynamicReport in MapReportModel.dynamicReports) {
-        if (!reports.any((r) => r.id == dynamicReport.id)) {
-          reports.insert(0, dynamicReport);
+      // If RPC returned nothing, fall back to the feed_reports view which unpacks
+      // PostGIS geometry into plain lat/lng columns and includes location_name.
+      if (reports.isEmpty) {
+        try {
+          debugPrint('[MapRemoteDataSourceImpl] RPC empty — attempting feed_reports view fallback.');
+          final fallback = await _client
+              .from('feed_reports')
+              .select(
+                'id, reporter_id, pet_id, animal_name, animal_type, description, '
+                'location_name, photo_url, status, created_at, latitude, longitude',
+              )
+              .inFilter('status', ['missing', 'stray', 'found'])
+              .order('created_at', ascending: false)
+              .limit(150);
+
+          if (fallback.isNotEmpty) {
+            reports = fallback
+                .map((row) => MapReportModel.fromViewJson(row))
+                .whereType<MapReportModel>()
+                .toList();
+            debugPrint(
+              '[MapRemoteDataSourceImpl] View fallback returned ${reports.length} reports.',
+            );
+          }
+        } catch (e) {
+          debugPrint('[MapRemoteDataSourceImpl] feed_reports view fallback error: $e');
+        }
+      }
+
+      // If still empty, use calibrated mock baseline so the map is never blank
+      if (reports.isEmpty) {
+        reports = MapReportModel.getMockReports();
+      } else {
+        // Merge in any newly pinned reports from the current active session
+        for (final dynamicReport in MapReportModel.dynamicReports) {
+          if (!reports.any((r) => r.id == dynamicReport.id)) {
+            reports.insert(0, dynamicReport);
+          }
         }
       }
     }
@@ -171,8 +216,13 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
     }
 
     if (filterType == MapFilterType.forYou) {
-      // In the SDD: "For You" surfaces reports tailored to missing pets
-      reports = reports.where((r) => r.status.toLowerCase() == 'missing').toList();
+      // Strictly enforce ownership: "For You" only surfaces reports created by the current user.
+      reports = reports.where((r) {
+        if (currentUserId == null || currentUserId.isEmpty) {
+          return r.reporterId == 'current_user';
+        }
+        return r.reporterId == currentUserId || r.reporterId == 'current_user';
+      }).toList();
     }
 
     // Filter to Cebu Province bounds — but always keep mock/dynamic session pins

@@ -5,6 +5,7 @@ import 'package:paws_and_found/features/feed/presentation/widgets/feed_filter_re
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_report_card_item.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
+import 'package:paws_and_found/shared/molecules/paw_search_bar.dart';
 import 'package:paws_and_found/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:paws_and_found/features/feed/data/models/feed_post_model.dart';
 import 'package:paws_and_found/features/feed/domain/repositories/feed_repository.dart';
@@ -37,6 +38,25 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
   // for the filter (aron dli na magpasa2 ug indicators)
   String _selectedFilter = 'latest';
   final List<String> _generalFilters = ['Latest', 'Oldest', 'Near Me', 'Missing', 'Found', 'Spotted'];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matchesSearch(FeedPost report) {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return report.petName.toLowerCase().contains(q) ||
+        report.species.toLowerCase().contains(q) ||
+        report.location.toLowerCase().contains(q) ||
+        report.description.toLowerCase().contains(q) ||
+        report.postedBy.toLowerCase().contains(q) ||
+        report.status.toLowerCase().contains(q);
+  }
 
   @override
   void initState() {
@@ -242,19 +262,24 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
             _buildIsolationBanner()
           else ...[
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 0.0),
-                  child: FilterButtonDropdown(
-                    selectedLabel: _selectedFilter,
-                    filterOptions: _generalFilters,
-                    onFilterChanged: (newValue) {
-                      setState(() {
-                        _fetchGeneralReports(newValue);
-                      });
+                Expanded(
+                  child: PawSearchBar(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
                     },
                   ),
+                ),
+                const SizedBox(width: 10),
+                FilterButtonDropdown(
+                  selectedLabel: _selectedFilter,
+                  filterOptions: _generalFilters,
+                  onFilterChanged: (newValue) {
+                    setState(() {
+                      _fetchGeneralReports(newValue);
+                    });
+                  },
                 ),
               ],
             ),
@@ -272,7 +297,8 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                   return Center(
                     child: Text('Error: ${snapshot.error}'));
                 }
-                final reports = snapshot.data ?? [];
+                final allReports = snapshot.data ?? [];
+                final reports = allReports.where(_matchesSearch).toList();
                 if(reports.isEmpty){
                   return RefreshIndicator(
                     color: AppColors.primary,
@@ -293,7 +319,9 @@ class _GeneralReportsState extends State<GeneralReportsPage> {
                           child: Text(
                             isIsolated
                                 ? 'Post not found or is no longer available.'
-                                : 'No Reports Found',
+                                : (_searchQuery.trim().isNotEmpty
+                                    ? 'No reports matching "${_searchQuery.trim()}"'
+                                    : 'No Reports Found'),
                             style: const TextStyle(
                               color: AppColors.text3,
                               fontSize: 14,

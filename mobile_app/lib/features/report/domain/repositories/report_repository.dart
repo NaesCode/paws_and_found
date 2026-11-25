@@ -26,6 +26,7 @@ abstract class ReportRepository {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   });
 
   /// Explicitly requests analysis from the Django orchestrator for a pending report.

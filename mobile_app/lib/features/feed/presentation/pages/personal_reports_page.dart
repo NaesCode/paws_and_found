@@ -10,6 +10,7 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/delete_report_sheet.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/feed_status_banner.dart';
 import 'package:paws_and_found/shared/molecules/paw_loading.dart';
+import 'package:paws_and_found/shared/molecules/paw_search_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:paws_and_found/features/feed/presentation/widgets/edit_report_sheet.dart';
 
@@ -30,6 +31,18 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
   late Future<List<FeedPost>> _reportsFuture;
 
   RealtimeChannel? _reportsChannel;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  bool _matchesSearch(FeedPost report) {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return report.petName.toLowerCase().contains(q) ||
+        report.species.toLowerCase().contains(q) ||
+        report.location.toLowerCase().contains(q) ||
+        report.description.toLowerCase().contains(q) ||
+        report.status.toLowerCase().contains(q);
+  }
 
   @override
   void initState() {
@@ -64,6 +77,7 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     if (_reportsChannel != null) {
       Supabase.instance.client.removeChannel(_reportsChannel!);
     }
@@ -172,17 +186,22 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 0.0),
-                  child: FilterButtonDropdown(
-                    selectedLabel: _selectedFilter,
-                    filterOptions: _personalFilters,
-                    onFilterChanged: (newValue) {
-                      _fetchPersonalReports(newValue);
+                Expanded(
+                  child: PawSearchBar(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
                     },
                   ),
+                ),
+                const SizedBox(width: 10),
+                FilterButtonDropdown(
+                  selectedLabel: _selectedFilter,
+                  filterOptions: _personalFilters,
+                  onFilterChanged: (newValue) {
+                    _fetchPersonalReports(newValue);
+                  },
                 ),
               ],
             ),
@@ -200,7 +219,8 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
                   
-                  final reports = snapshot.data ?? [];
+                  final allReports = snapshot.data ?? [];
+                  final reports = allReports.where(_matchesSearch).toList();
                   if (reports.isEmpty) {
                     return RefreshIndicator(
                       color: AppColors.primary,
@@ -209,9 +229,15 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                       },
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 120),
-                          Center(child: Text('No Reports Found')),
+                        children: [
+                          const SizedBox(height: 120),
+                          Center(
+                            child: Text(
+                              _searchQuery.trim().isNotEmpty
+                                  ? 'No reports matching "${_searchQuery.trim()}"'
+                                  : 'No Reports Found',
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -238,8 +264,10 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                         separatorBuilder: (context, index) => const SizedBox(height: 15),
                         itemBuilder: (context, index) {
                         final report = reports[index];
-                        final isMissing = report.status.toLowerCase() == 'missing';
-                        final isSafe = report.status.toLowerCase() == 'safe';
+                        final statusLower = report.status.toLowerCase();
+                        final isMissing = statusLower == 'missing';
+                        final isFound = statusLower == 'found';
+                        final isSafe = statusLower == 'safe';
                         // Grace period: allow undo if created within 6 hours (360 minutes)
                         final isWithinGracePeriod =
                             DateTime.now().difference(report.createdAt).inMinutes <= 360;
@@ -257,12 +285,16 @@ class _PersonalReportsState extends State<PersonalReportsPage> {
                               ? report.imageUrl
                               : AppAssets.petPlaceholder,
                           petButtonText: isSafe
-                              ? "He is Safe"
+                              ? ""
                               : (isMissing ? "Mark as Safe" : "View on Map"),
-                          button1Text: isMissing
-                              ? "View Map"
-                              : (isSafe ? "Reunited" : "Edit"),
-                          button2Text: isMissing ? "Edit": "Safe",
+                          button1Text: isSafe
+                              ? ""
+                              : (isMissing ? "View Map" : "Edit"),
+                          button2Text: isSafe
+                              ? null
+                              : (isMissing ? "Edit" : "Safe"),
+                          button1Color: isFound ? AppColors.darkCharcoal : null,
+                          button2Color: isFound ? AppColors.primary : null,
                           userImageUrl: report.userImageUrl,
                           isFlagged: report.isFlagged,
                           onPetButtonPressed: isSafe

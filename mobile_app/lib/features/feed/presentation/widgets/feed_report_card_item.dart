@@ -9,6 +9,8 @@ class ReportCardItem extends StatelessWidget {
   final String? id;
   final String button1Text;
   final String? button2Text;
+  final Color? button1Color;
+  final Color? button2Color;
   final VoidCallback? onButton1Pressed;
   final VoidCallback? onButton2Pressed;
   final VoidCallback? onPetButtonPressed;
@@ -32,6 +34,8 @@ class ReportCardItem extends StatelessWidget {
     this.id,
     required this.button1Text,
     required this.button2Text,
+    this.button1Color,
+    this.button2Color,
     required this.onButton1Pressed,
     required this.onButton2Pressed,
     required this.bannerType,
@@ -98,6 +102,8 @@ class ReportCardItem extends StatelessWidget {
             child: FeedPetInfoCard(
               button1Text: button1Text,
               button2Text: button2Text,
+              button1Color: button1Color,
+              button2Color: button2Color,
               onButton1Pressed: onButton1Pressed,
               onButton2Pressed: onButton2Pressed,
               imageUrl: imageURL,

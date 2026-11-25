@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/description_tag_helper.dart';
-import '../../../../features/feed/presentation/widgets/feed_card_footer.dart';
+import '../../../../features/feed/presentation/widgets/post_image_popup.dart';
+import '../../../../features/recovery/data/repositories/recovery_repository_impl.dart';
+import '../../../../features/recovery/presentation/widgets/popups/user_profile_preview.dart';
 import '../../../../shared/atoms/paw_status_badge.dart';
 import '../../../../shared/atoms/paw_tag.dart';
 import '../../domain/entities/map_report_entity.dart';
@@ -67,17 +70,55 @@ class MapPetInfoModal extends StatelessWidget {
     );
   }
 
-  void _handleContact(BuildContext context) {
+  Future<void> _handleContact(BuildContext context) async {
     if (onContact != null) {
       onContact!();
       return;
     }
-    Navigator.of(context).pop();
-    showFeedCommentsModal(
+
+    String targetUserId = report.reporterId.trim();
+    if (targetUserId == 'current_user') {
+      try {
+        targetUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+      } catch (_) {
+        targetUserId = '';
+      }
+    }
+
+    Map<String, dynamic> summary = {
+      'name': 'Community Reporter',
+      'email': '',
+      'phone': '',
+      'avatarUrl': '',
+      'joinedText': 'Community Member',
+      'totalReports': 0,
+      'verifiedReunions': 0,
+    };
+
+    if (targetUserId.isNotEmpty && targetUserId != 'community-reporter') {
+      try {
+        final fetched = await ClaimRepository().getUserProfileSummary(targetUserId);
+        summary = fetched;
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return;
+
+    final rawEmail = (summary['email'] as String? ?? '').trim();
+    final rawPhone = (summary['phone'] as String? ?? '').trim();
+    final cleanEmail = rawEmail == 'No email provided' ? '' : rawEmail;
+    final cleanPhone = rawPhone == 'No phone number provided' ? '' : rawPhone;
+
+    showUserProfilePreviewDialog(
       context,
-      reportId: report.id,
-      petName: report.title,
-      initialTab: 1, // Directly focus Community Chat
+      name: (summary['name'] as String? ?? 'Community Reporter').trim(),
+      roleLabel: 'Reporter',
+      joinedText: summary['joinedText'] as String? ?? 'Community Member',
+      totalReports: summary['totalReports'] as int? ?? 0,
+      verifiedReunions: summary['verifiedReunions'] as int? ?? 0,
+      avatarUrl: summary['avatarUrl'] as String? ?? '',
+      email: cleanEmail,
+      phone: cleanPhone,
     );
   }
 
@@ -152,7 +193,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Photo Header
-                      _buildPhotoSection(),
+                      _buildPhotoSection(context),
                       const SizedBox(height: 14),
 
                       // Title & Status Badge Row
@@ -325,23 +366,52 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
     );
   }
 
-  Widget _buildPhotoSection() {
-    return Container(
-      height: 220,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1.0),
+  Widget _buildPhotoSection(BuildContext context) {
+    final photoUrl = report.photoUrl?.trim() ?? '';
+    final hasPhoto = photoUrl.isNotEmpty;
+
+    return GestureDetector(
+      onTap: hasPhoto
+          ? () => showImageZoomDialog(context, imageUrl: photoUrl)
+          : null,
+      child: Container(
+        height: 220,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border, width: 1.0),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: hasPhoto
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    photoUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => _buildPhotoPlaceholder(),
+                  ),
+                  Positioned(
+                    right: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.zoom_out_map_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : _buildPhotoPlaceholder(),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: report.photoUrl != null && report.photoUrl!.isNotEmpty
-          ? Image.network(
-              report.photoUrl!,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => _buildPhotoPlaceholder(),
-            )
-          : _buildPhotoPlaceholder(),
     );
   }
 
@@ -530,7 +600,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
         ),
         const SizedBox(height: 8),
 
-        // Secondary Actions Row: "Contact" and "Share"
+        // Secondary Actions Row: "Contact" and "Copy Details"
         Row(
           children: [
             Expanded(
@@ -538,7 +608,7 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                 key: const Key('modal_action_contact_button'),
                 onPressed: () => _handleContact(context),
                 icon: const Icon(
-                  Icons.chat_bubble_outline_rounded,
+                  Icons.person_outline_rounded,
                   size: 16,
                   color: AppColors.darkCharcoal,
                 ),
@@ -565,12 +635,12 @@ Reported on Paws and Found: ${report.formattedTimeAgo}
                 key: const Key('modal_action_share_button'),
                 onPressed: () => _handleShare(context),
                 icon: const Icon(
-                  Icons.share_outlined,
+                  Icons.copy_rounded,
                   size: 16,
                   color: AppColors.darkCharcoal,
                 ),
                 label: const Text(
-                  'Share',
+                  'Copy Details',
                   style: TextStyle(
                     color: AppColors.darkCharcoal,
                     fontSize: 13,

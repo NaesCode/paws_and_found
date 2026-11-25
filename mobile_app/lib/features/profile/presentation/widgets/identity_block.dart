@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../feed/presentation/widgets/post_image_popup.dart';
 import '../../domain/entities/user_profile.dart';
 import 'paw_print_decoration.dart';
 
@@ -36,9 +37,17 @@ class IdentityBlock extends StatelessWidget {
                 // Avatar: rounded square ~62x62 with radius 100
                 Semantics(
                   button: true,
-                  label: 'Change profile photo',
+                  label: 'Profile photo',
                   child: GestureDetector(
-                    onTap: onAvatarPressed ?? onEditPressed,
+                    onTap: onAvatarPressed ??
+                        ((user.profilePhotoURL != null &&
+                                (user.profilePhotoURL!.startsWith('http://') ||
+                                    user.profilePhotoURL!.startsWith('https://')))
+                            ? () => showImageZoomDialog(
+                                  context,
+                                  imageUrl: user.profilePhotoURL!,
+                                )
+                            : onEditPressed),
                     child: Container(
                       margin: const EdgeInsets.only(top: 12.0, bottom: 10.0), // 👈 Nudges the avatar down
                       width: 65,

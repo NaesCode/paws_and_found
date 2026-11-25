@@ -9,6 +9,8 @@ import 'package:paws_and_found/features/feed/presentation/widgets/post_image_pop
 class FeedPetInfoCard extends StatelessWidget {
   final String button1Text;
   final String? button2Text;
+  final Color? button1Color;
+  final Color? button2Color;
   final VoidCallback? onButton1Pressed;
   final VoidCallback? onButton2Pressed;
   final String imageUrl;
@@ -24,6 +26,8 @@ class FeedPetInfoCard extends StatelessWidget {
     required this.onPetButtonPressed,
     required this.button1Text,
     required this.button2Text,
+    this.button1Color,
+    this.button2Color,
     required this.onButton1Pressed,
     required this.onButton2Pressed,
     this.imageUrl = AppAssets.petPlaceholder,
@@ -117,29 +121,33 @@ class FeedPetInfoCard extends StatelessWidget {
                   description: description,
                 ),
               ),
-              const SizedBox(height: 10),
-
-              FeedClaimBtn(text: petButtonText, onPressed: onPetButtonPressed),
-              const SizedBox(height: 8),
-
-              // Existing Action Buttons
-              Row(
-                children: [
-                  FeedActionBtns(
-                    text: button1Text,
-                    backgroundColor: AppColors.primary,
-                    onPressed: onButton1Pressed,
-                  ),
-                  if (button2Text != null && button2Text!.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    FeedActionBtns(
-                      text: button2Text!,
-                      backgroundColor: AppColors.darkCharcoal,
-                      onPressed: onButton2Pressed,
-                    ),
+              if (petButtonText.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                FeedClaimBtn(text: petButtonText, onPressed: onPetButtonPressed),
+              ],
+              if (button1Text.isNotEmpty ||
+                  (button2Text != null && button2Text!.isNotEmpty)) ...[
+                const SizedBox(height: 8),
+                // Existing Action Buttons
+                Row(
+                  children: [
+                    if (button1Text.isNotEmpty)
+                      FeedActionBtns(
+                        text: button1Text,
+                        backgroundColor: button1Color ?? AppColors.primary,
+                        onPressed: onButton1Pressed,
+                      ),
+                    if (button2Text != null && button2Text!.isNotEmpty) ...[
+                      if (button1Text.isNotEmpty) const SizedBox(width: 8),
+                      FeedActionBtns(
+                        text: button2Text!,
+                        backgroundColor: button2Color ?? AppColors.darkCharcoal,
+                        onPressed: onButton2Pressed,
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),

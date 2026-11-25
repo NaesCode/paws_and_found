@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/services/route_direction_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/atoms/app_logo.dart';
 import '../../../../shared/atoms/current_location_button.dart';
@@ -16,6 +17,7 @@ import '../widgets/map_pet_info_modal.dart';
 import '../widgets/map_report_card.dart';
 import '../widgets/map_screen_template.dart';
 import '../../domain/entities/map_filter_type.dart';
+import '../../domain/entities/map_report_entity.dart';
 import '../../domain/repositories/map_repository.dart';
 import '../providers/map_controller.dart';
 
@@ -54,6 +56,62 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   late final MapController _controller;
   late final fmap.MapController _fmapController;
+  final RouteDirectionService _routeService = const RouteDirectionService();
+  List<LatLng> _routePoints = const [];
+
+  Future<void> _handleReportDirections(MapReportEntity report) async {
+    _controller.selectReport(report);
+
+    final origin = _controller.userLocation ??
+        await _controller.fetchUserLocation() ??
+        _controller.mapCenter;
+    final destination = LatLng(report.latitude, report.longitude);
+
+    final result = await _routeService.getDirections(
+      origin: origin,
+      destination: destination,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _routePoints = result.points;
+    });
+
+    try {
+      if (result.points.length >= 2) {
+        _fmapController.fitCamera(
+          fmap.CameraFit.bounds(
+            bounds: fmap.LatLngBounds.fromPoints(result.points),
+            padding: const EdgeInsets.fromLTRB(48, 110, 48, 170),
+          ),
+        );
+      }
+    } catch (_) {}
+
+    final durationPart = result.formattedDuration != null
+        ? ' • ~${result.formattedDuration}'
+        : '';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Direction to ${report.title}: ${result.formattedDistance}$durationPart',
+          ),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Clear',
+            textColor: Colors.white,
+            onPressed: () {
+              if (mounted) {
+                setState(() => _routePoints = const []);
+              }
+            },
+          ),
+        ),
+      );
+  }
 
   void _safeMoveCamera(LatLng center, double zoom) {
     try {
@@ -315,6 +373,7 @@ class _MapPageState extends State<MapPage> {
         reports: _controller.reports,
         selectedReportId: selected?.id,
         userLocation: _controller.userLocation,
+        routePoints: _routePoints,
         mapController: _fmapController,
         onReportTap: (report) {
           _controller.selectReport(report);
@@ -327,7 +386,13 @@ class _MapPageState extends State<MapPage> {
             report: report,
           );
         },
-        onCanvasTap: _controller.clearSelection,
+        onReportLongPress: _handleReportDirections,
+        onCanvasTap: () {
+          _controller.clearSelection();
+          if (_routePoints.isNotEmpty) {
+            setState(() => _routePoints = const []);
+          }
+        },
       ),
 
       // 4. Floating Report Detail Card

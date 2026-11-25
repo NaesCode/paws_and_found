@@ -51,6 +51,7 @@ class CameraReportController extends ChangeNotifier {
 
   String _animalType = 'Canine';
   String _status = 'Stray';
+  final TextEditingController petNameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   bool _isGpsAuto = true;
   double? _pinnedLat;
@@ -119,10 +120,15 @@ class CameraReportController extends ChangeNotifier {
   void setThreadContext({String? threadId, String? petName}) {
     _linkedThreadId = threadId;
     _linkedThreadPetName = petName;
+    _syncLinkedPetName(petName);
     notifyListeners();
   }
 
   void clearThreadContext() {
+    if (_linkedThreadPetName != null &&
+        petNameController.text.trim() == _linkedThreadPetName!.trim()) {
+      petNameController.clear();
+    }
     _linkedThreadId = null;
     _linkedThreadPetName = null;
     _selectedAiCandidate = null;
@@ -133,7 +139,15 @@ class CameraReportController extends ChangeNotifier {
     _selectedAiCandidate = candidate;
     _linkedThreadId = candidate.reportId;
     _linkedThreadPetName = candidate.petName;
+    _syncLinkedPetName(candidate.petName);
     notifyListeners();
+  }
+
+  void _syncLinkedPetName(String? petName) {
+    final trimmed = petName?.trim() ?? '';
+    if (trimmed.isNotEmpty && trimmed.toLowerCase() != 'unknown pet') {
+      petNameController.text = trimmed;
+    }
   }
 
   void clearAiCandidate() {
@@ -374,6 +388,16 @@ class CameraReportController extends ChangeNotifier {
         descText = '[AI Match: $matchConfidencePct%] $descText'.trim();
       }
 
+      final typedName = petNameController.text.trim();
+      final linkedName = _linkedThreadPetName?.trim();
+      final resolvedAnimalName = typedName.isNotEmpty
+          ? typedName
+          : (linkedName != null &&
+                  linkedName.isNotEmpty &&
+                  linkedName.toLowerCase() != 'unknown pet'
+              ? linkedName
+              : null);
+
       try {
         final reportId = await _repository.createReport(
           animalType: _animalType.toLowerCase(),
@@ -386,37 +410,22 @@ class CameraReportController extends ChangeNotifier {
           status: _status.toLowerCase(),
           locationName: _geocodedAddress,
           linkedReportId: _linkedThreadId,
+          animalName: resolvedAnimalName,
         );
         _successReportId = reportId;
 
-        // removed this because the linked should not be shown inside the chats
-        /*if (_linkedThreadId != null) {
-          try {
-            final client = Supabase.instance.client;
-            final currentUserId = client.auth.currentUser?.id;
-            if (currentUserId != null) {
-              final petLabel = (_linkedThreadPetName != null && _linkedThreadPetName!.isNotEmpty)
-                  ? 'for ${_linkedThreadPetName!} '
-                  : '';
-              final locationLabel = _geocodedAddress ?? 'Reported Area';
-              final confLabel = matchConfidencePct != null ? ' (AI Match: $matchConfidencePct%)' : '';
-              await client.from('comments').insert({
-                'post_id': _linkedThreadId,
-                'user_id': currentUserId,
-                'content': '🐾 Sighting reported ${petLabel}at $locationLabel!$confLabel\nhttps://pawsandfound.org/report/$reportId',
-              });
-            }
-          } catch (e) {
-            debugPrint('[CameraReportController] Failed to auto-link comment: $e');
-          }
-        }*/
+        String resolvedReporterId = 'current_user';
+        try {
+          resolvedReporterId =
+              Supabase.instance.client.auth.currentUser?.id ?? 'current_user';
+        } catch (_) {}
 
         // Register in active map reports so it immediately appears on the Community Animal Map
         MapReportModel.addReport(
           MapReportModel(
             id: reportId,
-            reporterId: 'current_user',
-            title: '$_animalType (${_status.toUpperCase()})',
+            reporterId: resolvedReporterId,
+            title: resolvedAnimalName ?? '$_animalType (${_status.toUpperCase()})',
             animalType: _animalType,
             description: descriptionController.text.trim(),
             status: _status.toLowerCase(),
@@ -457,6 +466,7 @@ class CameraReportController extends ChangeNotifier {
 
   @override
   void dispose() {
+    petNameController.dispose();
     descriptionController.dispose();
     super.dispose();
   }

@@ -15,6 +15,7 @@ class MapPinBadge extends StatelessWidget {
   final String status;
   final bool isSelected;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final double size;
 
   const MapPinBadge({
@@ -23,6 +24,7 @@ class MapPinBadge extends StatelessWidget {
     required this.status,
     this.isSelected = false,
     this.onTap,
+    this.onLongPress,
     this.size = 38.0,
   });
 
@@ -57,6 +59,7 @@ class MapPinBadge extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

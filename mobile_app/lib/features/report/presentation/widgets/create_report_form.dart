@@ -16,6 +16,7 @@ import 'package:paws_and_found/core/theme/app_colors.dart';
 class CreateReportForm extends StatelessWidget {
   final String animalType;
   final String status;
+  final TextEditingController? petNameController;
   final TextEditingController descriptionController;
   final String dateTimeString;
   final bool isGpsAuto;
@@ -36,6 +37,7 @@ class CreateReportForm extends StatelessWidget {
     super.key,
     required this.animalType,
     required this.status,
+    this.petNameController,
     required this.descriptionController,
     required this.dateTimeString,
     this.isGpsAuto = true,
@@ -96,6 +98,41 @@ class CreateReportForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+
+          // Optional Pet Name Block
+          if (petNameController != null) ...[
+            _buildFieldLabel('PET NAME (OPTIONAL)'),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 1.0),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: TextField(
+                controller: petNameController,
+                textCapitalization: TextCapitalization.words,
+                style: const TextStyle(
+                  color: AppColors.darkCharcoal,
+                  fontSize: 13.5,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  hintText: 'Enter pet name if known (auto-filled when linked)...',
+                  hintStyle: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Row 2: Description Block
           _buildFieldLabel('DESCRIPTION'),

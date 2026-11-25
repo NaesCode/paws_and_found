@@ -633,7 +633,7 @@ class _AuthTrayState extends State<AuthTray> {
                   text: widget.isLogin ? 'Login' : 'Register',
                   isLoading: _isLoading,
                   onPressed: _isGoogleLoading ? null : _handleSubmit,
-                  color: AppColors.darkCharcoal,
+                  color: AppColors.primary,
                   textColor: Colors.white,
                 ),
               ),

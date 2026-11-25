@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
+import 'package:paws_and_found/features/feed/presentation/widgets/post_image_popup.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void showUserProfilePreviewDialog(
@@ -22,13 +23,19 @@ void showUserProfilePreviewDialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.14),
-              backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-              child: avatarUrl.isEmpty
-                  ? const Icon(Icons.person_rounded, size: 34, color: AppColors.primary)
+            GestureDetector(
+              onTap: (avatarUrl.startsWith('http://') ||
+                      avatarUrl.startsWith('https://'))
+                  ? () => showImageZoomDialog(context, imageUrl: avatarUrl)
                   : null,
+              child: CircleAvatar(
+                radius: 32,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.14),
+                backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl.isEmpty
+                    ? const Icon(Icons.person_rounded, size: 34, color: AppColors.primary)
+                    : null,
+              ),
             ),
             const SizedBox(height: 12),
             Text(

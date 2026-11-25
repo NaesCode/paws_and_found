@@ -498,93 +498,186 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
     if (success) {
       showDialog<void>(
         context: context,
-        builder: (ctx) => AlertDialog(
+        builder: (ctx) => Dialog(
           backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text(
-                'Report Submitted',
-                style: TextStyle(
-                  color: AppColors.darkCharcoal,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primary,
+                    size: 30,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your sighting report for a ${_controller.animalType} (${_controller.status.toUpperCase()}) has been registered.',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 14),
+                const Text(
+                  'Report Submitted',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.darkCharcoal,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 6),
+                Text(
+                  'Your sighting report for a ${_controller.animalType} (${_controller.status.toUpperCase()}) has been registered.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SubmissionCheckRow(
+                        icon: Icons.location_on_outlined,
+                        text: 'Pinned to Community Animal Map',
+                      ),
+                      SizedBox(height: 8),
+                      _SubmissionCheckRow(
+                        icon: Icons.auto_awesome_outlined,
+                        text: 'Queued for AI Image Matching engine',
+                      ),
+                      SizedBox(height: 8),
+                      _SubmissionCheckRow(
+                        icon: Icons.history_rounded,
+                        text: 'Logged in User Contribution History',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
                   children: [
-                    Text(
-                      '• Pinned to Community Animal Map\n• Queued for AI Image Matching engine\n• Logged in User Contribution History',
-                      style: TextStyle(color: AppColors.darkCharcoal, fontSize: 12, height: 1.4),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        label: const Text(
+                          'Copy Link',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: () {
+                          final reportId = _controller.successReportId ?? '';
+                          Clipboard.setData(
+                            ClipboardData(text: 'https://pawsandfound.org/report/$reportId'),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Sighting link copied to clipboard!')),
+                          );
+                        },
+                      ),
+                    ),
+                    if (_controller.linkedThreadId != null) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.forum_outlined, size: 16),
+                          label: const Text(
+                            'Open Thread',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            showFeedCommentsModal(
+                              context,
+                              reportId: _controller.linkedThreadId,
+                              petName: _controller.linkedThreadPetName,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.darkCharcoal,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text(
+                          'Stay Here',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          final lat = _controller.pinnedLat ?? _controller.deviceLat ?? LocationConstants.defaultLatitude;
+                          final lng = _controller.pinnedLng ?? _controller.deviceLng ?? LocationConstants.defaultLongitude;
+                          final reportId = _controller.successReportId ?? '';
+                          context.go('/map?reportId=$reportId&lat=$lat&lng=$lng');
+                        },
+                        child: const Text(
+                          'View on Map',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          actions: [
-            TextButton.icon(
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              label: const Text('Copy Link'),
-              onPressed: () {
-                final reportId = _controller.successReportId ?? '';
-                Clipboard.setData(ClipboardData(text: 'https://pawsandfound.org/report/$reportId'));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sighting link copied to clipboard!')),
-                );
-              },
-            ),
-            if (_controller.linkedThreadId != null)
-              TextButton.icon(
-                icon: const Icon(Icons.forum_outlined, size: 16),
-                label: const Text('Open Thread'),
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  showFeedCommentsModal(
-                    context,
-                    reportId: _controller.linkedThreadId,
-                    petName: _controller.linkedThreadPetName,
-                  );
-                },
-              ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Stay Here'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                final lat = _controller.pinnedLat ?? _controller.deviceLat ?? LocationConstants.defaultLatitude;
-                final lng = _controller.pinnedLng ?? _controller.deviceLng ?? LocationConstants.defaultLongitude;
-                final reportId = _controller.successReportId ?? '';
-                context.go('/map?reportId=$reportId&lat=$lat&lng=$lng');
-              },
-              child: const Text('View on Map', style: TextStyle(color: Colors.white)),
-            ),
-          ],
         ),
       );
     } else {
@@ -631,7 +724,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
 
               // Backend AI status chip — shows Render warm/cold state
               Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 2),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 2),
                 child: Row(
                   children: [
                     ValueListenableBuilder<BackendStatus>(
@@ -751,6 +844,7 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               CreateReportForm(
                 animalType: _controller.animalType,
                 status: _controller.status,
+                petNameController: _controller.petNameController,
                 descriptionController: _controller.descriptionController,
                 dateTimeString: _controller.formattedDateTime,
                 isGpsAuto: _controller.isGpsAuto,
@@ -795,6 +889,37 @@ class _CameraReportPageState extends State<CameraReportPage> with WidgetsBinding
               },
             )
           : null,
+    );
+  }
+}
+
+/// Compact aligned row inside the post-submission confirmation card.
+class _SubmissionCheckRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _SubmissionCheckRow({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.darkCharcoal,
+              fontSize: 12.5,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -60,6 +60,7 @@ class ReportRepositoryImpl implements ReportRepository {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   }) async {
     try {
       return await _dataSource.createReport(
@@ -72,6 +73,7 @@ class ReportRepositoryImpl implements ReportRepository {
         petId: petId,
         locationName: locationName,
         linkedReportId: linkedReportId,
+        animalName: animalName,
       );
     } catch (e) {
       throw Exception('Failed to create report: $e');

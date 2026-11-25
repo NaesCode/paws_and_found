@@ -30,6 +30,7 @@ class _MockCameraReportRepository implements ReportRepository {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   }) async => 'mock-report-123';
 
   @override

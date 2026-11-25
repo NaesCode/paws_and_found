@@ -134,7 +134,7 @@ class _FeedPageState extends State<FeedPage> {
                       isFirstOptionSelected: _isGeneralSelected,
                       firstOptionText: 'General Reports',
                       secondOptionText: 'Your Reports',
-                      activeColor: AppColors.primary,
+                      activeColor: AppColors.contrast1,
                       inactiveColor: AppColors.darkCharcoal,
                       onOptionChanged: (bool value) {
                         setState(() {
@@ -167,7 +167,7 @@ class _FeedPageState extends State<FeedPage> {
                 extendedPadding: _isFabExtended
                     ? const EdgeInsets.symmetric(horizontal: 16.0)
                     : const EdgeInsets.all(16.0),
-                backgroundColor: AppColors.accentOrange,
+                backgroundColor: AppColors.darkSlate,
                 foregroundColor: Colors.white,
                 onPressed: () => context.push('/camera'),
                 icon: const Icon(Icons.add_a_photo_rounded),

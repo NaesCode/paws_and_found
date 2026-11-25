@@ -24,8 +24,10 @@ class InteractiveMapCanvas extends StatelessWidget {
   final List<MapReportEntity> reports;
   final String? selectedReportId;
   final LatLng? userLocation;
+  final List<LatLng> routePoints;
   final MapController? mapController;
   final ValueChanged<MapReportEntity>? onReportTap;
+  final ValueChanged<MapReportEntity>? onReportLongPress;
   final VoidCallback? onCanvasTap;
   final VoidCallback? onRecenterTap;
   final String tileUrlTemplate;
@@ -39,8 +41,10 @@ class InteractiveMapCanvas extends StatelessWidget {
     required this.reports,
     this.selectedReportId,
     this.userLocation,
+    this.routePoints = const [],
     this.mapController,
     this.onReportTap,
+    this.onReportLongPress,
     this.onCanvasTap,
     this.onRecenterTap,
     this.tileUrlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -76,6 +80,23 @@ class InteractiveMapCanvas extends StatelessWidget {
               maxZoom: 19,
             ),
 
+            // Google Maps-style direction suggestion polyline
+            if (routePoints.length >= 2)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: routePoints,
+                    strokeWidth: 7.5,
+                    color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
+                  ),
+                  Polyline(
+                    points: routePoints,
+                    strokeWidth: 4.5,
+                    color: const Color(0xFF2563EB),
+                  ),
+                ],
+              ),
+
             // Sighting report markers + User location marker
             MarkerLayer(
               markers: [
@@ -102,6 +123,7 @@ class InteractiveMapCanvas extends StatelessWidget {
                       status: report.status,
                       isSelected: isSelected,
                       onTap: () => onReportTap?.call(report),
+                      onLongPress: () => onReportLongPress?.call(report),
                     ),
                   );
                 }),

@@ -1,0 +1,70 @@
+name: Build & Release Android APK
+
+on:
+  # Automatically builds and publishes a release when pushing a version tag (e.g. v1.0.0)
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Allows manually triggering a build & release from the GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g., v1.0.1 or latest)'
+        required: true
+        default: 'latest'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: mobile_app
+        run: flutter pub get
+
+      - name: Build universal release APK
+        working-directory: mobile_app
+        run: flutter build apk --release
+
+      - name: Determine release tag
+        id: release_tag
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: Paws & Found ${{ steps.release_tag.outputs.tag }}
+          files: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          generate_release_notes: true
+          make_latest: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

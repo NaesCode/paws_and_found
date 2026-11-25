@@ -30,6 +30,7 @@ class AppAssets {
   static const String petPlaceholder = '$imagesDir/images.jpg';
   static const String appLogo = '$imagesDir/app_logo.png';
   static const String appLauncherIconPng = '$imagesDir/app_launcher_icon.png';
+  static const String authMapBg = '$imagesDir/auth_map_bg.jpg';
 
   // ---------------------------------------------------------------------------
   // SVGs (Add constants here as SVG assets are added to assets/svgs/)

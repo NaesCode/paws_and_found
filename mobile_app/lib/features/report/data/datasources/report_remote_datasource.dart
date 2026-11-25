@@ -1,6 +1,5 @@
 // ignore_for_file: use_null_aware_elements
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -29,6 +28,7 @@ abstract class ReportRemoteDataSource {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   });
 }
 
@@ -138,6 +138,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     String? petId,
     String? locationName,
     String? linkedReportId,
+    String? animalName,
   }) async {
     final client = _supabase;
     if (client == null) throw Exception('Supabase client is not available');
@@ -155,7 +156,22 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
     });
 
     if (response == null) throw Exception('create_report RPC returned null');
-    return response as String;
+    final reportId = response as String;
+
+    // Persist optional animal_name (e.g. from AI linked pet or manual Name field)
+    final cleanName = animalName?.trim();
+    if (cleanName != null && cleanName.isNotEmpty) {
+      try {
+        await client
+            .from('reports')
+            .update({'animal_name': cleanName})
+            .eq('id', reportId);
+      } catch (e) {
+        debugPrint('[ReportRemoteDataSourceImpl] Failed to update animal_name: $e');
+      }
+    }
+
+    return reportId;
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:paws_and_found/core/theme/app_colors.dart';
 import './feed_status_banner.dart';
+import './post_image_popup.dart';
 
 class FeedUserHeader extends StatelessWidget {
   final BannerType bannerType;
@@ -29,17 +30,23 @@ class FeedUserHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: AppColors.contrast1,
-                backgroundImage: (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://'))
-                    ? NetworkImage(userImageUrl)
-                    : null, 
-                child: (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://'))
-                    ? null
-                    : const Icon(
-                        Icons.pets, 
-                        color: AppColors.background,
-                      ),
+              GestureDetector(
+                onTap: (userImageUrl.startsWith('http://') ||
+                        userImageUrl.startsWith('https://'))
+                    ? () => showImageZoomDialog(context, imageUrl: userImageUrl)
+                    : null,
+                child: CircleAvatar(
+                  backgroundColor: AppColors.contrast1,
+                  backgroundImage: (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://'))
+                      ? NetworkImage(userImageUrl)
+                      : null,
+                  child: (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://'))
+                      ? null
+                      : const Icon(
+                          Icons.pets,
+                          color: AppColors.background,
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -74,7 +74,7 @@ void main() {
       // Verify Action Buttons
       expect(find.text('I Spotted This Animal'), findsOneWidget);
       expect(find.text('Contact'), findsOneWidget);
-      expect(find.text('Share'), findsOneWidget);
+      expect(find.text('Copy Details'), findsOneWidget);
 
       // Verify Top-Right Close Button is present
       expect(find.byKey(const Key('map_pet_info_modal_close_button')), findsOneWidget);
