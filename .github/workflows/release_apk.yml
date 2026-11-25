@@ -48,7 +48,9 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 secret is empty! Google Sign-In will fail on this APK."
+          else
             mkdir -p "$HOME/.android"
             python3 -c '
           import os, re, base64
@@ -63,6 +65,10 @@ jobs:
       - name: Build universal release APK
         working-directory: mobile_app
         run: flutter build apk --release
+
+      - name: Print APK signing certificate SHA-1
+        shell: bash
+        run: keytool -printcert -jarfile mobile_app/build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA1:|SHA256:" || true
 
       - name: Determine release tag
         id: release_tag
